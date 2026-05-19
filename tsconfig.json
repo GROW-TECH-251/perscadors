@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "allowImportingTsExtensions": true,
     "allowJs": true,
     "skipLibCheck": true,
@@ -16,9 +16,10 @@
     "noFallthroughCasesInSwitch": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["vite/client"],
     "jsx": "react-jsx",
     "incremental": true,
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "plugins": [
       {
         "name": "next"
@@ -29,6 +30,7 @@
     }
   },
   "include": [
+    "src",
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
