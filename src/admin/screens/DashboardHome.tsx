@@ -65,7 +65,10 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate, onEdit
 
   // Maintenant useEffect peut appeler loadDashboardData
   useEffect(() => {
-    loadDashboardData();
+    const loadData = async () => {
+      await loadDashboardData();
+    };
+    loadData();
   }, [loadDashboardData]);
 
   const formatCurrency = (amount: number) => {
@@ -91,7 +94,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate, onEdit
           Dashboard
         </h1>
         <p className="text-brand-text-muted mt-1">
-          Vue d'ensemble de votre boutique
+          Vue d&apos;ensemble de votre boutique
         </p>
       </div>
 
