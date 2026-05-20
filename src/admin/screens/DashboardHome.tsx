@@ -9,10 +9,10 @@ import { Package, ShoppingCart, Users, DollarSign, TrendingUp, AlertTriangle } f
 import { fetchAdminProducts } from '@/services/productService';
 import { fetchAdminOrders } from '@/services/orderService';
 import { getTotalCustomersCount } from '@/services/customerService';
-import type { AdminOrder, AdminProduct } from '@/admin/types';
+import type { AdminOrder, AdminProduct, AdminScreen } from '@/admin/types';
 
 interface DashboardHomeProps {
-  onNavigate: (screen: string) => void;
+  onNavigate: (screen: AdminScreen) => void;
   onEditProduct: (product: AdminProduct) => void;
 }
 
@@ -227,7 +227,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate, onEdit
                   <tr
                     key={order.id}
                     className="border-b border-brand-gold/10 hover:bg-brand-gold/5 cursor-pointer"
-                    onClick={() => onNavigate('orderDetail')}
+                    onClick={() => onNavigate('orders')}
                   >
                     <td className="py-3 px-4 text-sm font-mono text-brand-text">
                       {order.order_number}

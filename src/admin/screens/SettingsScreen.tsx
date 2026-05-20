@@ -7,11 +7,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect } from '../components';
 import { Settings, Save, Phone, MapPin, DollarSign, MessageCircle, Truck, UserCheck } from 'lucide-react';
 import { fetchShopSettings, upsertShopSettings } from '@/services/settingsService';
-import type { ShopSettings, DeliveryZone } from '@/admin/types';
+import type { ShopSettings, DeliveryZone, AdminScreen } from '@/admin/types';
 
 interface SettingsScreenProps {
   onBack: () => void;
-  onNavigate: (screen: string) => void;
+  onNavigate: (screen: AdminScreen) => void;
   onLogout: () => void;
 }
 
