@@ -79,11 +79,14 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
     }
   }, []);
 
-  // Maintenant useEffect peut appeler loadProduct
+  // CORRECTION: Encapsuler dans une fonction async interne
   useEffect(() => {
-    if (product?.id) {
-      loadProduct(product.id);
-    }
+    const initProduct = async () => {
+      if (product?.id) {
+        await loadProduct(product.id);
+      }
+    };
+    initProduct();
   }, [product?.id, loadProduct]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -219,16 +222,17 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
               type="number"
               required
             />
+            {/* CORRECTION: Convertir stock en string pour AdminInput */}
             <AdminInput
               label="Stock"
-              value={formData.stock?.toString() || ''}
+              value={formData.stock !== undefined ? formData.stock.toString() : ''}
               onChange={(v) => setFormData({ ...formData, stock: v ? Number(v) : undefined })}
               type="number"
               placeholder="Laisser vide pour stock illimité"
             />
             <AdminInput
               label="Badge (optionnel)"
-              value={formData.badge}
+              value={formData.badge ?? ''}
               onChange={(v) => setFormData({ ...formData, badge: v })}
               placeholder="Nouveau, Promo, etc."
             />

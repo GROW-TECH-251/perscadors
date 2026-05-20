@@ -47,7 +47,8 @@ export const CustomersScreen: React.FC<CustomersScreenProps> = ({ onBack }) => {
     if (!selectedCustomer) return;
 
     try {
-      await upsertCustomerMeta(selectedCustomer.phone, notes, tags);
+      // CORRECTION: upsertCustomerMeta prend (phone, meta) où meta est un objet
+      await upsertCustomerMeta(selectedCustomer.phone, { notes, tags });
       await loadCustomers();
       alert('Notes enregistrées !');
     } catch (err: unknown) {
