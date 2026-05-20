@@ -9,7 +9,7 @@ import { TrendingUp, ShoppingCart, Users, DollarSign, Package } from 'lucide-rea
 import { fetchAdminOrders } from '@/services/orderService';
 import { fetchAdminProducts } from '@/services/productService';
 import { getTotalCustomersCount } from '@/services/customerService';
-import type { AdminOrder, OrderStatus } from '@/admin/types';
+import type { AdminOrder, OrderStatus, AdminProduct } from '@/admin/types';
 
 interface AnalyticsScreenProps {
   onBack: () => void;
@@ -20,7 +20,7 @@ type TimeRange = '7d' | '30d' | '90d' | 'all';
 export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [orders, setOrders] = useState<AdminOrder[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -78,16 +78,6 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
     'LIVRÉE': orders.filter(o => o.status === 'LIVRÉE').length,
     'ANNULÉE': orders.filter(o => o.status === 'ANNULÉE').length
   };
-
-  // Top products
-  const topProducts = products
-    .map(p => ({
-      name: p.name,
-      sales: 0, // Would need order items to calculate
-      revenue: 0
-    }))
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5);
 
   // Low stock products
   const lowStockProducts = products.filter(p => (p.stock || 0) <= 5);

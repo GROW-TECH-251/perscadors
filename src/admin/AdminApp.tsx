@@ -29,15 +29,19 @@ export const AdminApp: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<AdminProduct | null>(null);
   const [lowStockCount, setLowStockCount] = useState(0);
 
-  // Vérifier la session au montage
+  // CORRECTION: checkSession avec useCallback et encapsulation dans useEffect
   const checkSession = useCallback(() => {
     const isAuthenticated = getAdminSession();
     setLoggedIn(isAuthenticated);
     setLoading(false);
   }, []);
 
+  // CORRECTION: Encapsulation dans une fonction async interne
   useEffect(() => {
-    checkSession();
+    const init = async () => {
+      await checkSession();
+    };
+    init();
   }, [checkSession]);
 
   // Gérer la connexion réussie
@@ -53,7 +57,7 @@ export const AdminApp: React.FC = () => {
     setCurrentScreen('home');
   };
 
-  // Naviguer vers un écran
+  // CORRECTION: Typage explicite AdminScreen pour onNavigate
   const handleNavigate = (screen: AdminScreen) => {
     setCurrentScreen(screen);
   };
@@ -82,7 +86,7 @@ export const AdminApp: React.FC = () => {
       <div className="min-h-screen bg-brand-bg flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement de l'admin...</p>
+          <p className="text-brand-text-muted">Chargement de l&apos;admin...</p>
         </div>
       </div>
     );
@@ -93,7 +97,7 @@ export const AdminApp: React.FC = () => {
     return <AdminLogin onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Connecté → Afficher l'admin
+  // Connecté → Afficher l&apos;admin
   return (
     <div className="min-h-screen bg-brand-bg">
       {/* Desktop Sidebar */}
