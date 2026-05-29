@@ -6,6 +6,7 @@ export interface Product {
   slug: string;
   category: string;
   price: number; // en FCFA
+  image_url: string ; // URL de l'image principale
   images: string[]; // images angles
   sizes: Size[];
   outOfStockSizes?: Size[]; // tailles épuisées (grisées)

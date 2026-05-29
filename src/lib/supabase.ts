@@ -1,53 +1,72 @@
 // src/lib/supabase.ts
 // ============================================
-// Configuration du client Supabase
+// Configuration Supabase (avec Storage)
 // ============================================
-// Ce fichier initialise la connexion à Supabase
-// Il est utilisé par tous les services (products, orders, customers, etc.)
 
 import { createClient } from '@supabase/supabase-js';
 
-// Récupération des variables d'environnement
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim() || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || process.env.VITE_SUPABASE_ANON_KEY?.trim() || '';
 
-// Vérification de la configuration
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-// Création du client Supabase (seulement si configuré)
 export const supabase = isSupabaseConfigured 
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
 
-// Fonction utilitaire pour exiger Supabase
-// À utiliser dans les fonctions qui ont absolument besoin de Supabase
 export function requireSupabase() {
   if (!supabase) {
-    throw new Error(
-      'Supabase n\'est pas configuré. ' +
-      'Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.'
-    );
+    throw new Error('Supabase n\'est pas configuré.');
   }
   return supabase;
 }
 
-// Types pour l'authentification admin
-export interface AdminUser {
-  id: string;
-  email: string;
-  role: 'admin' | 'superadmin';
+// ============================================
+// UPLOAD D'IMAGES
+// ============================================
+
+export async function uploadProductImage(file: File, productId?: string): Promise<{ url: string; error?: string }> {
+  if (!supabase) {
+    return { url: '', error: 'Supabase non configuré' };
+  }
+
+  try {
+    const fileName = `${productId || 'new'}-${Date.now()}-${file.name.replace(/\s/g, '-')}`;
+    
+    const { data, error } = await supabase.storage
+      .from('product-images')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(fileName);
+
+    return { url: urlData.publicUrl };
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Erreur upload';
+    return { url: '', error: errorMessage };
+  }
 }
 
-// Fonction pour vérifier si un utilisateur est admin
-export async function checkAdminRole(userId: string): Promise<boolean> {
+export async function deleteProductImage(imageUrl: string): Promise<boolean> {
   if (!supabase) return false;
-  
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', userId)
-    .single();
-  
-  if (error || !data) return false;
-  return data.role === 'admin' || data.role === 'superadmin';
+
+  try {
+    const fileName = imageUrl.split('/').pop();
+    if (!fileName) return false;
+
+    await supabase.storage
+      .from('product-images')
+      .remove([fileName]);
+
+    return true;
+  } catch (err) {
+    console.error('Erreur suppression image:', err);
+    return false;
+  }
 }

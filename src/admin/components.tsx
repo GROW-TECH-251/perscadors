@@ -1,11 +1,12 @@
 // src/admin/components.tsx
 // ============================================
-// Composants UI pour l'administration
+// Composants UI pour l'administration (Next.js)
 // ============================================
-// Sidebar, BottomTabs, Cards, Boutons, etc.
+
+'use client';
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import {
   Home,
   Package,
@@ -24,10 +25,6 @@ import {
 } from 'lucide-react';
 import type { AdminScreen, NavItem, OrderStatus } from './types';
 
-// ============================================
-// CONFIGURATION NAVIGATION
-// ============================================
-
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Dashboard', icon: 'home' },
   { id: 'products', label: 'Produits', icon: 'package' },
@@ -38,10 +35,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'stockAlerts', label: 'Alertes Stock', icon: 'alerts' },
   { id: 'settings', label: 'Réglages', icon: 'settings' }
 ];
-
-// ============================================
-// ICON MAPPING
-// ============================================
 
 const iconMap: Record<string, React.ReactNode> = {
   home: <Home size={20} />,
@@ -55,10 +48,6 @@ const iconMap: Record<string, React.ReactNode> = {
   qa: <CheckSquare size={20} />,
   categories: <Tag size={20} />
 };
-
-// ============================================
-// DESKTOP SIDEBAR
-// ============================================
 
 interface DesktopSidebarProps {
   currentScreen: AdminScreen;
@@ -77,9 +66,8 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
 
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-[#0A0A0A] border-r border-brand-gold/20 min-h-screen fixed left-0 top-0 z-40">
-      {/* Logo */}
       <div className="p-6 border-b border-brand-gold/20">
-        <Link to="/" className="block">
+        <Link href="/" className="block">
           <img
             src="/images/LOGOSITE/logo.png"
             alt="HP Collection"
@@ -91,7 +79,6 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         </p>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {ADMIN_NAV_ITEMS.map((item) => {
           const isActive = currentScreen === item.id;
@@ -101,13 +88,13 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
+              type="button"
+              aria-label={`Aller à ${item.label}`}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors cursor-pointer ${
                 isActive
                   ? 'bg-brand-gold text-[#0A0A0A]'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
-              type="button"
-              aria-label={`Aller à ${item.label}`}
             >
               <div className="flex items-center gap-3">
                 {getIcon(item.icon)}
@@ -123,13 +110,12 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         })}
       </nav>
 
-      {/* Logout */}
       <div className="p-4 border-t border-brand-gold/20">
         <button
           onClick={onLogout}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
           type="button"
           aria-label="Se déconnecter"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
         >
           <LogOut size={18} />
           <span className="font-medium text-sm">Déconnexion</span>
@@ -138,10 +124,6 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
     </aside>
   );
 };
-
-// ============================================
-// MOBILE BOTTOM TABS
-// ============================================
 
 interface BottomTabsProps {
   currentScreen: AdminScreen;
@@ -155,8 +137,6 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
   lowStockCount = 0
 }) => {
   const getIcon = (iconName: string) => iconMap[iconName] || <Package size={20} />;
-
-  // Afficher seulement les items principaux sur mobile
   const mobileItems = ADMIN_NAV_ITEMS.slice(0, 5);
 
   return (
@@ -170,11 +150,11 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
+              type="button"
+              aria-label={`Aller à ${item.label}`}
               className={`flex flex-col items-center justify-center py-3 px-2 cursor-pointer ${
                 isActive ? 'text-brand-gold' : 'text-gray-400'
               }`}
-              type="button"
-              aria-label={`Aller à ${item.label}`}
             >
               <div className="relative">
                 {getIcon(item.icon)}
@@ -193,11 +173,6 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
   );
 };
 
-// ============================================
-// COMPOSANTS RÉUTILISABLES
-// ============================================
-
-// Card Container
 export const AdminCard: React.FC<{
   children: React.ReactNode;
   className?: string;
@@ -211,7 +186,6 @@ export const AdminCard: React.FC<{
   </div>
 );
 
-// Stat Card
 export const StatCard: React.FC<{
   title: string;
   value: string | number;
@@ -247,7 +221,6 @@ export const StatCard: React.FC<{
   </AdminCard>
 );
 
-// Button
 export const AdminButton: React.FC<{
   children: React.ReactNode;
   onClick?: () => void;
@@ -298,7 +271,6 @@ export const AdminButton: React.FC<{
   );
 };
 
-// Input
 export const AdminInput: React.FC<{
   label?: string;
   value: string | number;
@@ -343,7 +315,6 @@ export const AdminInput: React.FC<{
   </div>
 );
 
-// Select
 export const AdminSelect: React.FC<{
   label?: string;
   value: string;
@@ -397,7 +368,6 @@ export const AdminSelect: React.FC<{
   </div>
 );
 
-// Textarea
 export const AdminTextarea: React.FC<{
   label?: string;
   value: string;
@@ -442,7 +412,6 @@ export const AdminTextarea: React.FC<{
   </div>
 );
 
-// Badge
 export const AdminBadge: React.FC<{
   children: React.ReactNode;
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
@@ -470,7 +439,6 @@ export const AdminBadge: React.FC<{
   );
 };
 
-// Order Status Badge
 export const OrderStatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
   const statusConfig: Record<OrderStatus, { variant: 'warning' | 'info' | 'success' | 'danger'; label: string }> = {
     'EN ATTENTE': { variant: 'warning', label: 'En attente' },
@@ -485,7 +453,6 @@ export const OrderStatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) 
   return <AdminBadge variant={config.variant}>{config.label}</AdminBadge>;
 };
 
-// Modal
 export const AdminModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -497,7 +464,6 @@ export const AdminModal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
@@ -506,27 +472,23 @@ export const AdminModal: React.FC<{
         aria-labelledby="modal-title"
       />
 
-      {/* Modal Content */}
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-brand-bg rounded-2xl border border-brand-gold/30 shadow-2xl" role="document">
-        {/* Header */}
         <div className="sticky top-0 flex items-center justify-between p-6 border-b border-brand-gold/10 bg-brand-bg">
           <h2 id="modal-title" className="font-bebas text-2xl tracking-wider text-brand-text uppercase">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-brand-gold/10 rounded-full transition-colors cursor-pointer"
             type="button"
             aria-label="Fermer"
+            className="p-2 hover:bg-brand-gold/10 rounded-full transition-colors cursor-pointer"
           >
             <X size={20} className="text-brand-text" />
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-6">{children}</div>
 
-        {/* Footer */}
         {footer && (
           <div className="sticky bottom-0 p-6 border-t border-brand-gold/10 bg-brand-bg-alt">
             {footer}
@@ -537,19 +499,16 @@ export const AdminModal: React.FC<{
   );
 };
 
-// Table
-type TableRow = Record<string, React.ReactNode>;
-
 interface TableColumn {
   key: string;
   label: string;
-  render?: (value: React.ReactNode, row: TableRow) => React.ReactNode;
+  render?: (value: unknown, row: Record<string, unknown>) => React.ReactNode;
 }
 
 export const AdminTable: React.FC<{
   columns: TableColumn[];
-  data: TableRow[];
-  onRowClick?: (row: TableRow) => void;
+  data: Record<string, unknown>[];
+  onRowClick?: (row: Record<string, unknown>) => void;
   emptyMessage?: string;
 }> = ({ columns, data, onRowClick, emptyMessage = 'Aucune donnée' }) => (
   <div className="overflow-x-auto">
@@ -596,7 +555,6 @@ export const AdminTable: React.FC<{
   </div>
 );
 
-// Search Bar
 export const AdminSearch: React.FC<{
   value: string;
   onChange: (value: string) => void;
@@ -620,7 +578,6 @@ export const AdminSearch: React.FC<{
   </div>
 );
 
-// Empty State
 export const AdminEmptyState: React.FC<{
   icon?: React.ReactNode;
   title: string;
