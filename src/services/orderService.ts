@@ -7,6 +7,63 @@
 import { requireSupabase, supabase } from '@/lib/supabase';
 import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse } from '@/admin/types';
 
+export interface PublicCheckoutOrderItem {
+  name: string;
+  price: number;
+  quantity: number;
+  size: string;
+  color: string;
+  image?: string;
+}
+
+export interface PublicCheckoutPayload {
+  order_number: string;
+  client_name: string;
+  client_phone: string;
+  client_area: string;
+  items: PublicCheckoutOrderItem[];
+  subtotal: number;
+  delivery_fee: number;
+  total: number;
+}
+
+// ============================================
+// UTILITAIRES PUBLICS
+// ============================================
+
+export function generateOrderNumber(date: Date = new Date()): string {
+  const datePart = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+  const randomPart = Math.floor(1000 + Math.random() * 9000);
+
+  return `HP-${datePart}-${randomPart}`;
+}
+
+export function normalizePhoneForWhatsApp(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
+export function buildWhatsAppOrderMessage(payload: PublicCheckoutPayload): string {
+  let message = `🛒 *Nouvelle Commande HP Collection*\n\n`;
+  message += `Référence : *${payload.order_number}*\n`;
+  message += `Client : ${payload.client_name}\n`;
+  message += `Téléphone : ${payload.client_phone}\n`;
+  message += `Zone : ${payload.client_area}\n\n`;
+
+  payload.items.forEach((item) => {
+    message += `• ${item.name}\n`;
+    message += `  Taille: ${item.size} | Couleur: ${item.color}\n`;
+    message += `  Quantité: ${item.quantity} | Prix: ${(item.price * item.quantity).toLocaleString()} FCFA\n\n`;
+  });
+
+  message += `━━━━━━━━━━━━━━━━\n`;
+  message += `Sous-total: ${payload.subtotal.toLocaleString()} FCFA\n`;
+  message += `Livraison: ${payload.delivery_fee.toLocaleString()} FCFA\n`;
+  message += `*TOTAL: ${payload.total.toLocaleString()} FCFA*\n\n`;
+  message += `_Votre commande a été préparée automatiquement et envoyée à Vioutou via WhatsApp pour validation finale et livraison._`;
+
+  return message;
+}
+
 // ============================================
 // LECTURE
 // ============================================
@@ -99,23 +156,7 @@ export async function fetchOrdersByPhone(phone: string): Promise<AdminOrder[]> {
 // CRÉATION
 // ============================================
 
-export async function createOrderFromCart(orderData: {
-  order_number: string;
-  client_name: string;
-  client_phone: string;
-  client_area: string;
-  items: Array<{
-    name: string;
-    price: number;
-    quantity: number;
-    size: string;
-    color: string;
-    image?: string;
-  }>;
-  subtotal: number;
-  delivery_fee: number;
-  total: number;
-}): Promise<ApiResponse<AdminOrder>> {
+export async function createOrderFromCart(orderData: PublicCheckoutPayload): Promise<ApiResponse<AdminOrder>> {
   const db = requireSupabase();
 
   const history: OrderHistoryEntry[] = [

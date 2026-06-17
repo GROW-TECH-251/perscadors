@@ -1,47 +1,165 @@
 // src/components/cart/CartDrawer.tsx
 // ============================================
-// Panier avec tirage
+// Panier avec checkout WhatsApp + enregistrement admin
 // ============================================
 
 'use client';
 
-import React from 'react';
-import { X, Minus, Plus, Trash2, MessageCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, Minus, Plus, Trash2, MessageCircle, Loader2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import {
+  buildWhatsAppOrderMessage,
+  createOrderFromCart,
+  generateOrderNumber,
+  normalizePhoneForWhatsApp,
+  type PublicCheckoutPayload
+} from '@/services/orderService';
+
+const WHATSAPP_DIGITS = process.env.NEXT_PUBLIC_WHATSAPP_PHONE_DIGITS?.trim() || '22967280018';
 
 export const CartDrawer: React.FC = () => {
-  const { 
-    cartItems, 
-    isCartOpen, 
-    setCartOpen, 
-    removeFromCart, 
-    updateQuantity, 
+  const {
+    cartItems,
+    isCartOpen,
+    setCartOpen,
+    removeFromCart,
+    updateQuantity,
     cartTotal,
-    clearCart 
+    clearCart
   } = useCart();
 
-  const handleWhatsAppCheckout = () => {
-    let message = '🛒 *Nouvelle Commande HP Collection*\n\n';
-    cartItems.forEach((item) => {
-      message += `• ${item.product.name}\n`;
-      message += `  Taille: ${item.selectedSize} | Couleur: ${item.selectedColor}\n`;
-      message += `  Quantité: ${item.quantity} | Prix: ${(item.product.price * item.quantity).toLocaleString()} FCFA\n\n`;
-    });
-    message += `━━━━━━━━━━━━━━━━\n`;
-    message += `*TOTAL: ${cartTotal.toLocaleString()} FCFA*\n\n`;
-    message += '_Votre commande sera préparée automatiquement et envoyée à Vioutou via WhatsApp pour validation finale et livraison._';
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerArea, setCustomerArea] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+  const [checkoutSuccess, setCheckoutSuccess] = useState('');
 
-    const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/22967280018?text=${encodedMessage}`, '_blank');
+  const canCheckout = useMemo(() => {
+    return (
+      cartItems.length > 0 &&
+      customerName.trim().length > 1 &&
+      customerPhone.trim().length >= 8 &&
+      customerArea.trim().length > 1
+    );
+  }, [cartItems.length, customerArea, customerName, customerPhone]);
+
+  const resetCheckoutState = () => {
+    setCheckoutError('');
+    setCheckoutSuccess('');
+  };
+
+  const resetCheckoutForm = () => {
+    setCustomerName('');
+    setCustomerPhone('');
+    setCustomerArea('');
+    resetCheckoutState();
+  };
+
+  const handleClose = () => {
+    setCartOpen(false);
+    resetCheckoutState();
+  };
+
+  const handleWhatsAppCheckout = async () => {
+    if (cartItems.length === 0) {
+      setCheckoutError('Votre panier est vide.');
+      return;
+    }
+
+    if (!customerName.trim()) {
+      setCheckoutError('Veuillez renseigner votre nom complet.');
+      return;
+    }
+
+    if (!customerPhone.trim()) {
+      setCheckoutError('Veuillez renseigner votre numéro WhatsApp.');
+      return;
+    }
+
+    if (!customerArea.trim()) {
+      setCheckoutError('Veuillez renseigner votre zone de livraison.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setCheckoutError('');
+    setCheckoutSuccess('');
+
+    const whatsappWindow = typeof window !== 'undefined'
+      ? window.open('', '_blank', 'noopener,noreferrer')
+      : null;
+
+    try {
+      const orderPayload: PublicCheckoutPayload = {
+        order_number: generateOrderNumber(),
+        client_name: customerName.trim(),
+        client_phone: normalizePhoneForWhatsApp(customerPhone),
+        client_area: customerArea.trim(),
+        items: cartItems.map((item) => ({
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+          size: item.selectedSize,
+          color: item.selectedColor,
+          image: item.product.image_url || item.product.images[0]
+        })),
+        subtotal: cartTotal,
+        delivery_fee: 0,
+        total: cartTotal
+      };
+
+      if (isSupabaseConfigured) {
+        const creationResult = await createOrderFromCart(orderPayload);
+
+        if (creationResult.error) {
+          whatsappWindow?.close();
+          setCheckoutError(`La commande n'a pas pu être enregistrée dans l'admin : ${creationResult.error}`);
+          return;
+        }
+      }
+
+      const message = buildWhatsAppOrderMessage(orderPayload);
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/${WHATSAPP_DIGITS}?text=${encodedMessage}`;
+
+      if (whatsappWindow) {
+        whatsappWindow.location.href = whatsappUrl;
+      } else {
+        window.open(whatsappUrl, '_blank');
+      }
+
+      clearCart();
+      setCheckoutSuccess(
+        isSupabaseConfigured
+          ? `Commande ${orderPayload.order_number} enregistrée et envoyée sur WhatsApp.`
+          : 'Commande préparée et envoyée sur WhatsApp. Configure Supabase pour la voir remonter dans l’admin.'
+      );
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerArea('');
+
+      window.setTimeout(() => {
+        setCartOpen(false);
+      }, 1200);
+    } catch (error: unknown) {
+      whatsappWindow?.close();
+      console.error('Erreur checkout WhatsApp:', error);
+      setCheckoutError('Une erreur est survenue pendant la préparation de votre commande.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isCartOpen) return null;
 
   return (
     <>
-      <div 
+      <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity"
-        onClick={() => setCartOpen(false)}
+        onClick={handleClose}
       />
 
       <div className="fixed top-0 right-0 h-full w-full max-w-md bg-brand-bg shadow-2xl z-50 transform transition-transform duration-300 flex flex-col">
@@ -50,7 +168,7 @@ export const CartDrawer: React.FC = () => {
             Ton Panier
           </h2>
           <button
-            onClick={() => setCartOpen(false)}
+            onClick={handleClose}
             className="p-2 hover:bg-brand-gold/10 rounded-full transition-colors cursor-pointer"
             type="button"
             aria-label="Fermer le panier"
@@ -65,7 +183,7 @@ export const CartDrawer: React.FC = () => {
               <div className="text-6xl">🛒</div>
               <p className="text-brand-text-muted text-lg">Votre panier est vide.</p>
               <button
-                onClick={() => setCartOpen(false)}
+                onClick={handleClose}
                 className="mt-4 px-6 py-3 bg-brand-gold hover:bg-brand-gold-light text-[#0A0A0A] font-bebas uppercase tracking-widest rounded cursor-pointer"
                 type="button"
               >
@@ -150,21 +268,89 @@ export const CartDrawer: React.FC = () => {
               </span>
             </div>
 
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-brand-text-muted mb-1">
+                  Nom complet
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(event) => setCustomerName(event.target.value)}
+                  placeholder="Ex: Honoré Perscadors"
+                  className="w-full px-4 py-3 rounded-lg border border-brand-gold/20 bg-brand-bg text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/30"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-brand-text-muted mb-1">
+                  Numéro WhatsApp
+                </label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(event) => setCustomerPhone(event.target.value)}
+                  placeholder="Ex: +229 67 28 00 18"
+                  className="w-full px-4 py-3 rounded-lg border border-brand-gold/20 bg-brand-bg text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/30"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-brand-text-muted mb-1">
+                  Zone de livraison
+                </label>
+                <input
+                  type="text"
+                  value={customerArea}
+                  onChange={(event) => setCustomerArea(event.target.value)}
+                  placeholder="Ex: Cotonou, Agla"
+                  className="w-full px-4 py-3 rounded-lg border border-brand-gold/20 bg-brand-bg text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/30"
+                />
+              </div>
+            </div>
+
+            {checkoutError && (
+              <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {checkoutError}
+              </div>
+            )}
+
+            {checkoutSuccess && (
+              <div className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {checkoutSuccess}
+              </div>
+            )}
+
             <button
               onClick={handleWhatsAppCheckout}
-              className="w-full py-4 bg-[#25D366] hover:bg-[#20BA5A] text-white font-bebas text-xl uppercase tracking-widest rounded transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              disabled={!canCheckout || isSubmitting}
+              className="w-full py-4 bg-[#25D366] hover:bg-[#20BA5A] disabled:bg-[#25D366]/50 disabled:cursor-not-allowed text-white font-bebas text-xl uppercase tracking-widest rounded transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               type="button"
             >
-              <MessageCircle size={22} />
-              Commander via WhatsApp
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={22} className="animate-spin" />
+                  Préparation de la commande...
+                </>
+              ) : (
+                <>
+                  <MessageCircle size={22} />
+                  Commander via WhatsApp
+                </>
+              )}
             </button>
 
             <p className="text-xs text-brand-text-muted text-center leading-relaxed">
-              * Votre commande sera préparée automatiquement et envoyée à Vioutou via WhatsApp pour validation finale et livraison.
+              {isSupabaseConfigured
+                ? '* Votre commande est enregistrée dans le dashboard admin avant l’ouverture de WhatsApp.'
+                : '* Supabase n’est pas configuré : la commande partira sur WhatsApp mais ne remontera pas dans l’admin.'}
             </p>
 
             <button
-              onClick={clearCart}
+              onClick={() => {
+                clearCart();
+                resetCheckoutForm();
+              }}
               className="w-full py-2 text-brand-text-muted hover:text-red-500 text-sm transition-colors cursor-pointer"
               type="button"
             >
