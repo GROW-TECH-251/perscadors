@@ -5,11 +5,59 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useEffect, useMemo, useSyncExternalStore } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { DesktopSidebar, BottomTabs } from '@/admin/components';
-import { clearAdminSession } from '@/admin/auth';
+import { clearAdminSession, getAdminSession } from '@/admin/auth';
 import type { AdminScreen } from '@/admin/types';
+
+const SCREEN_MAP: Record<string, AdminScreen> = {
+  '/admin': 'home',
+  '/admin/produits': 'products',
+  '/admin/commandes': 'orders',
+  '/admin/clients': 'customers',
+  '/admin/categories': 'categories',
+  '/admin/analytics': 'analytics',
+  '/admin/contenu': 'content',
+  '/admin/stock': 'stockAlerts',
+  '/admin/reglages': 'settings',
+  '/admin/qa': 'qa'
+};
+
+const PATH_MAP: Record<AdminScreen, string> = {
+  home: '/admin',
+  products: '/admin/produits',
+  orders: '/admin/commandes',
+  customers: '/admin/clients',
+  categories: '/admin/categories',
+  analytics: '/admin/analytics',
+  content: '/admin/contenu',
+  stockAlerts: '/admin/stock',
+  settings: '/admin/reglages',
+  qa: '/admin/qa',
+  editProduct: '/admin/produits/nouveau',
+  orderDetail: '/admin/commandes',
+  customerDetail: '/admin/clients',
+  newPost: '/admin/contenu/nouveau',
+  editPost: '/admin/contenu'
+};
+
+function AuthRedirect({ to, message }: { to: string; message: string }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace(to);
+  }, [router, to]);
+
+  return (
+    <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
+        <p className="text-brand-text-muted">{message}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminLayout({
   children
@@ -17,62 +65,44 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [currentScreen, setCurrentScreen] = useState<AdminScreen>('home');
-  const [lowStockCount] = useState(0);
+  const router = useRouter();
+  const isAuthenticated = useSyncExternalStore(
+    () => () => undefined,
+    getAdminSession,
+    () => false
+  );
 
   const isLoginPage = pathname === '/admin/login';
+  const lowStockCount = 0;
 
-  // CORRECTION: Encapsuler setState dans une fonction async
-  useEffect(() => {
-    const updateScreen = async () => {
-      const screenMap: Record<string, AdminScreen> = {
-        '/admin': 'home',
-        '/admin/produits': 'products',
-        '/admin/commandes': 'orders',
-        '/admin/clients': 'customers',
-        '/admin/categories': 'categories',
-        '/admin/analytics': 'analytics',
-        '/admin/contenu': 'content',
-        '/admin/stock': 'stockAlerts',
-        '/admin/reglages': 'settings',
-        '/admin/qa': 'qa'
-      };
+  const currentScreen = useMemo<AdminScreen>(() => {
+    if (pathname.startsWith('/admin/produits/')) {
+      return 'products';
+    }
 
-      const screen = screenMap[pathname] || 'home';
-      setCurrentScreen(screen);
-    };
-    updateScreen();
+    return SCREEN_MAP[pathname] || 'home';
   }, [pathname]);
 
   const handleNavigate = (screen: AdminScreen) => {
-    const pathMap: Record<AdminScreen, string> = {
-      home: '/admin',
-      products: '/admin/produits',
-      orders: '/admin/commandes',
-      customers: '/admin/clients',
-      categories: '/admin/categories',
-      analytics: '/admin/analytics',
-      content: '/admin/contenu',
-      stockAlerts: '/admin/stock',
-      settings: '/admin/reglages',
-      qa: '/admin/qa',
-      editProduct: '/admin/produits/nouveau',
-      orderDetail: '/admin/commandes',
-      customerDetail: '/admin/clients',
-      newPost: '/admin/contenu/nouveau',
-      editPost: '/admin/contenu'
-    };
-
-    window.location.href = pathMap[screen] || '/admin';
+    router.push(PATH_MAP[screen] || '/admin');
   };
 
   const handleLogout = async () => {
     await clearAdminSession();
-    window.location.href = '/admin/login';
+    router.replace('/admin/login');
   };
 
   if (isLoginPage) {
     return <>{children}</>;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AuthRedirect
+        to={`/admin/login?redirect=${encodeURIComponent(pathname)}`}
+        message="Redirection vers la connexion admin..."
+      />
+    );
   }
 
   return (

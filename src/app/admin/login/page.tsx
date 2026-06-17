@@ -5,22 +5,61 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useSyncExternalStore, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signInAdmin, setAdminSession } from '@/admin/auth';
+import { getAdminSession, signInAdmin } from '@/admin/auth';
 import { AdminInput, AdminButton } from '@/admin/components';
 import { Lock, AlertCircle, Loader2 } from 'lucide-react';
 
+function getSafeRedirectPath(): string {
+  if (typeof window === 'undefined') {
+    return '/admin';
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const rawRedirect = searchParams.get('redirect');
+
+  if (!rawRedirect || !rawRedirect.startsWith('/admin')) {
+    return '/admin';
+  }
+
+  return rawRedirect;
+}
+
+function LoginRedirect({ to }: { to: string }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace(to);
+  }, [router, to]);
+
+  return (
+    <div className="min-h-screen bg-brand-bg flex items-center justify-center p-4">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
+        <p className="text-brand-text-muted">Redirection vers le dashboard...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminLoginPage() {
   const router = useRouter();
+  const isAuthenticated = useSyncExternalStore(
+    () => () => undefined,
+    getAdminSession,
+    () => false
+  );
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const redirectPath = getSafeRedirectPath();
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError('');
     setLoading(true);
 
@@ -28,8 +67,7 @@ export default function AdminLoginPage() {
       const result = await signInAdmin(identifier, password);
 
       if (result.ok) {
-        setAdminSession();
-        router.push('/admin');
+        router.replace(redirectPath);
       } else {
         setError(result.message);
       }
@@ -40,6 +78,10 @@ export default function AdminLoginPage() {
       setLoading(false);
     }
   };
+
+  if (isAuthenticated) {
+    return <LoginRedirect to={redirectPath} />;
+  }
 
   return (
     <div className="min-h-screen bg-brand-bg flex items-center justify-center p-4">

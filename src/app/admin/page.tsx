@@ -7,7 +7,6 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getAdminSession } from '@/admin/auth';
 import { fetchAdminProducts, deleteProduct } from '@/services/productService';
 import { fetchAdminOrders } from '@/services/orderService';
 import { fetchCustomerSummaries } from '@/services/customerService';
@@ -17,7 +16,6 @@ import type { AdminProduct, AdminOrder } from '@/admin/types';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -76,19 +74,12 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    const checkAuth = () => {
-      const authenticated = getAdminSession();
-      setIsAuthenticated(authenticated);
-
-      if (!authenticated) {
-        router.replace('/admin/login');
-      } else {
-        loadDashboardData();
-      }
+    const init = async () => {
+      await loadDashboardData();
     };
 
-    checkAuth();
-  }, [router, loadDashboardData]);
+    init();
+  }, [loadDashboardData]);
 
   const handleDeleteProduct = async (productId: number) => {
     if (!window.confirm('Supprimer ce produit ?')) {
@@ -120,10 +111,6 @@ export default function AdminDashboardPage() {
         </div>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null;
   }
 
   return (
