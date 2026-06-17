@@ -544,7 +544,7 @@ export const AdminTable: React.FC<{
             >
               {columns.map((col) => (
                 <td key={col.key} className="py-3 px-4 text-sm text-brand-text">
-                  {col.render ? col.render(row[col.key], row) : row[col.key]}
+                  {col.render ? col.render(row[col.key], row) : (row[col.key] as React.ReactNode)}
                 </td>
               ))}
             </tr>

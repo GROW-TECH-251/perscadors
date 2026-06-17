@@ -7,33 +7,29 @@
 import { requireSupabase, supabase } from '@/lib/supabase';
 import type { AdminCategory, ApiResponse } from '@/admin/types';
 
+export type CategoryFormData = Omit<AdminCategory, 'id' | 'created_at' | 'updated_at'>;
+
 // ============================================
 // LECTURE
 // ============================================
 
-/**
- * Récupère toutes les catégories
- */
 export async function fetchCategories(): Promise<AdminCategory[]> {
   if (!supabase) return [];
 
   const { data, error } = await supabase
     .from('categories')
     .select('*')
-    .order('order', { ascending: true });
+    .order('position', { ascending: true });
 
   if (error) {
     console.error('Erreur fetch catégories:', error);
     return [];
   }
 
-  return data || [];
+  return (data || []) as AdminCategory[];
 }
 
-/**
- * Récupère une catégorie par son ID
- */
-export async function fetchCategoryById(id: string): Promise<AdminCategory | null> {
+export async function fetchCategoryById(id: number): Promise<AdminCategory | null> {
   const db = requireSupabase();
 
   const { data, error } = await db
@@ -50,16 +46,13 @@ export async function fetchCategoryById(id: string): Promise<AdminCategory | nul
   return data as AdminCategory;
 }
 
-/**
- * Récupère une catégorie par son slug
- */
 export async function fetchCategoryBySlug(slug: string): Promise<AdminCategory | null> {
   if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('categories')
     .select('*')
-    .eq('slug', slug)
+    .eq('category', slug)
     .single();
 
   if (error || !data) {
@@ -70,9 +63,6 @@ export async function fetchCategoryBySlug(slug: string): Promise<AdminCategory |
   return data as AdminCategory;
 }
 
-/**
- * Récupère les catégories visibles
- */
 export async function fetchVisibleCategories(): Promise<AdminCategory[]> {
   if (!supabase) return [];
 
@@ -80,40 +70,32 @@ export async function fetchVisibleCategories(): Promise<AdminCategory[]> {
     .from('categories')
     .select('*')
     .eq('visible', true)
-    .order('order', { ascending: true });
+    .order('position', { ascending: true });
 
   if (error) {
     console.error('Erreur fetch catégories visibles:', error);
     return [];
   }
 
-  return data || [];
+  return (data || []) as AdminCategory[];
 }
 
 // ============================================
 // CRÉATION
 // ============================================
 
-/**
- * Crée une nouvelle catégorie
- */
-export async function createCategory(categoryData: {
-  name: string;
-  slug: string;
-  description?: string;
-  image?: string;
-  visible: boolean;
-  order: number;
-}): Promise<ApiResponse<AdminCategory>> {
+export async function createCategory(categoryData: CategoryFormData): Promise<ApiResponse<AdminCategory>> {
   const db = requireSupabase();
 
   const { data, error } = await db
     .from('categories')
-    .insert([{
-      ...categoryData,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }])
+    .insert([
+      {
+        ...categoryData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ])
     .select()
     .single();
 
@@ -129,12 +111,9 @@ export async function createCategory(categoryData: {
 // MISE À JOUR
 // ============================================
 
-/**
- * Met à jour une catégorie existante
- */
 export async function updateCategory(
-  id: string,
-  categoryData: Partial<AdminCategory>
+  id: number,
+  categoryData: Partial<CategoryFormData>
 ): Promise<ApiResponse<AdminCategory>> {
   const db = requireSupabase();
 
@@ -160,10 +139,7 @@ export async function updateCategory(
 // SUPPRESSION
 // ============================================
 
-/**
- * Supprime une catégorie
- */
-export async function deleteCategory(id: string): Promise<ApiResponse<boolean>> {
+export async function deleteCategory(id: number): Promise<ApiResponse<boolean>> {
   const db = requireSupabase();
 
   const { error } = await db
@@ -183,15 +159,12 @@ export async function deleteCategory(id: string): Promise<ApiResponse<boolean>> 
 // UTILITAIRES
 // ============================================
 
-/**
- * Réordonne les catégories
- */
-export async function reorderCategories(categoryIds: string[]): Promise<ApiResponse<boolean>> {
+export async function reorderCategories(categoryIds: number[]): Promise<ApiResponse<boolean>> {
   const db = requireSupabase();
 
   const updates = categoryIds.map((id, index) => ({
     id,
-    order: index
+    position: index
   }));
 
   const { error } = await db

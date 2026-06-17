@@ -6,19 +6,14 @@
 
 import { requireSupabase, supabase } from '@/lib/supabase';
 import type { CustomerSummary, CustomerMeta, CustomerSegment, ApiResponse } from '@/admin/types';
-import { fetchOrdersByPhone } from './orderService';
 
 // ============================================
 // LECTURE
 // ============================================
 
-/**
- * Récupère tous les clients (agrégés depuis les commandes)
- */
 export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
   if (!supabase) return [];
 
-  // Récupérer toutes les commandes
   const { data: orders, error } = await supabase
     .from('orders')
     .select('*')
@@ -29,7 +24,6 @@ export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
     return [];
   }
 
-  // Regrouper par téléphone
   const customerMap = new Map<string, CustomerSummary>();
 
   orders.forEach((order: {
@@ -65,14 +59,12 @@ export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
     } else {
       existing.orderCount += 1;
       existing.totalSpent += order.total || 0;
-      
-      // Mettre à jour dernière commande
+
       if (new Date(order.created_at) > new Date(existing.lastOrderDate)) {
         existing.lastOrderDate = order.created_at;
         existing.lastOrderStatus = order.status as CustomerSummary['lastOrderStatus'];
       }
 
-      // Collecter tailles et couleurs préférées
       order.items?.forEach((item) => {
         if (item.size && !existing.preferredSizes.includes(item.size)) {
           existing.preferredSizes.push(item.size);
@@ -84,48 +76,36 @@ export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
     }
   });
 
-  // Calculer les segments
-  const summaries = Array.from(customerMap.values()).map(customer => ({
+  return Array.from(customerMap.values()).map((customer) => ({
     ...customer,
     segments: calculateCustomerSegments(customer)
   }));
-
-  return summaries;
 }
 
-/**
- * Calcule les segments d'un client
- */
 function calculateCustomerSegments(customer: CustomerSummary): CustomerSegment[] {
   const segments: CustomerSegment[] = [];
 
-  // VIP: total dépensé >= 100000 FCFA
   if (customer.totalSpent >= 100000) {
     segments.push('VIP');
   }
 
-  // Fidèle: >= 3 commandes
   if (customer.orderCount >= 3) {
     segments.push('Fidèle');
   }
 
-  // Nouveau: 1 seule commande
   if (customer.orderCount === 1) {
     segments.push('Nouveau');
   }
 
-  // Gros panier: panier moyen >= 50000 FCFA
   const avgOrderValue = customer.totalSpent / customer.orderCount;
   if (avgOrderValue >= 50000) {
     segments.push('Gros panier');
   }
 
-  // À relancer: dernière commande EN ATTENTE
   if (customer.lastOrderStatus === 'EN ATTENTE') {
     segments.push('À relancer');
   }
 
-  // Standard si aucun segment
   if (segments.length === 0) {
     segments.push('Standard');
   }
@@ -133,9 +113,6 @@ function calculateCustomerSegments(customer: CustomerSummary): CustomerSegment[]
   return segments;
 }
 
-/**
- * Récupère les métadonnées d'un client
- */
 export async function fetchCustomerMeta(phone: string): Promise<CustomerMeta | null> {
   const db = requireSupabase();
 
@@ -152,21 +129,15 @@ export async function fetchCustomerMeta(phone: string): Promise<CustomerMeta | n
   return data as CustomerMeta;
 }
 
-/**
- * Récupère un client par téléphone
- */
 export async function fetchCustomerByPhone(phone: string): Promise<CustomerSummary | null> {
   const summaries = await fetchCustomerSummaries();
-  return summaries.find(c => c.phone === phone) || null;
+  return summaries.find((customer) => customer.phone === phone) || null;
 }
 
 // ============================================
 // CRÉATION / MISE À JOUR
 // ============================================
 
-/**
- * Crée ou met à jour les métadonnées d'un client
- */
 export async function upsertCustomerMeta(
   phone: string,
   meta: Partial<CustomerMeta>
@@ -176,7 +147,6 @@ export async function upsertCustomerMeta(
   const existing = await fetchCustomerMeta(phone);
 
   if (existing) {
-    // Update
     const { data, error } = await db
       .from('customer_meta')
       .update({
@@ -192,35 +162,33 @@ export async function upsertCustomerMeta(
     }
 
     return { data: data as CustomerMeta, error: null };
-  } else {
-    // Insert
-    const { data, error } = await db
-      .from('customer_meta')
-      .insert([{
+  }
+
+  const { data, error } = await db
+    .from('customer_meta')
+    .insert([
+      {
         phone,
         notes: meta.notes || '',
         tags: meta.tags || [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }])
-      .select()
-      .single();
+      }
+    ])
+    .select()
+    .single();
 
-    if (error) {
-      return { data: null, error: error.message };
-    }
-
-    return { data: data as CustomerMeta, error: null };
+  if (error) {
+    return { data: null, error: error.message };
   }
+
+  return { data: data as CustomerMeta, error: null };
 }
 
-/**
- * Ajoute un tag à un client
- */
 export async function addCustomerTag(phone: string, tag: string): Promise<ApiResponse<CustomerMeta>> {
   const existing = await fetchCustomerMeta(phone);
   const currentTags = existing?.tags || [];
-  
+
   if (!currentTags.includes(tag)) {
     currentTags.push(tag);
   }
@@ -228,14 +196,10 @@ export async function addCustomerTag(phone: string, tag: string): Promise<ApiRes
   return await upsertCustomerMeta(phone, { tags: currentTags });
 }
 
-/**
- * Supprime un tag d'un client
- */
 export async function removeCustomerTag(phone: string, tag: string): Promise<ApiResponse<CustomerMeta>> {
   const existing = await fetchCustomerMeta(phone);
   const currentTags = existing?.tags || [];
-  
-  const updatedTags = currentTags.filter(t => t !== tag);
+  const updatedTags = currentTags.filter((currentTag) => currentTag !== tag);
 
   return await upsertCustomerMeta(phone, { tags: updatedTags });
 }
@@ -244,9 +208,6 @@ export async function removeCustomerTag(phone: string, tag: string): Promise<Api
 // STATISTIQUES
 // ============================================
 
-/**
- * Récupère le nombre total de clients uniques
- */
 export async function getTotalCustomersCount(): Promise<number> {
   const summaries = await fetchCustomerSummaries();
   return summaries.length;

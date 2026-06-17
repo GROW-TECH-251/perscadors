@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getProductsByCategory, products } from '@/data/products';
-import { useCart } from '@/context/CartContext';
 import { Product, Size } from '@/types';
-import { SlidersHorizontal, ArrowLeft, Grid, ShoppingCart } from 'lucide-react';
+import { SlidersHorizontal, ArrowLeft } from 'lucide-react';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -15,57 +14,62 @@ export default function CategoryPage() {
   const slug = params.slug as string;
   const searchQuery = searchParams.get('search') || '';
 
-  // Get raw items in category
-  const rawProducts = getProductsByCategory(slug);
+  const rawProducts = useMemo(() => getProductsByCategory(slug), [slug]);
   const categoryTitle = slug.replace(/-/g, ' ');
 
-  // Filter States
   const [selectedSizes, setSelectedSizes] = useState<Size[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
-  // Derive all unique sizes and colors in this category for filters
-  const uniqueSizes = Array.from(new Set(rawProducts.flatMap(p => p.sizes))).sort();
-  const uniqueColors = Array.from(new Set(rawProducts.flatMap(p => p.colors))).sort();
+  const uniqueSizes = useMemo(
+    () => Array.from(new Set(rawProducts.flatMap((product) => product.sizes))).sort(),
+    [rawProducts]
+  );
+  const uniqueColors = useMemo(
+    () => Array.from(new Set(rawProducts.flatMap((product) => product.colors))).sort(),
+    [rawProducts]
+  );
 
-  useEffect(() => {
+  const filteredProducts = useMemo<Product[]>(() => {
     let result = [...rawProducts];
 
-    // Filter by search query if coming from search
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+      const query = searchQuery.toLowerCase();
       result = products.filter(
-        p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
+        (product) =>
+          product.name.toLowerCase().includes(query) ||
+          product.description.toLowerCase().includes(query)
       );
     }
 
-    // Filter by size
     if (selectedSizes.length > 0) {
-      result = result.filter(p =>
-        p.sizes.some(size => selectedSizes.includes(size))
+      result = result.filter((product) =>
+        product.sizes.some((size) => selectedSizes.includes(size))
       );
     }
 
-    // Filter by color
     if (selectedColors.length > 0) {
-      result = result.filter(p =>
-        p.colors.some(color => selectedColors.includes(color))
+      result = result.filter((product) =>
+        product.colors.some((color) => selectedColors.includes(color))
       );
     }
 
-    setFilteredProducts(result);
-  }, [selectedSizes, selectedColors, slug, searchQuery]);
+    return result;
+  }, [rawProducts, searchQuery, selectedSizes, selectedColors]);
 
   const toggleSize = (size: Size) => {
-    setSelectedSizes(prev =>
-      prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
+    setSelectedSizes((currentSizes) =>
+      currentSizes.includes(size)
+        ? currentSizes.filter((currentSize) => currentSize !== size)
+        : [...currentSizes, size]
     );
   };
 
   const toggleColor = (color: string) => {
-    setSelectedColors(prev =>
-      prev.includes(color) ? prev.filter(c => c !== color) : [...prev, color]
+    setSelectedColors((currentColors) =>
+      currentColors.includes(color)
+        ? currentColors.filter((currentColor) => currentColor !== color)
+        : [...currentColors, color]
     );
   };
 
@@ -76,7 +80,6 @@ export default function CategoryPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Header back link */}
       <div className="mb-8 flex items-center justify-between">
         <Link
           href="/#categories"
@@ -89,7 +92,6 @@ export default function CategoryPage() {
         </span>
       </div>
 
-      {/* Category Large Title */}
       <div className="mb-12">
         <h1 className="font-bebas text-5xl sm:text-7xl text-brand-gold uppercase tracking-wider leading-none">
           {categoryTitle}
@@ -101,10 +103,7 @@ export default function CategoryPage() {
         )}
       </div>
 
-      {/* Split view Grid for Filters & Products */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-        
-        {/* Sidebar Filters (Desktop only) */}
         <aside className="hidden lg:block bg-brand-bg-alt border border-brand-gold/15 p-6 rounded-2xl space-y-8 sticky top-24 shadow-sm">
           <div className="flex items-center justify-between border-b border-brand-gold/10 pb-4">
             <h2 className="font-bebas text-2xl tracking-wider uppercase text-brand-text flex items-center gap-2">
@@ -120,11 +119,10 @@ export default function CategoryPage() {
             )}
           </div>
 
-          {/* Size Filter */}
           <div className="space-y-3">
             <h3 className="font-bebas text-lg tracking-wider text-brand-text-muted uppercase">Tailles</h3>
             <div className="flex flex-wrap gap-2">
-              {uniqueSizes.map(size => {
+              {uniqueSizes.map((size) => {
                 const isSelected = selectedSizes.includes(size);
                 return (
                   <button
@@ -143,11 +141,10 @@ export default function CategoryPage() {
             </div>
           </div>
 
-          {/* Color Filter */}
           <div className="space-y-3 pt-4 border-t border-brand-gold/10">
             <h3 className="font-bebas text-lg tracking-wider text-brand-text-muted uppercase">Couleurs</h3>
             <div className="flex flex-wrap gap-2">
-              {uniqueColors.map(color => {
+              {uniqueColors.map((color) => {
                 const isSelected = selectedColors.includes(color);
                 return (
                   <button
@@ -167,7 +164,6 @@ export default function CategoryPage() {
           </div>
         </aside>
 
-        {/* Mobile Filter Button */}
         <div className="lg:hidden flex justify-between items-center gap-4 mb-4">
           <button
             onClick={() => setIsFilterDrawerOpen(true)}
@@ -177,7 +173,6 @@ export default function CategoryPage() {
           </button>
         </div>
 
-        {/* Products Grid list */}
         <div className="lg:col-span-3">
           {filteredProducts.length === 0 ? (
             <div className="py-24 text-center space-y-4 bg-brand-bg-alt rounded-2xl border border-brand-gold/10">
@@ -187,75 +182,67 @@ export default function CategoryPage() {
                 onClick={resetFilters}
                 className="px-6 py-2 bg-brand-gold hover:bg-brand-gold-light text-brand-bg rounded font-bebas text-lg uppercase tracking-wider transition-colors"
               >
-                Voir tout la collection
+                Voir toute la collection
               </button>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8">
-              {filteredProducts.map((product) => {
-                return (
-                  <Link
-                    key={product.id}
-                    href={`/produit/${product.id}`}
-                    className="group bg-brand-bg-alt border border-brand-gold/10 rounded-2xl overflow-hidden shadow-md flex flex-col justify-between hover:shadow-2xl transition-all duration-300 hover:scale-[1.01]"
-                  >
-                    {/* Image Area */}
-                    <div className="relative w-full aspect-[3/4] overflow-hidden bg-brand-bg">
-                      <Image
-                        src={product.images[0]}
-                        alt={product.name}
-                        fill
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+              {filteredProducts.map((product) => (
+                <Link
+                  key={product.id}
+                  href={`/produit/${product.id}`}
+                  className="group bg-brand-bg-alt border border-brand-gold/10 rounded-2xl overflow-hidden shadow-md flex flex-col justify-between hover:shadow-2xl transition-all duration-300 hover:scale-[1.01]"
+                >
+                  <div className="relative w-full aspect-[3/4] overflow-hidden bg-brand-bg">
+                    <Image
+                      src={product.images[0]}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
 
-                      {/* Out of Stock Overlay Badge */}
-                      {!product.inStock && (
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center z-10">
-                          <span className="bg-red-600 text-white font-bebas text-lg sm:text-2xl uppercase tracking-widest px-4 py-2 rounded transform -rotate-12 border border-white/20 shadow-xl">
-                            Rupture de Stock
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Hot popular tag */}
-                      {product.isPopular && product.inStock && (
-                        <div className="absolute top-3 left-3 bg-brand-gold text-brand-bg text-[10px] sm:text-xs font-bold uppercase px-2 py-1 rounded tracking-wider shadow z-10">
-                          Best Seller 🔥
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Meta info area */}
-                    <div className="p-4 sm:p-5 flex-grow flex flex-col justify-between gap-3">
-                      <div>
-                        <span className="text-[10px] sm:text-xs text-brand-text-muted uppercase tracking-wider font-semibold block mb-1">
-                          {product.category.replace(/-/g, ' ')}
-                        </span>
-                        <h3 className="font-bebas text-lg sm:text-2xl text-brand-text tracking-wide uppercase line-clamp-2 leading-tight group-hover:text-brand-gold transition-colors">
-                          {product.name}
-                        </h3>
-                      </div>
-
-                      <div className="flex justify-between items-center pt-2 border-t border-brand-gold/5 mt-auto">
-                        <span className="font-bold text-sm sm:text-lg text-brand-gold">
-                          {product.price.toLocaleString()} FCFA
-                        </span>
-                        <span className="text-xs text-brand-text-muted border border-brand-gold/15 rounded px-2 py-0.5 group-hover:border-brand-gold group-hover:text-brand-gold transition-colors">
-                          Détails
+                    {!product.inStock && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center z-10">
+                        <span className="bg-red-600 text-white font-bebas text-lg sm:text-2xl uppercase tracking-widest px-4 py-2 rounded transform -rotate-12 border border-white/20 shadow-xl">
+                          Rupture de Stock
                         </span>
                       </div>
+                    )}
+
+                    {product.isPopular && product.inStock && (
+                      <div className="absolute top-3 left-3 bg-brand-gold text-brand-bg text-[10px] sm:text-xs font-bold uppercase px-2 py-1 rounded tracking-wider shadow z-10">
+                        Best Seller 🔥
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 sm:p-5 flex-grow flex flex-col justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] sm:text-xs text-brand-text-muted uppercase tracking-wider font-semibold block mb-1">
+                        {product.category.replace(/-/g, ' ')}
+                      </span>
+                      <h3 className="font-bebas text-lg sm:text-2xl text-brand-text tracking-wide uppercase line-clamp-2 leading-tight group-hover:text-brand-gold transition-colors">
+                        {product.name}
+                      </h3>
                     </div>
-                  </Link>
-                );
-              })}
+
+                    <div className="flex justify-between items-center pt-2 border-t border-brand-gold/5 mt-auto">
+                      <span className="font-bold text-sm sm:text-lg text-brand-gold">
+                        {product.price.toLocaleString()} FCFA
+                      </span>
+                      <span className="text-xs text-brand-text-muted border border-brand-gold/15 rounded px-2 py-0.5 group-hover:border-brand-gold group-hover:text-brand-gold transition-colors">
+                        Détails
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
           )}
         </div>
-
       </div>
 
-      {/* Mobile Filters Overlay Slider */}
       {isFilterDrawerOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
           <div
@@ -274,11 +261,10 @@ export default function CategoryPage() {
                 </button>
               </div>
 
-              {/* Size filter */}
               <div className="space-y-3">
                 <h3 className="font-bebas text-lg tracking-wider text-brand-text-muted uppercase">Tailles</h3>
                 <div className="flex flex-wrap gap-2">
-                  {uniqueSizes.map(size => {
+                  {uniqueSizes.map((size) => {
                     const isSelected = selectedSizes.includes(size);
                     return (
                       <button
@@ -297,11 +283,10 @@ export default function CategoryPage() {
                 </div>
               </div>
 
-              {/* Color filter */}
               <div className="space-y-3">
                 <h3 className="font-bebas text-lg tracking-wider text-brand-text-muted uppercase">Couleurs</h3>
                 <div className="flex flex-wrap gap-2">
-                  {uniqueColors.map(color => {
+                  {uniqueColors.map((color) => {
                     const isSelected = selectedColors.includes(color);
                     return (
                       <button

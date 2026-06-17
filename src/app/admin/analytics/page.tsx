@@ -8,12 +8,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton } from '@/admin/components';
-import { TrendingUp, DollarSign, ShoppingCart, Users, Package } from 'lucide-react';
+import { DollarSign, ShoppingCart, Users, Package } from 'lucide-react';
 import { fetchAdminOrders } from '@/services/orderService';
 import { fetchAdminProducts } from '@/services/productService';
 import { fetchCustomerSummaries } from '@/services/customerService';
-import type { AdminOrder, AdminProduct, CustomerSummary } from '@/admin/types';
-
 import {
   BarChart,
   Bar,
@@ -70,8 +68,8 @@ export default function AdminAnalyticsPage() {
       ]);
 
       const totalRevenue = orders
-        .filter(o => o.status === 'LIVRÉE')
-        .reduce((sum, o) => sum + o.total, 0);
+        .filter((order) => order.status === 'LIVRÉE')
+        .reduce((sum, order) => sum + order.total, 0);
 
       setStats({
         totalRevenue,
@@ -85,49 +83,52 @@ export default function AdminAnalyticsPage() {
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
       const monthlyRevenue = orders
-        .filter(o => o.status === 'LIVRÉE' && new Date(o.created_at) >= sixMonthsAgo)
+        .filter((order) => order.status === 'LIVRÉE' && new Date(order.created_at) >= sixMonthsAgo)
         .reduce((acc: MonthData[], order) => {
           const date = new Date(order.created_at);
           const monthKey = `${date.getMonth() + 1}/${date.getFullYear()}`;
-          
-          const existing = acc.find(m => m.month === monthKey);
-          if (existing) {
-            existing.revenue += order.total;
+
+          const existingMonth = acc.find((month) => month.month === monthKey);
+          if (existingMonth) {
+            existingMonth.revenue += order.total;
           } else {
             acc.push({ month: monthKey, revenue: order.total });
           }
-          
+
           return acc;
         }, [])
-        .sort((a: MonthData, b: MonthData) => {
-          const [aMonth, aYear] = a.month.split('/');
-          const [bMonth, bYear] = b.month.split('/');
-          return new Date(Number(bYear), Number(bMonth) - 1).getTime() - 
-                 new Date(Number(aYear), Number(aMonth) - 1).getTime();
+        .sort((firstMonth, secondMonth) => {
+          const [firstMonthNumber, firstYear] = firstMonth.month.split('/');
+          const [secondMonthNumber, secondYear] = secondMonth.month.split('/');
+          return (
+            new Date(Number(firstYear), Number(firstMonthNumber) - 1).getTime() -
+            new Date(Number(secondYear), Number(secondMonthNumber) - 1).getTime()
+          );
         });
 
       setRevenueByMonth(monthlyRevenue);
 
       const statusCounts: Record<string, number> = {};
-      orders.forEach(o => {
-        statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+      orders.forEach((order) => {
+        statusCounts[order.status] = (statusCounts[order.status] || 0) + 1;
       });
 
       setOrdersByStatus(
         Object.entries(statusCounts).map(([name, value]) => ({ name, value }))
       );
 
-      const popularProducts = products
-        .filter(p => p.visible)
-        .slice(0, 5)
-        .map(p => ({
-          name: p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name,
-          price: p.price
-        }));
-
-      setTopProducts(popularProducts);
-    } catch (err: unknown) {
-      console.error('Erreur chargement analytics:', err);
+      setTopProducts(
+        products
+          .filter((product) => product.visible)
+          .sort((firstProduct, secondProduct) => (secondProduct.demand || 0) - (firstProduct.demand || 0))
+          .slice(0, 5)
+          .map((product) => ({
+            name: product.name.length > 20 ? `${product.name.substring(0, 20)}...` : product.name,
+            price: product.price
+          }))
+      );
+    } catch (error: unknown) {
+      console.error('Erreur chargement analytics:', error);
     } finally {
       setLoading(false);
     }
@@ -140,9 +141,8 @@ export default function AdminAnalyticsPage() {
     init();
   }, [loadAnalytics]);
 
-  const formatCurrency = (value: number) => {
-    return `${value.toLocaleString('fr-FR')} FCFA`;
-  };
+  const formatCurrency = (value: number) => `${value.toLocaleString('fr-FR')} FCFA`;
+  const formatChartCurrency = (value: number | string | undefined) => formatCurrency(Number(value || 0));
 
   if (loading) {
     return (
@@ -231,15 +231,15 @@ export default function AdminAnalyticsPage() {
               <LineChart data={revenueByMonth}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#EDEAE3" />
                 <XAxis dataKey="month" stroke="#888880" />
-                <YAxis stroke="#888880" tickFormatter={(value: number) => `${value / 1000}k`} />
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
+                <YAxis stroke="#888880" tickFormatter={(value) => `${Number(value) / 1000}k`} />
+                <Tooltip
+                  formatter={(value) => formatChartCurrency(value as number | string | undefined)}
                   contentStyle={{ backgroundColor: '#F5F0E8', border: '1px solid #B8952A' }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#B8952A" 
+                <Line
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#B8952A"
                   strokeWidth={2}
                   dot={{ fill: '#B8952A' }}
                 />
@@ -264,17 +264,17 @@ export default function AdminAnalyticsPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }: { name: string; percent: number }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  label={(props) => `${props.name || ''}: ${((Number(props.percent) || 0) * 100).toFixed(0)}%`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
                 >
                   {ordersByStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={`${entry.name}-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  formatter={(value: number) => `${value} commandes`}
+                <Tooltip
+                  formatter={(value) => `${Number(value || 0)} commandes`}
                   contentStyle={{ backgroundColor: '#F5F0E8', border: '1px solid #B8952A' }}
                 />
               </PieChart>
@@ -296,9 +296,9 @@ export default function AdminAnalyticsPage() {
             <BarChart data={topProducts}>
               <CartesianGrid strokeDasharray="3 3" stroke="#EDEAE3" />
               <XAxis dataKey="name" stroke="#888880" tick={{ fontSize: 12 }} />
-              <YAxis stroke="#888880" tickFormatter={(value: number) => `${value / 1000}k`} />
-              <Tooltip 
-                formatter={(value: number) => formatCurrency(value)}
+              <YAxis stroke="#888880" tickFormatter={(value) => `${Number(value) / 1000}k`} />
+              <Tooltip
+                formatter={(value) => formatChartCurrency(value as number | string | undefined)}
                 contentStyle={{ backgroundColor: '#F5F0E8', border: '1px solid #B8952A' }}
               />
               <Bar dataKey="price" fill="#B8952A" />

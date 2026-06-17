@@ -10,8 +10,8 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || pro
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-export const supabase = isSupabaseConfigured 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
+export const supabase = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
 export function requireSupabase() {
@@ -32,8 +32,8 @@ export async function uploadProductImage(file: File, productId?: string): Promis
 
   try {
     const fileName = `${productId || 'new'}-${Date.now()}-${file.name.replace(/\s/g, '-')}`;
-    
-    const { data, error } = await supabase.storage
+
+    const { error } = await supabase.storage
       .from('product-images')
       .upload(fileName, file, {
         cacheControl: '3600',

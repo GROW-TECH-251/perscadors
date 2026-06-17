@@ -5,13 +5,13 @@ export interface Product {
   name: string;
   slug: string;
   category: string;
-  price: number; // en FCFA
-  image_url: string ; // URL de l'image principale
-  images: string[]; // images angles
+  price: number;
+  image_url?: string;
+  images: string[];
   sizes: Size[];
-  outOfStockSizes?: Size[]; // tailles épuisées (grisées)
-  colors: string[]; // couleurs
-  outOfStockColors?: string[]; // couleurs épuisées (grisées)
+  outOfStockSizes?: Size[];
+  colors: string[];
+  outOfStockColors?: string[];
   inStock: boolean;
   description: string;
   isPopular?: boolean;

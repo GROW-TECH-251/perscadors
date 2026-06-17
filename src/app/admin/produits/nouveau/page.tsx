@@ -8,7 +8,7 @@
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect } from '@/admin/components';
-import { Save, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { Save, X, Upload } from 'lucide-react';
 import { createProduct } from '@/services/productService';
 import { uploadProductImage } from '@/lib/supabase';
 import type { ProductFormData } from '@/admin/types';
@@ -16,7 +16,7 @@ import type { ProductFormData } from '@/admin/types';
 export default function NewProductPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState<ProductFormData>({
@@ -36,17 +36,15 @@ export default function NewProductPage() {
   const [newSize, setNewSize] = useState('');
   const [newColor, setNewColor] = useState('');
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    // Vérifier le type de fichier
     if (!file.type.startsWith('image/')) {
       alert('Veuillez sélectionner une image valide');
       return;
     }
 
-    // Vérifier la taille (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('L\'image ne doit pas dépasser 5MB');
       return;
@@ -55,13 +53,14 @@ export default function NewProductPage() {
     setUploading(true);
     try {
       const result = await uploadProductImage(file);
-      
+
       if (result.error) {
         alert(`Erreur upload: ${result.error}`);
       } else {
-        setFormData({ ...formData, image_url: result.url });
+        setFormData((currentData) => ({ ...currentData, image_url: result.url }));
       }
-    } catch (err) {
+    } catch (error: unknown) {
+      console.error('Erreur upload image:', error);
       alert('Erreur lors de l\'upload');
     } finally {
       setUploading(false);
@@ -71,15 +70,21 @@ export default function NewProductPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
 
     try {
-      await createProduct(formData);
+      const result = await createProduct(formData);
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
+
       alert('Produit créé avec succès !');
       router.push('/admin/produits');
-    } catch (err: unknown) {
+    } catch (error: unknown) {
+      console.error('Erreur création produit:', error);
       alert('Erreur lors de la création');
     } finally {
       setLoading(false);
@@ -117,13 +122,13 @@ export default function NewProductPage() {
             <AdminInput
               label="Nom du produit"
               value={formData.name}
-              onChange={(v) => setFormData({ ...formData, name: v })}
+              onChange={(value) => setFormData({ ...formData, name: value })}
               required
             />
             <AdminSelect
               label="Catégorie"
               value={formData.category}
-              onChange={(v) => setFormData({ ...formData, category: v })}
+              onChange={(value) => setFormData({ ...formData, category: value })}
               options={[
                 { value: 'basket-pour-homme', label: 'Baskets Homme' },
                 { value: 'complet-pour-homme', label: 'Complets Streetwear' },
@@ -135,20 +140,20 @@ export default function NewProductPage() {
             <AdminInput
               label="Prix (FCFA)"
               value={formData.price}
-              onChange={(v) => setFormData({ ...formData, price: Number(v) || 0 })}
+              onChange={(value) => setFormData({ ...formData, price: Number(value) || 0 })}
               type="number"
               required
             />
             <AdminInput
               label="Stock"
               value={formData.stock}
-              onChange={(v) => setFormData({ ...formData, stock: Number(v) || 0 })}
+              onChange={(value) => setFormData({ ...formData, stock: Number(value) || 0 })}
               type="number"
             />
             <AdminInput
               label="Badge (optionnel)"
               value={formData.badge}
-              onChange={(v) => setFormData({ ...formData, badge: v })}
+              onChange={(value) => setFormData({ ...formData, badge: value })}
               placeholder="Nouveau, Promo, etc."
             />
           </div>
@@ -157,7 +162,7 @@ export default function NewProductPage() {
             <AdminTextarea
               label="Description"
               value={formData.description}
-              onChange={(v) => setFormData({ ...formData, description: v })}
+              onChange={(value) => setFormData({ ...formData, description: value })}
               rows={4}
             />
           </div>
@@ -167,7 +172,7 @@ export default function NewProductPage() {
               <input
                 type="checkbox"
                 checked={formData.visible}
-                onChange={(e) => setFormData({ ...formData, visible: e.target.checked })}
+                onChange={(event) => setFormData({ ...formData, visible: event.target.checked })}
                 className="w-4 h-4"
               />
               <span className="text-sm text-brand-text">Produit visible</span>
@@ -177,7 +182,7 @@ export default function NewProductPage() {
 
         <AdminCard>
           <h2 className="font-bebas text-xl text-brand-text uppercase mb-4">Image du produit</h2>
-          
+
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <input
@@ -196,24 +201,24 @@ export default function NewProductPage() {
                 <Upload size={18} />
                 {uploading ? 'Upload en cours...' : 'Uploader une image'}
               </label>
-              
+
               {formData.image_url && (
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, image_url: '' })}
                   className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
                 >
-                  Supprimer l'image
+                  Supprimer l&apos;image
                 </button>
               )}
             </div>
 
             {formData.image_url && (
               <div className="relative aspect-square bg-brand-bg rounded-lg overflow-hidden max-w-xs border-2 border-brand-gold/20">
-                <img 
-                  src={formData.image_url} 
-                  alt="Aperçu du produit" 
-                  className="w-full h-full object-cover" 
+                <img
+                  src={formData.image_url}
+                  alt="Aperçu du produit"
+                  className="w-full h-full object-cover"
                 />
                 <div className="absolute top-2 right-2 px-2 py-1 bg-green-500 text-white text-xs rounded">
                   ✓ Image uploadée
@@ -233,7 +238,7 @@ export default function NewProductPage() {
             <div className="flex gap-2">
               <select
                 value={newSize}
-                onChange={(e) => setNewSize(e.target.value)}
+                onChange={(event) => setNewSize(event.target.value)}
                 className="flex-1 px-4 py-2 bg-brand-bg border border-brand-gold/20 rounded"
                 aria-label="Sélectionner une taille"
               >
@@ -255,7 +260,7 @@ export default function NewProductPage() {
                   {size}
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, sizes: formData.sizes.filter(s => s !== size) })}
+                    onClick={() => setFormData({ ...formData, sizes: formData.sizes.filter((currentSize) => currentSize !== size) })}
                     className="text-red-500 hover:text-red-600 cursor-pointer"
                   >
                     ×
@@ -287,7 +292,7 @@ export default function NewProductPage() {
                   {color}
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, colors: formData.colors.filter(c => c !== color) })}
+                    onClick={() => setFormData({ ...formData, colors: formData.colors.filter((currentColor) => currentColor !== color) })}
                     className="text-red-500 hover:text-red-600 cursor-pointer"
                   >
                     ×

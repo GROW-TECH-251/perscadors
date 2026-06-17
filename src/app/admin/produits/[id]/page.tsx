@@ -16,7 +16,7 @@ export default function EditProductPage() {
   const router = useRouter();
   const params = useParams();
   const productId = params.id as string;
-  
+
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [formData, setFormData] = useState<ProductFormData>({
@@ -55,14 +55,13 @@ export default function EditProductPage() {
           visible: data.visible
         });
       }
-    } catch (err: unknown) {
-      console.error('Erreur chargement produit:', err);
+    } catch (error: unknown) {
+      console.error('Erreur chargement produit:', error);
     } finally {
       setFetching(false);
     }
   }, [productId]);
 
-  // CORRECTION: Encapsuler dans une fonction async
   useEffect(() => {
     const init = async () => {
       await loadProduct();
@@ -70,15 +69,21 @@ export default function EditProductPage() {
     init();
   }, [loadProduct]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
 
     try {
-      await updateProduct(Number(productId), formData);
+      const result = await updateProduct(Number(productId), formData);
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
+
       alert('Produit mis à jour avec succès !');
       router.push('/admin/produits');
-    } catch (err: unknown) {
+    } catch (error: unknown) {
+      console.error('Erreur mise à jour produit:', error);
       alert('Erreur lors de la mise à jour');
     } finally {
       setLoading(false);
@@ -124,11 +129,11 @@ export default function EditProductPage() {
         <AdminCard>
           <h2 className="font-bebas text-xl text-brand-text uppercase mb-4">Informations de base</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <AdminInput label="Nom du produit" value={formData.name} onChange={(v) => setFormData({ ...formData, name: v })} required />
+            <AdminInput label="Nom du produit" value={formData.name} onChange={(value) => setFormData({ ...formData, name: value })} required />
             <AdminSelect
               label="Catégorie"
               value={formData.category}
-              onChange={(v) => setFormData({ ...formData, category: v })}
+              onChange={(value) => setFormData({ ...formData, category: value })}
               options={[
                 { value: 'basket-pour-homme', label: 'Baskets Homme' },
                 { value: 'complet-pour-homme', label: 'Complets Streetwear' },
@@ -137,16 +142,16 @@ export default function EditProductPage() {
               ]}
               required
             />
-            <AdminInput label="Prix (FCFA)" value={formData.price} onChange={(v) => setFormData({ ...formData, price: Number(v) || 0 })} type="number" required />
-            <AdminInput label="Stock" value={formData.stock} onChange={(v) => setFormData({ ...formData, stock: Number(v) || 0 })} type="number" />
-            <AdminInput label="Badge" value={formData.badge} onChange={(v) => setFormData({ ...formData, badge: v })} placeholder="Nouveau, Promo..." />
+            <AdminInput label="Prix (FCFA)" value={formData.price} onChange={(value) => setFormData({ ...formData, price: Number(value) || 0 })} type="number" required />
+            <AdminInput label="Stock" value={formData.stock} onChange={(value) => setFormData({ ...formData, stock: Number(value) || 0 })} type="number" />
+            <AdminInput label="Badge" value={formData.badge} onChange={(value) => setFormData({ ...formData, badge: value })} placeholder="Nouveau, Promo..." />
           </div>
           <div className="mt-4">
-            <AdminTextarea label="Description" value={formData.description} onChange={(v) => setFormData({ ...formData, description: v })} rows={4} />
+            <AdminTextarea label="Description" value={formData.description} onChange={(value) => setFormData({ ...formData, description: value })} rows={4} />
           </div>
           <div className="mt-4">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={formData.visible} onChange={(e) => setFormData({ ...formData, visible: e.target.checked })} className="w-4 h-4" />
+              <input type="checkbox" checked={formData.visible} onChange={(event) => setFormData({ ...formData, visible: event.target.checked })} className="w-4 h-4" />
               <span className="text-sm text-brand-text">Produit visible</span>
             </label>
           </div>
@@ -154,7 +159,7 @@ export default function EditProductPage() {
 
         <AdminCard>
           <h2 className="font-bebas text-xl text-brand-text uppercase mb-4">Image</h2>
-          <AdminInput label="URL de l'image" value={formData.image_url} onChange={(v) => setFormData({ ...formData, image_url: v })} placeholder="/images/ARTICLES/..." />
+          <AdminInput label="URL de l'image" value={formData.image_url} onChange={(value) => setFormData({ ...formData, image_url: value })} placeholder="/images/ARTICLES/..." />
           {formData.image_url && (
             <div className="mt-4 relative aspect-square bg-brand-bg rounded-lg overflow-hidden max-w-xs">
               <img src={formData.image_url} alt={formData.name} className="w-full h-full object-cover" />
@@ -165,9 +170,9 @@ export default function EditProductPage() {
         <AdminCard>
           <h2 className="font-bebas text-xl text-brand-text uppercase mb-4">Tailles</h2>
           <div className="flex gap-2 mb-4">
-            <select 
-              value={newSize} 
-              onChange={(e) => setNewSize(e.target.value)} 
+            <select
+              value={newSize}
+              onChange={(event) => setNewSize(event.target.value)}
               className="flex-1 px-4 py-2 bg-brand-bg border border-brand-gold/20 rounded"
               aria-label="Sélectionner une taille"
             >
@@ -182,7 +187,7 @@ export default function EditProductPage() {
             {formData.sizes.map((size) => (
               <span key={size} className="px-3 py-1 bg-brand-bg-alt text-brand-text rounded flex items-center gap-2">
                 {size}
-                <button type="button" onClick={() => setFormData({ ...formData, sizes: formData.sizes.filter(s => s !== size) })} className="text-red-500 hover:text-red-600 cursor-pointer">×</button>
+                <button type="button" onClick={() => setFormData({ ...formData, sizes: formData.sizes.filter((currentSize) => currentSize !== size) })} className="text-red-500 hover:text-red-600 cursor-pointer">×</button>
               </span>
             ))}
           </div>
@@ -191,14 +196,14 @@ export default function EditProductPage() {
         <AdminCard>
           <h2 className="font-bebas text-xl text-brand-text uppercase mb-4">Couleurs</h2>
           <div className="flex gap-2 mb-4">
-            <AdminInput label="Nouvelle couleur" value={newColor} onChange={setNewColor} placeholder="Noir, Blanc..." aria-label="Nouvelle couleur" />
+            <AdminInput label="Nouvelle couleur" value={newColor} onChange={setNewColor} placeholder="Noir, Blanc..." />
             <AdminButton type="button" variant="secondary" onClick={handleAddColor} className="mt-6">Ajouter</AdminButton>
           </div>
           <div className="flex flex-wrap gap-2">
             {formData.colors.map((color) => (
               <span key={color} className="px-3 py-1 bg-brand-bg-alt text-brand-text rounded flex items-center gap-2">
                 {color}
-                <button type="button" onClick={() => setFormData({ ...formData, colors: formData.colors.filter(c => c !== color) })} className="text-red-500 hover:text-red-600 cursor-pointer">×</button>
+                <button type="button" onClick={() => setFormData({ ...formData, colors: formData.colors.filter((currentColor) => currentColor !== color) })} className="text-red-500 hover:text-red-600 cursor-pointer">×</button>
               </span>
             ))}
           </div>

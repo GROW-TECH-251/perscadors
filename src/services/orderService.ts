@@ -11,9 +11,6 @@ import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse } from '@/
 // LECTURE
 // ============================================
 
-/**
- * Récupère toutes les commandes pour l'admin
- */
 export async function fetchAdminOrders(): Promise<AdminOrder[]> {
   if (!supabase) return [];
 
@@ -27,13 +24,10 @@ export async function fetchAdminOrders(): Promise<AdminOrder[]> {
     return [];
   }
 
-  return data || [];
+  return (data || []) as AdminOrder[];
 }
 
-/**
- * Récupère une commande par son ID
- */
-export async function fetchOrderById(id: string): Promise<AdminOrder | null> {
+export async function fetchOrderById(id: number): Promise<AdminOrder | null> {
   const db = requireSupabase();
 
   const { data, error } = await db
@@ -50,9 +44,6 @@ export async function fetchOrderById(id: string): Promise<AdminOrder | null> {
   return data as AdminOrder;
 }
 
-/**
- * Récupère une commande par son numéro
- */
 export async function fetchOrderByNumber(orderNumber: string): Promise<AdminOrder | null> {
   if (!supabase) return null;
 
@@ -70,9 +61,6 @@ export async function fetchOrderByNumber(orderNumber: string): Promise<AdminOrde
   return data as AdminOrder;
 }
 
-/**
- * Récupère les commandes par statut
- */
 export async function fetchOrdersByStatus(status: OrderStatus): Promise<AdminOrder[]> {
   if (!supabase) return [];
 
@@ -87,12 +75,9 @@ export async function fetchOrdersByStatus(status: OrderStatus): Promise<AdminOrd
     return [];
   }
 
-  return data || [];
+  return (data || []) as AdminOrder[];
 }
 
-/**
- * Récupère les commandes d'un client par téléphone
- */
 export async function fetchOrdersByPhone(phone: string): Promise<AdminOrder[]> {
   if (!supabase) return [];
 
@@ -107,16 +92,13 @@ export async function fetchOrdersByPhone(phone: string): Promise<AdminOrder[]> {
     return [];
   }
 
-  return data || [];
+  return (data || []) as AdminOrder[];
 }
 
 // ============================================
 // CRÉATION
 // ============================================
 
-/**
- * Crée une nouvelle commande depuis le panier
- */
 export async function createOrderFromCart(orderData: {
   order_number: string;
   client_name: string;
@@ -136,21 +118,25 @@ export async function createOrderFromCart(orderData: {
 }): Promise<ApiResponse<AdminOrder>> {
   const db = requireSupabase();
 
-  const history: OrderHistoryEntry[] = [{
-    status: 'EN ATTENTE',
-    date: new Date().toISOString(),
-    note: 'Commande créée depuis le panier'
-  }];
+  const history: OrderHistoryEntry[] = [
+    {
+      status: 'EN ATTENTE',
+      date: new Date().toISOString(),
+      note: 'Commande créée depuis le panier'
+    }
+  ];
 
   const { data, error } = await db
     .from('orders')
-    .insert([{
-      ...orderData,
-      status: 'EN ATTENTE',
-      history,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }])
+    .insert([
+      {
+        ...orderData,
+        status: 'EN ATTENTE',
+        history,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ])
     .select()
     .single();
 
@@ -166,17 +152,13 @@ export async function createOrderFromCart(orderData: {
 // MISE À JOUR
 // ============================================
 
-/**
- * Met à jour le statut d'une commande
- */
 export async function updateOrderStatus(
-  id: string,
+  id: number,
   newStatus: OrderStatus,
   note?: string
 ): Promise<ApiResponse<AdminOrder>> {
   const db = requireSupabase();
 
-  // Récupérer la commande actuelle pour l'historique
   const currentOrder = await fetchOrderById(id);
   if (!currentOrder) {
     return { data: null, error: 'Commande non trouvée' };
@@ -209,11 +191,8 @@ export async function updateOrderStatus(
   return { data: data as AdminOrder, error: null };
 }
 
-/**
- * Met à jour une commande complète
- */
 export async function updateOrder(
-  id: string,
+  id: number,
   orderData: Partial<AdminOrder>
 ): Promise<ApiResponse<AdminOrder>> {
   const db = requireSupabase();
@@ -240,10 +219,7 @@ export async function updateOrder(
 // SUPPRESSION
 // ============================================
 
-/**
- * Supprime une commande
- */
-export async function deleteOrder(id: string): Promise<ApiResponse<boolean>> {
+export async function deleteOrder(id: number): Promise<ApiResponse<boolean>> {
   const db = requireSupabase();
 
   const { error } = await db
@@ -263,9 +239,6 @@ export async function deleteOrder(id: string): Promise<ApiResponse<boolean>> {
 // STATISTIQUES
 // ============================================
 
-/**
- * Récupère le nombre total de commandes
- */
 export async function getTotalOrdersCount(): Promise<number> {
   if (!supabase) return 0;
 
@@ -281,9 +254,6 @@ export async function getTotalOrdersCount(): Promise<number> {
   return count || 0;
 }
 
-/**
- * Récupère le revenu total
- */
 export async function getTotalRevenue(): Promise<number> {
   if (!supabase) return 0;
 

@@ -7,9 +7,8 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect } from '@/admin/components';
-import { ShoppingCart, Eye, MessageCircle, Copy } from 'lucide-react';
+import { ShoppingCart, Eye, MessageCircle, Copy, Download } from 'lucide-react';
 import { fetchAdminOrders, updateOrderStatus } from '@/services/orderService';
-import { Download } from 'lucide-react';
 import { exportOrdersToCsv } from '@/utils/exportCsv';
 import type { AdminOrder, OrderStatus } from '@/admin/types';
 
@@ -26,14 +25,13 @@ export default function AdminOrdersPage() {
     try {
       const data = await fetchAdminOrders();
       setOrders(data);
-    } catch (err: unknown) {
-      console.error('Erreur:', err);
+    } catch (error: unknown) {
+      console.error('Erreur chargement commandes:', error);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // CORRECTION: Encapsuler dans une fonction async
   useEffect(() => {
     const init = async () => {
       await loadOrders();
@@ -43,13 +41,19 @@ export default function AdminOrdersPage() {
 
   const handleStatusChange = async (orderId: number, newStatus: OrderStatus) => {
     try {
-      await updateOrderStatus(orderId, newStatus);
+      const result = await updateOrderStatus(orderId, newStatus);
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
+
       await loadOrders();
-      
+
       if (selectedOrder?.id === orderId) {
         setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
-    } catch (err: unknown) {
+    } catch (error: unknown) {
+      console.error('Erreur mise à jour commande:', error);
       alert('Erreur lors de la mise à jour');
     }
   };
@@ -58,8 +62,8 @@ export default function AdminOrdersPage() {
     try {
       await navigator.clipboard.writeText(text);
       alert('Message copié !');
-    } catch (err: unknown) {
-      console.error('Erreur copie:', err);
+    } catch (error: unknown) {
+      console.error('Erreur copie:', error);
     }
   };
 
@@ -80,12 +84,12 @@ export default function AdminOrdersPage() {
     return templates[order.status] || '';
   };
 
-  const filteredOrders = orders.filter(o => {
+  const filteredOrders = orders.filter((order) => {
     const matchesSearch =
-      o.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.client_phone.includes(searchQuery);
-    const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
+      order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.client_phone.includes(searchQuery);
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -98,7 +102,13 @@ export default function AdminOrdersPage() {
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Commandes</h1>
           <p className="text-brand-text-muted mt-1">{orders.length} commandes</p>
         </div>
-        <AdminButton variant="secondary" onClick={() => window.history.back()}>Retour</AdminButton>
+        <div className="flex gap-3">
+          <AdminButton variant="secondary" onClick={() => window.history.back()}>Retour</AdminButton>
+          <AdminButton variant="secondary" onClick={() => exportOrdersToCsv(orders)}>
+            <Download size={18} />
+            Export CSV
+          </AdminButton>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
@@ -110,7 +120,7 @@ export default function AdminOrdersPage() {
         />
         <AdminSelect
           value={statusFilter}
-          onChange={(v) => setStatusFilter(v as OrderStatus | 'all')}
+          onChange={(value) => setStatusFilter(value as OrderStatus | 'all')}
           options={[
             { value: 'all', label: 'Tous les statuts' },
             { value: 'EN ATTENTE', label: 'En attente' },
@@ -229,7 +239,7 @@ export default function AdminOrdersPage() {
               <p className="text-sm text-brand-text-muted mb-3">Articles</p>
               <div className="space-y-2">
                 {selectedOrder.items.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg">
+                  <div key={`${item.name}-${index}`} className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg">
                     <div className="flex items-center gap-3">
                       {item.image && (
                         <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
@@ -260,7 +270,7 @@ export default function AdminOrdersPage() {
               <p className="text-sm text-brand-text-muted mb-3">Changer le statut</p>
               <AdminSelect
                 value={selectedOrder.status}
-                onChange={(v) => handleStatusChange(selectedOrder.id, v as OrderStatus)}
+                onChange={(value) => handleStatusChange(selectedOrder.id, value as OrderStatus)}
                 options={[
                   { value: 'EN ATTENTE', label: 'En attente' },
                   { value: 'CONFIRMÉE', label: 'Confirmée' },
@@ -294,13 +304,6 @@ export default function AdminOrdersPage() {
                     <MessageCircle size={14} />
                     WhatsApp
                   </AdminButton>
-                  <AdminButton 
-                     variant="secondary" 
-                     onClick={() => exportOrdersToCsv(orders)}
-                  >
-                      <Download size={20} />
-                      Export CSV
-                  </AdminButton>
                 </div>
               </div>
             </div>
@@ -310,7 +313,7 @@ export default function AdminOrdersPage() {
                 <p className="text-sm text-brand-text-muted mb-3">Historique</p>
                 <div className="space-y-2">
                   {selectedOrder.history.map((entry, index) => (
-                    <div key={index} className="flex items-center gap-3 text-sm">
+                    <div key={`${entry.date}-${index}`} className="flex items-center gap-3 text-sm">
                       <span className="text-brand-text-muted">
                         {new Date(entry.date).toLocaleDateString('fr-FR', {
                           day: '2-digit',
