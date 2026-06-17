@@ -8,6 +8,7 @@ import type { Metadata } from 'next';
 import { Barlow, Bebas_Neue } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
+import { CatalogProvider } from '@/context/CatalogContext';
 
 const barlow = Barlow({
   subsets: ['latin'],
@@ -38,11 +39,13 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${barlow.variable} ${bebasNeue.variable} h-full antialiased scroll-smooth`}>
       <body className="min-h-full flex flex-col bg-brand-bg text-brand-text font-barlow selection:bg-brand-gold/30 selection:text-brand-text">
-        <CartProvider>
-          <main className="flex-grow">
-            {children}
-          </main>
-        </CartProvider>
+        <CatalogProvider>
+          <CartProvider>
+            <main className="flex-grow">
+              {children}
+            </main>
+          </CartProvider>
+        </CatalogProvider>
       </body>
     </html>
   );

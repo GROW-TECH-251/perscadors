@@ -1,4 +1,4 @@
-export type Size = 'S' | 'M' | 'L' | 'XL' | 'XXL' | '39' | '40' | '41' | '42' | '43' | '44';
+export type Size = 'S' | 'M' | 'L' | 'XL' | 'XXL' | '39' | '40' | '41' | '42' | '43' | '44' | '45';
 
 export interface Product {
   id: string;
@@ -15,6 +15,15 @@ export interface Product {
   inStock: boolean;
   description: string;
   isPopular?: boolean;
+}
+
+export interface CatalogCategory {
+  name: string;
+  slug: string;
+  image: string;
+  count: number;
+  countLabel: string;
+  tagline: string;
 }
 
 export interface Outfit {

@@ -1,48 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { getProductById, products } from '@/data/products';
+import { PublicLayout } from '@/components/layout/PublicLayout';
+import { useCatalog } from '@/context/CatalogContext';
 import { useCart } from '@/context/CartContext';
-import { Size } from '@/types';
+import { Product, Size } from '@/types';
 import { ArrowLeft, MessageSquareCode, ShoppingBag } from 'lucide-react';
 
-export default function ProductPage() {
-  const params = useParams();
-  const id = params.id as string;
-  const product = getProductById(id);
+interface ProductDetailContentProps {
+  product: Product;
+  suggestions: Product[];
+}
 
+function ProductDetailContent({ product, suggestions }: ProductDetailContentProps) {
   const { addToCart } = useCart();
-
-  const [selectedImage, setSelectedImage] = useState<string>(product?.images[0] ?? '');
+  const [selectedImage, setSelectedImage] = useState<string>(product.images[0] ?? '');
   const [selectedSize, setSelectedSize] = useState<Size | null>(
-    product?.sizes.find((size) => !product.outOfStockSizes?.includes(size)) || product?.sizes[0] || null
+    product.sizes.find((size) => !product.outOfStockSizes?.includes(size)) || product.sizes[0] || null
   );
   const [selectedColor, setSelectedColor] = useState<string>(
-    product?.colors.find((color) => !product.outOfStockColors?.includes(color)) || product?.colors[0] || ''
+    product.colors.find((color) => !product.outOfStockColors?.includes(color)) || product.colors[0] || ''
   );
   const [errorMsg, setErrorMsg] = useState<string>('');
-
-  if (!product) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-24 text-center space-y-6">
-        <span className="text-4xl">⚠️</span>
-        <h1 className="font-bebas text-4xl text-brand-text">Article introuvable</h1>
-        <Link
-          href="/"
-          className="inline-block px-6 py-2 bg-brand-gold text-brand-bg font-bebas text-lg uppercase tracking-wider rounded"
-        >
-          Retour à l&apos;accueil
-        </Link>
-      </div>
-    );
-  }
-
-  const suggestions = products
-    .filter((currentProduct) => currentProduct.id !== product.id && (currentProduct.category === product.category || currentProduct.isPopular))
-    .slice(0, 4);
 
   const handleAddToCart = () => {
     if (!selectedSize) {
@@ -88,7 +70,7 @@ export default function ProductPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12">
       <div className="mb-8">
         <Link
           href={`/categorie/${product.category}`}
@@ -282,5 +264,44 @@ export default function ProductPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function ProductPage() {
+  const params = useParams();
+  const { products, findProductById } = useCatalog();
+  const id = params.id as string;
+
+  const product = useMemo(() => findProductById(id), [findProductById, id]);
+  const suggestions = useMemo(
+    () => products.filter((currentProduct) => currentProduct.id !== product?.id && (currentProduct.category === product?.category || currentProduct.isPopular)).slice(0, 4),
+    [product, products]
+  );
+
+  if (!product) {
+    return (
+      <PublicLayout>
+        <div className="max-w-7xl mx-auto px-4 pt-32 pb-24 text-center space-y-6">
+          <span className="text-4xl">⚠️</span>
+          <h1 className="font-bebas text-4xl text-brand-text">Article introuvable</h1>
+          <Link
+            href="/"
+            className="inline-block px-6 py-2 bg-brand-gold text-brand-bg font-bebas text-lg uppercase tracking-wider rounded"
+          >
+            Retour à l&apos;accueil
+          </Link>
+        </div>
+      </PublicLayout>
+    );
+  }
+
+  return (
+    <PublicLayout>
+      <ProductDetailContent
+        key={`${product.id}-${product.images[0]}-${product.price}`}
+        product={product}
+        suggestions={suggestions}
+      />
+    </PublicLayout>
   );
 }
