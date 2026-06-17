@@ -5,10 +5,10 @@
 
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect } from '@/admin/components';
-import { ShoppingCart, Eye, MessageCircle, Copy, Download } from 'lucide-react';
-import { fetchAdminOrders, updateOrderStatus } from '@/services/orderService';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea } from '@/admin/components';
+import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo } from 'lucide-react';
+import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus } from '@/services/orderService';
 import { exportOrdersToCsv } from '@/utils/exportCsv';
 import type { AdminOrder, OrderStatus } from '@/admin/types';
 
@@ -19,6 +19,9 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [statusDraft, setStatusDraft] = useState<OrderStatus>('EN ATTENTE');
+  const [statusNote, setStatusNote] = useState('');
+  const [isSavingStatus, setIsSavingStatus] = useState(false);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -39,9 +42,21 @@ export default function AdminOrdersPage() {
     init();
   }, [loadOrders]);
 
-  const handleStatusChange = async (orderId: number, newStatus: OrderStatus) => {
+
+  const handleStatusChange = async () => {
+    if (!selectedOrder) {
+      return;
+    }
+
+    setIsSavingStatus(true);
+
     try {
-      const result = await updateOrderStatus(orderId, newStatus);
+      const result = await updateOrderStatus(
+        selectedOrder.id,
+        statusDraft,
+        statusNote.trim() || undefined
+      );
+
       if (result.error) {
         alert(result.error);
         return;
@@ -49,12 +64,17 @@ export default function AdminOrdersPage() {
 
       await loadOrders();
 
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder({ ...selectedOrder, status: newStatus });
+      if (result.data) {
+        setSelectedOrder(result.data);
+        setStatusDraft(result.data.status);
       }
+
+      setStatusNote('');
     } catch (error: unknown) {
       console.error('Erreur mise à jour commande:', error);
       alert('Erreur lors de la mise à jour');
+    } finally {
+      setIsSavingStatus(false);
     }
   };
 
@@ -73,25 +93,32 @@ export default function AdminOrdersPage() {
   };
 
   const getWhatsAppMessage = (order: AdminOrder) => {
-    const templates: Record<OrderStatus, string> = {
-      'EN ATTENTE': `Bonjour ${order.client_name}, votre commande ${order.order_number} est en attente de validation.`,
-      'CONFIRMÉE': `Bonjour ${order.client_name}, votre commande ${order.order_number} est confirmée. Nous vous contactons pour la livraison.`,
-      'EN LIVRAISON': `Bonjour ${order.client_name}, votre commande ${order.order_number} est en cours de livraison.`,
-      'LIVRÉE': `Bonjour ${order.client_name}, votre commande ${order.order_number} a été livrée. Merci pour votre confiance !`,
-      'ANNULÉE': `Bonjour ${order.client_name}, votre commande ${order.order_number} a été annulée.`
-    };
-
-    return templates[order.status] || '';
+    return buildWhatsAppOrderMessage({
+      order_number: order.order_number,
+      client_name: order.client_name,
+      client_phone: order.client_phone,
+      client_area: order.client_area,
+      items: order.items,
+      subtotal: order.subtotal ?? order.total,
+      delivery_fee: order.delivery_fee ?? 0,
+      total: order.total
+    });
   };
 
-  const filteredOrders = orders.filter((order) => {
-    const matchesSearch =
-      order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.client_phone.includes(searchQuery);
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const matchesSearch =
+        order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.client_phone.includes(searchQuery);
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [orders, searchQuery, statusFilter]);
+
+  const orderItemsCount = selectedOrder?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
+  const orderSubtotal = selectedOrder?.subtotal ?? selectedOrder?.items.reduce((sum, item) => sum + item.price * item.quantity, 0) ?? 0;
+  const orderDeliveryFee = selectedOrder?.delivery_fee ?? Math.max((selectedOrder?.total || 0) - orderSubtotal, 0);
 
   if (loading) return <div className="p-8">Chargement...</div>;
 
@@ -183,6 +210,8 @@ export default function AdminOrdersPage() {
                         size="sm"
                         onClick={() => {
                           setSelectedOrder(order);
+                          setStatusDraft(order.status);
+                          setStatusNote('');
                           setIsModalOpen(true);
                         }}
                       >
@@ -208,14 +237,24 @@ export default function AdminOrdersPage() {
           title={`Commande ${selectedOrder.order_number}`}
         >
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-brand-text-muted mb-1">Client</p>
                 <p className="font-medium text-brand-text">{selectedOrder.client_name}</p>
               </div>
               <div>
                 <p className="text-sm text-brand-text-muted mb-1">Téléphone</p>
-                <p className="font-medium text-brand-text">{selectedOrder.client_phone}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-brand-text">{selectedOrder.client_phone}</p>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(selectedOrder.client_phone)}
+                    className="p-1 hover:bg-brand-gold/10 rounded cursor-pointer"
+                    aria-label="Copier le numéro"
+                  >
+                    <Copy size={14} className="text-brand-gold" />
+                  </button>
+                </div>
               </div>
               <div>
                 <p className="text-sm text-brand-text-muted mb-1">Zone de livraison</p>
@@ -232,6 +271,30 @@ export default function AdminOrdersPage() {
                     minute: '2-digit'
                   })}
                 </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-brand-gold/15 bg-brand-bg-alt p-4">
+                <div className="flex items-center gap-2 text-brand-gold mb-2">
+                  <ClipboardList size={16} />
+                  <span className="text-xs uppercase tracking-wider">Articles</span>
+                </div>
+                <p className="font-bebas text-3xl text-brand-text">{orderItemsCount}</p>
+              </div>
+              <div className="rounded-xl border border-brand-gold/15 bg-brand-bg-alt p-4">
+                <div className="flex items-center gap-2 text-brand-gold mb-2">
+                  <Truck size={16} />
+                  <span className="text-xs uppercase tracking-wider">Livraison</span>
+                </div>
+                <p className="font-bebas text-3xl text-brand-text">{orderDeliveryFee.toLocaleString()} FCFA</p>
+              </div>
+              <div className="rounded-xl border border-brand-gold/15 bg-brand-bg-alt p-4">
+                <div className="flex items-center gap-2 text-brand-gold mb-2">
+                  <BadgeInfo size={16} />
+                  <span className="text-xs uppercase tracking-wider">Sous-total</span>
+                </div>
+                <p className="font-bebas text-3xl text-brand-text">{orderSubtotal.toLocaleString()} FCFA</p>
               </div>
             </div>
 
@@ -260,17 +323,25 @@ export default function AdminOrdersPage() {
             </div>
 
             <div className="border-t border-brand-gold/20 pt-4 space-y-2">
+              <div className="flex justify-between text-sm text-brand-text-muted">
+                <span>Sous-total</span>
+                <span>{orderSubtotal.toLocaleString()} FCFA</span>
+              </div>
+              <div className="flex justify-between text-sm text-brand-text-muted">
+                <span>Livraison</span>
+                <span>{orderDeliveryFee.toLocaleString()} FCFA</span>
+              </div>
               <div className="flex justify-between text-lg font-bold">
                 <span className="text-brand-text">Total</span>
                 <span className="text-brand-gold">{selectedOrder.total.toLocaleString()} FCFA</span>
               </div>
             </div>
 
-            <div>
-              <p className="text-sm text-brand-text-muted mb-3">Changer le statut</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AdminSelect
-                value={selectedOrder.status}
-                onChange={(value) => handleStatusChange(selectedOrder.id, value as OrderStatus)}
+                label="Nouveau statut"
+                value={statusDraft}
+                onChange={(value) => setStatusDraft(value as OrderStatus)}
                 options={[
                   { value: 'EN ATTENTE', label: 'En attente' },
                   { value: 'CONFIRMÉE', label: 'Confirmée' },
@@ -279,15 +350,28 @@ export default function AdminOrdersPage() {
                   { value: 'ANNULÉE', label: 'Annulée' }
                 ]}
               />
+              <AdminTextarea
+                label="Note d’historique"
+                value={statusNote}
+                onChange={setStatusNote}
+                rows={3}
+                placeholder="Ex: Client confirmé par appel, livraison prévue demain à 10h"
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <AdminButton variant="primary" onClick={handleStatusChange} loading={isSavingStatus}>
+                Enregistrer le statut
+              </AdminButton>
             </div>
 
             <div>
               <p className="text-sm text-brand-text-muted mb-3">Message de suivi WhatsApp</p>
               <div className="p-3 bg-brand-bg-alt rounded-lg border border-brand-gold/10">
-                <p className="text-sm text-brand-text mb-3">
+                <p className="text-sm text-brand-text mb-3 whitespace-pre-line">
                   {getWhatsAppMessage(selectedOrder)}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <AdminButton
                     variant="secondary"
                     size="sm"
@@ -312,12 +396,13 @@ export default function AdminOrdersPage() {
               <div>
                 <p className="text-sm text-brand-text-muted mb-3">Historique</p>
                 <div className="space-y-2">
-                  {selectedOrder.history.map((entry, index) => (
-                    <div key={`${entry.date}-${index}`} className="flex items-center gap-3 text-sm">
-                      <span className="text-brand-text-muted">
+                  {selectedOrder.history.slice().reverse().map((entry, index) => (
+                    <div key={`${entry.date}-${index}`} className="flex items-start gap-3 text-sm p-3 bg-brand-bg-alt rounded-lg">
+                      <span className="text-brand-text-muted min-w-[120px]">
                         {new Date(entry.date).toLocaleDateString('fr-FR', {
                           day: '2-digit',
                           month: '2-digit',
+                          year: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit'
                         })}

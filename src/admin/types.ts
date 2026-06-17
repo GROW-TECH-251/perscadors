@@ -27,7 +27,6 @@ export interface NavItem {
   badge?: number;
 }
 
-// CORRESPOND EXACTEMENT à la table Supabase 'products'
 export interface AdminProduct {
   id: number;
   name: string;
@@ -90,6 +89,8 @@ export interface AdminOrder {
   client_area: string;
   items: OrderItem[];
   history: OrderHistoryEntry[];
+  subtotal?: number;
+  delivery_fee?: number;
   total: number;
   created_at: string;
   updated_at: string;

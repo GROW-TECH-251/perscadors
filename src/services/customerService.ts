@@ -7,37 +7,48 @@
 import { requireSupabase, supabase } from '@/lib/supabase';
 import type { CustomerSummary, CustomerMeta, CustomerSegment, ApiResponse } from '@/admin/types';
 
-// ============================================
-// LECTURE
-// ============================================
+interface RawOrderCustomerRow {
+  client_phone: string;
+  client_name: string;
+  client_area: string;
+  total: number;
+  created_at: string;
+  status: string;
+  items?: Array<{
+    size: string;
+    color: string;
+  }>;
+}
 
 export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
   if (!supabase) return [];
 
-  const { data: orders, error } = await supabase
-    .from('orders')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const [{ data: orders, error: ordersError }, { data: customerMetaRows, error: customerMetaError }] = await Promise.all([
+    supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('customer_meta')
+      .select('*')
+  ]);
 
-  if (error || !orders) {
-    console.error('Erreur fetch clients:', error);
+  if (ordersError || !orders) {
+    console.error('Erreur fetch clients:', ordersError);
     return [];
   }
 
+  if (customerMetaError) {
+    console.error('Erreur fetch customer_meta:', customerMetaError);
+  }
+
+  const customerMetaMap = new Map<string, CustomerMeta>(
+    ((customerMetaRows || []) as CustomerMeta[]).map((customerMeta) => [customerMeta.phone, customerMeta])
+  );
+
   const customerMap = new Map<string, CustomerSummary>();
 
-  orders.forEach((order: {
-    client_phone: string;
-    client_name: string;
-    client_area: string;
-    total: number;
-    created_at: string;
-    status: string;
-    items?: Array<{
-      size: string;
-      color: string;
-    }>;
-  }) => {
+  (orders as RawOrderCustomerRow[]).forEach((order) => {
     const phone = order.client_phone;
     const existing = customerMap.get(phone);
 
@@ -64,22 +75,37 @@ export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
         existing.lastOrderDate = order.created_at;
         existing.lastOrderStatus = order.status as CustomerSummary['lastOrderStatus'];
       }
-
-      order.items?.forEach((item) => {
-        if (item.size && !existing.preferredSizes.includes(item.size)) {
-          existing.preferredSizes.push(item.size);
-        }
-        if (item.color && !existing.preferredColors.includes(item.color)) {
-          existing.preferredColors.push(item.color);
-        }
-      });
     }
+
+    const targetCustomer = customerMap.get(phone);
+    if (!targetCustomer) {
+      return;
+    }
+
+    order.items?.forEach((item) => {
+      if (item.size && !targetCustomer.preferredSizes.includes(item.size)) {
+        targetCustomer.preferredSizes.push(item.size);
+      }
+      if (item.color && !targetCustomer.preferredColors.includes(item.color)) {
+        targetCustomer.preferredColors.push(item.color);
+      }
+    });
   });
 
-  return Array.from(customerMap.values()).map((customer) => ({
-    ...customer,
-    segments: calculateCustomerSegments(customer)
-  }));
+  return Array.from(customerMap.values())
+    .map((customer) => {
+      const customerMeta = customerMetaMap.get(customer.phone);
+
+      return {
+        ...customer,
+        notes: customerMeta?.notes || '',
+        tags: customerMeta?.tags || [],
+        segments: calculateCustomerSegments(customer)
+      };
+    })
+    .sort((firstCustomer, secondCustomer) => {
+      return new Date(secondCustomer.lastOrderDate).getTime() - new Date(firstCustomer.lastOrderDate).getTime();
+    });
 }
 
 function calculateCustomerSegments(customer: CustomerSummary): CustomerSegment[] {
@@ -133,10 +159,6 @@ export async function fetchCustomerByPhone(phone: string): Promise<CustomerSumma
   const summaries = await fetchCustomerSummaries();
   return summaries.find((customer) => customer.phone === phone) || null;
 }
-
-// ============================================
-// CRÉATION / MISE À JOUR
-// ============================================
 
 export async function upsertCustomerMeta(
   phone: string,
@@ -203,10 +225,6 @@ export async function removeCustomerTag(phone: string, tag: string): Promise<Api
 
   return await upsertCustomerMeta(phone, { tags: updatedTags });
 }
-
-// ============================================
-// STATISTIQUES
-// ============================================
 
 export async function getTotalCustomersCount(): Promise<number> {
   const summaries = await fetchCustomerSummaries();
