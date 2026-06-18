@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea } from '@/admin/components';
 import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo } from 'lucide-react';
 import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus } from '@/services/orderService';
@@ -124,12 +125,15 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Commandes</h1>
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
+            Opérations commandes
+          </span>
+          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Commandes</h1>
           <p className="text-brand-text-muted mt-1">{orders.length} commandes</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => window.history.back()}>Retour</AdminButton>
           <AdminButton variant="secondary" onClick={() => exportOrdersToCsv(orders)}>
             <Download size={18} />
@@ -305,7 +309,16 @@ export default function AdminOrdersPage() {
                   <div key={`${item.name}-${index}`} className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg">
                     <div className="flex items-center gap-3">
                       {item.image && (
-                        <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
+                        <div className="relative w-12 h-12 overflow-hidden rounded">
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
                       )}
                       <div>
                         <p className="font-medium text-brand-text">{item.name}</p>

@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import Image from 'next/image';
 import { X, Minus, Plus, Trash2, MessageCircle, Loader2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -162,7 +163,7 @@ export const CartDrawer: React.FC = () => {
         onClick={handleClose}
       />
 
-      <div className="fixed top-0 right-0 h-full w-full max-w-md bg-brand-bg shadow-2xl z-50 transform transition-transform duration-300 flex flex-col">
+      <div className="fixed top-0 right-0 h-full w-full max-w-md bg-brand-bg shadow-[0_24px_60px_rgba(10,10,10,0.22)] z-50 transform transition-transform duration-300 flex flex-col border-l border-brand-gold/10">
         <div className="flex items-center justify-between p-6 border-b border-brand-gold/10">
           <h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase">
             Ton Panier
@@ -198,10 +199,13 @@ export const CartDrawer: React.FC = () => {
               >
                 <div className="relative w-20 h-24 flex-shrink-0 overflow-hidden rounded bg-brand-bg">
                   {item.product.image_url ? (
-                    <img
+                    <Image
                       src={item.product.image_url}
                       alt={item.product.name}
-                      className="w-full h-full object-cover"
+                      fill
+                      sizes="80px"
+                      className="object-cover"
+                      unoptimized
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-brand-text-muted">

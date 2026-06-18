@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { fetchAdminProducts, deleteProduct } from '@/services/productService';
 import { fetchAdminOrders } from '@/services/orderService';
@@ -115,16 +116,19 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="font-bebas text-4xl tracking-wider text-brand-text uppercase">
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
+            Vue premium back-office
+          </span>
+          <h1 className="font-bebas text-4xl tracking-wider text-brand-text uppercase mt-3">
             Dashboard
           </h1>
           <p className="text-brand-text-muted mt-1">
             Vue d&apos;ensemble de votre boutique HP Collection
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin/produits')}>
             <Package size={18} />
             Produits
@@ -326,9 +330,16 @@ export default function AdminDashboardPage() {
                   className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg border border-brand-gold/10 hover:border-brand-gold/30 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-brand-bg rounded-lg overflow-hidden">
+                    <div className="relative w-12 h-12 bg-brand-bg rounded-lg overflow-hidden">
                       {product.image_url ? (
-                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                        <Image
+                          src={product.image_url}
+                          alt={product.name}
+                          fill
+                          sizes="48px"
+                          className="object-cover"
+                          unoptimized
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-brand-text-muted">
                           <Package size={20} />

@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminSearch, AdminEmptyState, AdminBadge } from '@/admin/components';
 import { FileText, Plus, Edit, Trash2, Upload, Send, Clock3 } from 'lucide-react';
@@ -305,12 +306,15 @@ export default function AdminContentPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Contenu</h1>
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
+            Storytelling boutique
+          </span>
+          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Contenu</h1>
           <p className="text-brand-text-muted mt-1">{posts.length} contenus dynamiques</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
           <AdminButton variant="primary" onClick={handleCreateMode}>
             <Plus size={18} />
@@ -393,7 +397,14 @@ export default function AdminContentPage() {
 
               {formData.image_url && (
                 <div className="relative w-full max-w-sm aspect-video overflow-hidden rounded-xl border border-brand-gold/20 bg-brand-bg">
-                  <img src={formData.image_url} alt="Aperçu du contenu" className="w-full h-full object-cover" />
+                  <Image
+                    src={formData.image_url}
+                    alt="Aperçu du contenu"
+                    fill
+                    sizes="384px"
+                    className="object-cover"
+                    unoptimized
+                  />
                 </div>
               )}
             </div>
@@ -456,7 +467,14 @@ export default function AdminContentPage() {
             <AdminCard key={post.id} className="p-0 overflow-hidden">
               <div className="relative aspect-video bg-brand-bg">
                 {post.image_url ? (
-                  <img src={post.image_url} alt={post.title} className="w-full h-full object-cover" />
+                  <Image
+                    src={post.image_url}
+                    alt={post.title}
+                    fill
+                    sizes="(max-width: 1024px) 50vw, 33vw"
+                    className="object-cover"
+                    unoptimized
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-brand-text-muted">
                     <FileText size={40} />

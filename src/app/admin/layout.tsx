@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useSyncExternalStore } from 'react';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { DesktopSidebar, BottomTabs } from '@/admin/components';
 import { clearAdminSession, getAdminSession } from '@/admin/auth';
@@ -115,13 +116,18 @@ export default function AdminLayout({
       />
 
       <main className="lg:ml-64 min-h-screen">
-        <div className="lg:hidden sticky top-0 z-30 bg-[#0A0A0A] border-b border-brand-gold/20 px-4 py-3">
+        <div className="lg:hidden sticky top-0 z-30 bg-[#0A0A0A]/95 backdrop-blur-md border-b border-brand-gold/20 px-4 py-3 shadow-lg">
           <div className="flex items-center justify-between">
-            <img
-              src="/images/LOGOSITE/logo.png"
-              alt="HP Collection"
-              className="h-8 object-contain"
-            />
+            <div className="relative h-8 w-28">
+              <Image
+                src="/images/LOGOSITE/logo.png"
+                alt="HP Collection"
+                fill
+                sizes="112px"
+                className="object-contain"
+                priority
+              />
+            </div>
             <button
               onClick={handleLogout}
               type="button"

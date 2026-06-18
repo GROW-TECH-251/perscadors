@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useEffect, useSyncExternalStore, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getAdminSession, signInAdmin } from '@/admin/auth';
@@ -84,14 +85,19 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-bg flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fff7df,transparent_42%),linear-gradient(180deg,#f5f0e8_0%,#efe8db_100%)] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <img
-            src="/images/LOGOSITE/logo.png"
-            alt="HP Collection"
-            className="w-48 h-16 object-contain mx-auto mb-4"
-          />
+          <div className="relative w-48 h-16 mx-auto mb-4">
+            <Image
+              src="/images/LOGOSITE/logo.png"
+              alt="HP Collection"
+              fill
+              sizes="192px"
+              className="object-contain"
+              priority
+            />
+          </div>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">
             Administration
           </h1>
@@ -100,7 +106,7 @@ export default function AdminLoginPage() {
           </p>
         </div>
 
-        <div className="bg-brand-bg-alt border border-brand-gold/15 rounded-2xl p-8 shadow-xl">
+        <div className="bg-brand-bg-alt/95 border border-brand-gold/15 rounded-3xl p-8 shadow-[0_24px_60px_rgba(10,10,10,0.1)] backdrop-blur-sm">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <div className="flex items-center gap-2 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-sm">

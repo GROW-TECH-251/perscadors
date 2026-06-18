@@ -6,6 +6,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   Home,
@@ -65,17 +66,22 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   const getIcon = (iconName: string) => iconMap[iconName] || <Package size={20} />;
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-[#0A0A0A] border-r border-brand-gold/20 min-h-screen fixed left-0 top-0 z-40">
-      <div className="p-6 border-b border-brand-gold/20">
+    <aside className="hidden lg:flex flex-col w-64 bg-[#0A0A0A] border-r border-brand-gold/20 min-h-screen fixed left-0 top-0 z-40 shadow-[0_0_40px_rgba(0,0,0,0.18)]">
+      <div className="p-6 border-b border-brand-gold/20 bg-gradient-to-b from-white/5 to-transparent">
         <Link href="/" className="block">
-          <img
-            src="/images/LOGOSITE/logo.png"
-            alt="HP Collection"
-            className="w-32 h-10 object-contain filter brightness-110"
-          />
+          <div className="relative w-32 h-10">
+            <Image
+              src="/images/LOGOSITE/logo.png"
+              alt="HP Collection"
+              fill
+              sizes="128px"
+              className="object-contain brightness-110"
+              priority
+            />
+          </div>
         </Link>
-        <p className="text-xs text-brand-text-muted mt-2 uppercase tracking-wider">
-          Administration
+        <p className="text-xs text-brand-text-muted mt-2 uppercase tracking-[0.2em]">
+          Administration premium
         </p>
       </div>
 
@@ -90,10 +96,10 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
               onClick={() => onNavigate(item.id)}
               type="button"
               aria-label={`Aller à ${item.label}`}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer ${
                 isActive
-                  ? 'bg-brand-gold text-[#0A0A0A]'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-brand-gold text-[#0A0A0A] shadow-[0_12px_24px_rgba(184,149,42,0.22)]'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -180,7 +186,7 @@ export const AdminCard: React.FC<{
 }> = ({ children, className = '', onClick }) => (
   <div
     onClick={onClick}
-    className={`bg-brand-bg-alt border border-brand-gold/15 rounded-xl p-6 shadow-lg ${className}`}
+    className={`bg-brand-bg-alt/95 border border-brand-gold/15 rounded-2xl p-6 shadow-[0_12px_30px_rgba(10,10,10,0.06)] backdrop-blur-sm transition-all duration-200 hover:shadow-[0_18px_40px_rgba(10,10,10,0.1)] ${className}`}
   >
     {children}
   </div>
@@ -240,13 +246,13 @@ export const AdminButton: React.FC<{
   loading = false,
   className = ''
 }) => {
-  const baseClasses = 'font-bebas uppercase tracking-wider rounded transition-all cursor-pointer flex items-center justify-center gap-2';
+  const baseClasses = 'font-bebas uppercase tracking-wider rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40';
   
   const variantClasses = {
-    primary: 'bg-brand-gold hover:bg-brand-gold-light text-[#0A0A0A]',
-    secondary: 'bg-white/10 hover:bg-white/20 text-white border border-brand-gold/30',
-    danger: 'bg-red-500 hover:bg-red-600 text-white',
-    success: 'bg-green-500 hover:bg-green-600 text-white'
+    primary: 'bg-brand-gold hover:bg-brand-gold-light text-[#0A0A0A] shadow-[0_10px_20px_rgba(184,149,42,0.18)] hover:-translate-y-0.5',
+    secondary: 'bg-white/10 hover:bg-white/20 text-white border border-brand-gold/30 hover:border-brand-gold/60',
+    danger: 'bg-red-500 hover:bg-red-600 text-white shadow-[0_10px_20px_rgba(239,68,68,0.18)] hover:-translate-y-0.5',
+    success: 'bg-green-500 hover:bg-green-600 text-white shadow-[0_10px_20px_rgba(34,197,94,0.18)] hover:-translate-y-0.5'
   };
 
   const sizeClasses = {
@@ -305,7 +311,7 @@ export const AdminInput: React.FC<{
       placeholder={placeholder}
       disabled={disabled}
       aria-label={label || placeholder}
-      className={`w-full px-4 py-2.5 bg-brand-bg border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+      className={`w-full px-4 py-2.5 bg-brand-bg border rounded-xl focus:outline-none focus:ring-2 transition-colors shadow-sm ${
         error
           ? 'border-red-500 focus:ring-red-500/30'
           : 'border-brand-gold/20 focus:ring-brand-gold/30 focus:border-brand-gold'
@@ -347,7 +353,7 @@ export const AdminSelect: React.FC<{
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       aria-label={label || placeholder}
-      className={`w-full px-4 py-2.5 bg-brand-bg border rounded-lg focus:outline-none focus:ring-2 transition-colors cursor-pointer ${
+      className={`w-full px-4 py-2.5 bg-brand-bg border rounded-xl focus:outline-none focus:ring-2 transition-colors cursor-pointer shadow-sm ${
         error
           ? 'border-red-500 focus:ring-red-500/30'
           : 'border-brand-gold/20 focus:ring-brand-gold/30 focus:border-brand-gold'
@@ -402,7 +408,7 @@ export const AdminTextarea: React.FC<{
       disabled={disabled}
       rows={rows}
       aria-label={label || placeholder}
-      className={`w-full px-4 py-2.5 bg-brand-bg border rounded-lg focus:outline-none focus:ring-2 transition-colors resize-none ${
+      className={`w-full px-4 py-2.5 bg-brand-bg border rounded-xl focus:outline-none focus:ring-2 transition-colors resize-none shadow-sm ${
         error
           ? 'border-red-500 focus:ring-red-500/30'
           : 'border-brand-gold/20 focus:ring-brand-gold/30 focus:border-brand-gold'

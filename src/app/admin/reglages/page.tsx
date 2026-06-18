@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea } from '@/admin/components';
 import { Settings, Save, Upload, Trash2, Plus, LogOut } from 'lucide-react';
@@ -177,12 +178,15 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Réglages</h1>
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
+            Configuration boutique
+          </span>
+          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Réglages</h1>
           <p className="text-brand-text-muted mt-1">Configuration opérationnelle de la boutique</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
           <AdminButton variant="primary" onClick={handleSave} loading={saving || uploadingLogo}>
             <Save size={18} />
@@ -278,7 +282,14 @@ export default function AdminSettingsPage() {
 
             {settings.logo_url && (
               <div className="relative w-full max-w-xs aspect-video overflow-hidden rounded-xl border border-brand-gold/20 bg-brand-bg">
-                <img src={settings.logo_url} alt="Logo boutique" className="w-full h-full object-contain" />
+                <Image
+                  src={settings.logo_url}
+                  alt="Logo boutique"
+                  fill
+                  sizes="320px"
+                  className="object-contain"
+                  unoptimized
+                />
               </div>
             )}
           </div>

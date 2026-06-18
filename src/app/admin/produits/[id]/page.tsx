@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect } from '@/admin/components';
 import { Save, X, Upload } from 'lucide-react';
@@ -172,8 +173,13 @@ export default function EditProductPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Modifier le Produit</h1>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
+            Édition premium
+          </span>
+          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Modifier le Produit</h1>
+        </div>
         <AdminButton variant="secondary" onClick={() => router.push('/admin/produits')}>
           <X size={20} />
           Annuler
@@ -243,7 +249,14 @@ export default function EditProductPage() {
 
             {formData.image_url && (
               <div className="mt-4 relative aspect-square bg-brand-bg rounded-lg overflow-hidden max-w-xs">
-                <img src={formData.image_url} alt={formData.name} className="w-full h-full object-cover" />
+                <Image
+                  src={formData.image_url}
+                  alt={formData.name}
+                  fill
+                  sizes="320px"
+                  className="object-cover"
+                  unoptimized
+                />
               </div>
             )}
           </div>

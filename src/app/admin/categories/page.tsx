@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminEmptyState, AdminTextarea } from '@/admin/components';
 import { Tag, Plus, Edit, Trash2, Eye, EyeOff, X, Save, Upload } from 'lucide-react';
@@ -237,12 +238,15 @@ export default function AdminCategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Catégories</h1>
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
+            Collections dynamiques
+          </span>
+          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Catégories</h1>
           <p className="text-brand-text-muted mt-1">{categories.length} collections dynamiques</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>
             Retour
           </AdminButton>
@@ -339,7 +343,14 @@ export default function AdminCategoriesPage() {
 
               {formData.image_url && (
                 <div className="relative max-w-sm aspect-video overflow-hidden rounded-xl border border-brand-gold/20 bg-brand-bg">
-                  <img src={formData.image_url} alt="Aperçu de la catégorie" className="w-full h-full object-cover" />
+                  <Image
+                    src={formData.image_url}
+                    alt="Aperçu de la catégorie"
+                    fill
+                    sizes="384px"
+                    className="object-cover"
+                    unoptimized
+                  />
                 </div>
               )}
             </div>
@@ -381,7 +392,14 @@ export default function AdminCategoriesPage() {
             <AdminCard key={category.id} className="p-0 overflow-hidden">
               <div className="relative aspect-video bg-brand-bg">
                 {category.image_url ? (
-                  <img src={category.image_url} alt={category.name} className="w-full h-full object-cover" />
+                  <Image
+                    src={category.image_url}
+                    alt={category.name}
+                    fill
+                    sizes="(max-width: 1024px) 50vw, 33vw"
+                    className="object-cover"
+                    unoptimized
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-brand-text-muted">
                     <Tag size={48} />
