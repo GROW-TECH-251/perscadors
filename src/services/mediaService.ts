@@ -7,23 +7,29 @@
 import { requireSupabase, supabase } from '@/lib/supabase';
 import type { ApiResponse } from '@/admin/types';
 
-// ============================================
-// CONSTANTES
-// ============================================
-
 export const BUCKETS = {
   PRODUCT_IMAGES: 'product-images',
   BRAND_ASSETS: 'brand-assets',
   CONTENT_IMAGES: 'content-images'
 } as const;
 
-// ============================================
-// UPLOAD
-// ============================================
+function sanitizeFileName(fileName: string): string {
+  return fileName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9.-]/g, '-')
+    .replace(/-+/g, '-')
+    .toLowerCase();
+}
 
-/**
- * Upload une image vers un bucket Supabase
- */
+function ensurePathSegment(value: string): string {
+  return value
+    .trim()
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/\s+/g, '-')
+    .toLowerCase();
+}
+
 export async function uploadImage(
   bucket: string,
   file: File,
@@ -32,7 +38,7 @@ export async function uploadImage(
   const db = requireSupabase();
 
   try {
-    const { data, error } = await db.storage
+    const { error } = await db.storage
       .from(bucket)
       .upload(path, file, {
         cacheControl: '3600',
@@ -44,7 +50,6 @@ export async function uploadImage(
       return { data: null, error: error.message };
     }
 
-    // Récupérer l'URL publique
     const { data: urlData } = db.storage
       .from(bucket)
       .getPublicUrl(path);
@@ -57,46 +62,36 @@ export async function uploadImage(
   }
 }
 
-/**
- * Upload une image produit
- */
 export async function uploadProductImage(
   file: File,
-  productId: string
+  productId: string = 'draft'
 ): Promise<ApiResponse<string>> {
-  const fileName = `${productId}/${Date.now()}-${file.name}`;
-  return await uploadImage(BUCKETS.PRODUCT_IMAGES, file, fileName);
+  const safeProductId = ensurePathSegment(productId);
+  const safeFileName = sanitizeFileName(file.name);
+  const filePath = `${safeProductId}/${Date.now()}-${safeFileName}`;
+
+  return await uploadImage(BUCKETS.PRODUCT_IMAGES, file, filePath);
 }
 
-/**
- * Upload un asset de marque (logo, etc.)
- */
 export async function uploadBrandAsset(
   file: File,
   assetName: string
 ): Promise<ApiResponse<string>> {
-  const fileName = `${assetName}`;
-  return await uploadImage(BUCKETS.BRAND_ASSETS, file, fileName);
+  const safeAssetName = `${ensurePathSegment(assetName)}-${Date.now()}-${sanitizeFileName(file.name)}`;
+  return await uploadImage(BUCKETS.BRAND_ASSETS, file, safeAssetName);
 }
 
-/**
- * Upload une image de contenu (actualité, blog)
- */
 export async function uploadContentImage(
   file: File,
-  postId: string
+  postId: string = 'draft'
 ): Promise<ApiResponse<string>> {
-  const fileName = `${postId}/${Date.now()}-${file.name}`;
-  return await uploadImage(BUCKETS.CONTENT_IMAGES, file, fileName);
+  const safePostId = ensurePathSegment(postId);
+  const safeFileName = sanitizeFileName(file.name);
+  const filePath = `${safePostId}/${Date.now()}-${safeFileName}`;
+
+  return await uploadImage(BUCKETS.CONTENT_IMAGES, file, filePath);
 }
 
-// ============================================
-// SUPPRESSION
-// ============================================
-
-/**
- * Supprime une image d'un bucket
- */
 export async function deleteImage(
   bucket: string,
   path: string
@@ -115,9 +110,6 @@ export async function deleteImage(
   return { data: true, error: null };
 }
 
-/**
- * Supprime plusieurs images
- */
 export async function deleteMultipleImages(
   bucket: string,
   paths: string[]
@@ -136,13 +128,6 @@ export async function deleteMultipleImages(
   return { data: true, error: null };
 }
 
-// ============================================
-// URL PUBLIQUE
-// ============================================
-
-/**
- * Récupère l'URL publique d'une image
- */
 export function getPublicUrl(bucket: string, path: string): string {
   if (!supabase) return '';
 
@@ -153,26 +138,44 @@ export function getPublicUrl(bucket: string, path: string): string {
   return data.publicUrl;
 }
 
-// ============================================
-// COMPRESSION (Optionnel - côté client)
-// ============================================
+export function extractStoragePathFromUrl(bucket: string, url: string): string | null {
+  if (!url) {
+    return null;
+  }
 
-/**
- * Compresse une image avant upload (max 800px)
- */
+  const marker = `/${bucket}/`;
+  const markerIndex = url.indexOf(marker);
+
+  if (markerIndex === -1) {
+    return null;
+  }
+
+  return url.slice(markerIndex + marker.length);
+}
+
+export async function deleteImageByUrl(bucket: string, url: string): Promise<ApiResponse<boolean>> {
+  const path = extractStoragePathFromUrl(bucket, url);
+
+  if (!path) {
+    return { data: false, error: 'Impossible de déterminer le chemin de stockage à partir de l’URL.' };
+  }
+
+  return await deleteImage(bucket, path);
+}
+
 export async function compressImage(file: File, maxWidth: number = 800): Promise<File> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    
+
     reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      
-      img.onload = () => {
+      const image = new Image();
+      image.src = event.target?.result as string;
+
+      image.onload = () => {
         const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
+        let width = image.width;
+        let height = image.height;
 
         if (width > maxWidth) {
           height = (height * maxWidth) / width;
@@ -182,13 +185,13 @@ export async function compressImage(file: File, maxWidth: number = 800): Promise
         canvas.width = width;
         canvas.height = height;
 
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
+        const context = canvas.getContext('2d');
+        context?.drawImage(image, 0, 0, width, height);
 
         canvas.toBlob(
           (blob) => {
             if (blob) {
-              const compressedFile = new File([blob], file.name, {
+              const compressedFile = new File([blob], sanitizeFileName(file.name), {
                 type: 'image/jpeg',
                 lastModified: Date.now()
               });
@@ -198,13 +201,13 @@ export async function compressImage(file: File, maxWidth: number = 800): Promise
             }
           },
           'image/jpeg',
-          0.8
+          0.82
         );
       };
 
-      img.onerror = (err) => reject(err);
+      image.onerror = (error) => reject(error);
     };
 
-    reader.onerror = (err) => reject(err);
+    reader.onerror = (error) => reject(error);
   });
 }

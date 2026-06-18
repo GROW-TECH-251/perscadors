@@ -1,15 +1,16 @@
 // src/app/admin/categories/page.tsx
 // ============================================
-// Gestion des Catégories
+// Gestion des Catégories / collections dynamiques
 // ============================================
 
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminEmptyState } from '@/admin/components';
-import { Tag, Plus, Edit, Trash2, Eye, EyeOff, X, Save } from 'lucide-react';
+import { AdminCard, AdminButton, AdminInput, AdminEmptyState, AdminTextarea } from '@/admin/components';
+import { Tag, Plus, Edit, Trash2, Eye, EyeOff, X, Save, Upload } from 'lucide-react';
 import { fetchCategories, updateCategory, deleteCategory, createCategory } from '@/services/categoryService';
+import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
 import type { AdminCategory } from '@/admin/types';
 
 interface CategoryFormState {
@@ -21,12 +22,25 @@ interface CategoryFormState {
   position: number;
 }
 
+function slugifyCategory(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export default function AdminCategoriesPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [newCategory, setNewCategory] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState<CategoryFormState>({
     name: '',
     category: '',
@@ -70,6 +84,7 @@ export default function AdminCategoriesPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setSaving(true);
 
     try {
       if (editingId) {
@@ -93,6 +108,8 @@ export default function AdminCategoriesPage() {
     } catch (error: unknown) {
       console.error('Erreur sauvegarde catégorie:', error);
       alert('Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -141,6 +158,72 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const handleNameChange = (value: string) => {
+    setFormData((currentData) => {
+      const nextSlug = currentData.category ? currentData.category : slugifyCategory(value);
+      return {
+        ...currentData,
+        name: value,
+        category: nextSlug
+      };
+    });
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner une image valide');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const compressedFile = await compressImage(file, 1400);
+      const uploadKey = formData.category || slugifyCategory(formData.name) || `collection-${Date.now()}`;
+      const result = await uploadBrandAsset(compressedFile, `collections/${uploadKey}`);
+
+      if (result.error || !result.data) {
+        alert(result.error || 'Erreur upload image');
+        return;
+      }
+
+      setFormData((currentData) => ({
+        ...currentData,
+        image_url: result.data || ''
+      }));
+    } catch (error: unknown) {
+      console.error('Erreur upload catégorie:', error);
+      alert('Erreur lors de l’upload de l’image');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (!formData.image_url) {
+      return;
+    }
+
+    const shouldDelete = window.confirm('Supprimer aussi l’image du stockage Supabase ?');
+    if (shouldDelete) {
+      const result = await deleteImageByUrl(BUCKETS.BRAND_ASSETS, formData.image_url);
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
+    }
+
+    setFormData((currentData) => ({
+      ...currentData,
+      image_url: ''
+    }));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -157,7 +240,7 @@ export default function AdminCategoriesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Catégories</h1>
-          <p className="text-brand-text-muted mt-1">{categories.length} catégories</p>
+          <p className="text-brand-text-muted mt-1">{categories.length} collections dynamiques</p>
         </div>
         <div className="flex gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>
@@ -187,56 +270,82 @@ export default function AdminCategoriesPage() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AdminInput
                 label="Nom affiché"
                 value={formData.name}
-                onChange={(value) => setFormData({ ...formData, name: value })}
+                onChange={handleNameChange}
                 required
               />
               <AdminInput
                 label="Slug (URL)"
                 value={formData.category}
-                onChange={(value) => setFormData({ ...formData, category: value })}
+                onChange={(value) => setFormData((currentData) => ({ ...currentData, category: slugifyCategory(value) }))}
                 placeholder="basket-pour-homme"
                 required
               />
               <AdminInput
-                label="URL de l'image"
-                value={formData.image_url}
-                onChange={(value) => setFormData({ ...formData, image_url: value })}
-                placeholder="/images/ARTICLES/..."
-              />
-              <AdminInput
                 label="Position"
                 value={formData.position}
-                onChange={(value) => setFormData({ ...formData, position: Number(value) || 0 })}
+                onChange={(value) => setFormData((currentData) => ({ ...currentData, position: Number(value) || 0 }))}
                 type="number"
               />
+              <div className="flex items-center gap-4 pt-7">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.visible}
+                    onChange={(event) => setFormData((currentData) => ({ ...currentData, visible: event.target.checked }))}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-brand-text">Catégorie visible</span>
+                </label>
+              </div>
             </div>
 
-            <AdminInput
-              label="Description"
+            <AdminTextarea
+              label="Description / accroche"
               value={formData.description}
-              onChange={(value) => setFormData({ ...formData, description: value })}
-              placeholder="Description de la catégorie..."
+              onChange={(value) => setFormData((currentData) => ({ ...currentData, description: value }))}
+              rows={4}
+              placeholder="Décris la collection telle qu’elle doit apparaître sur la vitrine."
             />
 
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
                 <input
-                  type="checkbox"
-                  checked={formData.visible}
-                  onChange={(event) => setFormData({ ...formData, visible: event.target.checked })}
-                  className="w-4 h-4"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                  className="hidden"
+                  id="category-image-upload"
                 />
-                <span className="text-sm text-brand-text">Catégorie visible</span>
-              </label>
+                <label
+                  htmlFor="category-image-upload"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-brand-gold text-[#0A0A0A] rounded-lg cursor-pointer hover:bg-brand-gold-light transition-colors font-medium"
+                >
+                  <Upload size={18} />
+                  {uploading ? 'Upload en cours...' : 'Uploader l’image de collection'}
+                </label>
+                {formData.image_url && (
+                  <AdminButton type="button" variant="danger" onClick={handleRemoveImage}>
+                    Supprimer l’image
+                  </AdminButton>
+                )}
+              </div>
+
+              {formData.image_url && (
+                <div className="relative max-w-sm aspect-video overflow-hidden rounded-xl border border-brand-gold/20 bg-brand-bg">
+                  <img src={formData.image_url} alt="Aperçu de la catégorie" className="w-full h-full object-cover" />
+                </div>
+              )}
             </div>
 
-            <div className="flex gap-3 pt-4">
-              <AdminButton type="submit" variant="primary">
+            <div className="flex gap-3 pt-2">
+              <AdminButton type="submit" variant="primary" loading={saving || uploading}>
                 <Save size={16} />
                 {editingId ? 'Mettre à jour' : 'Créer'}
               </AdminButton>
@@ -252,7 +361,7 @@ export default function AdminCategoriesPage() {
         <AdminEmptyState
           icon={<Tag size={48} />}
           title="Aucune catégorie"
-          description="Créez votre première catégorie"
+          description="Créez votre première collection dynamique"
           action={
             <AdminButton
               variant="primary"
@@ -295,6 +404,10 @@ export default function AdminCategoriesPage() {
                 {category.description && (
                   <p className="text-sm text-brand-text-muted line-clamp-2">{category.description}</p>
                 )}
+
+                <div className="text-xs text-brand-text-muted">
+                  Position : {category.position}
+                </div>
 
                 <div className="flex gap-2 pt-3 border-t border-brand-gold/10">
                   <AdminButton

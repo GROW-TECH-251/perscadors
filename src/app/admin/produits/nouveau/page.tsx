@@ -10,8 +10,12 @@ import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect } from '@/admin/components';
 import { Save, X, Upload } from 'lucide-react';
 import { createProduct } from '@/services/productService';
-import { uploadProductImage } from '@/lib/supabase';
+import { BUCKETS, compressImage, deleteImageByUrl, uploadProductImage } from '@/services/mediaService';
 import type { ProductFormData } from '@/admin/types';
+
+function createDraftUploadKey(): string {
+  return globalThis.crypto?.randomUUID?.() || `product-${Date.now()}`;
+}
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -19,6 +23,7 @@ export default function NewProductPage() {
 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadKey] = useState(createDraftUploadKey);
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     category: 'basket-pour-homme',
@@ -52,12 +57,13 @@ export default function NewProductPage() {
 
     setUploading(true);
     try {
-      const result = await uploadProductImage(file);
+      const compressedFile = await compressImage(file, 1400);
+      const result = await uploadProductImage(compressedFile, uploadKey);
 
-      if (result.error) {
-        alert(`Erreur upload: ${result.error}`);
+      if (result.error || !result.data) {
+        alert(result.error || 'Erreur upload image');
       } else {
-        setFormData((currentData) => ({ ...currentData, image_url: result.url }));
+        setFormData((currentData) => ({ ...currentData, image_url: result.data || '' }));
       }
     } catch (error: unknown) {
       console.error('Erreur upload image:', error);
@@ -68,6 +74,23 @@ export default function NewProductPage() {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const handleRemoveImage = async () => {
+    if (!formData.image_url) {
+      return;
+    }
+
+    const shouldDelete = window.confirm('Supprimer aussi l’image du stockage Supabase ?');
+    if (shouldDelete) {
+      const result = await deleteImageByUrl(BUCKETS.PRODUCT_IMAGES, formData.image_url);
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
+    }
+
+    setFormData((currentData) => ({ ...currentData, image_url: '' }));
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -205,7 +228,7 @@ export default function NewProductPage() {
               {formData.image_url && (
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, image_url: '' })}
+                  onClick={handleRemoveImage}
                   className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
                 >
                   Supprimer l&apos;image

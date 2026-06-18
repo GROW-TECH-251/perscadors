@@ -7,13 +7,20 @@
 import { requireSupabase, supabase } from '@/lib/supabase';
 import type { ContentPost, ContentPostType, ApiResponse } from '@/admin/types';
 
-// ============================================
-// LECTURE
-// ============================================
+export interface ContentPostFormData {
+  title: string;
+  content: string;
+  image_url?: string | null;
+  category: ContentPostType;
+  status: ContentPost['status'];
+  published_at?: string | null;
+  scheduled_at?: string | null;
+}
 
-/**
- * Récupère tous les posts de contenu
- */
+function createContentPostId(): string {
+  return globalThis.crypto?.randomUUID?.() || `post-${Date.now()}`;
+}
+
 export async function fetchContentPosts(): Promise<ContentPost[]> {
   if (!supabase) return [];
 
@@ -27,12 +34,9 @@ export async function fetchContentPosts(): Promise<ContentPost[]> {
     return [];
   }
 
-  return data || [];
+  return (data || []) as ContentPost[];
 }
 
-/**
- * Récupère un post par son ID
- */
 export async function fetchContentPostById(id: string): Promise<ContentPost | null> {
   const db = requireSupabase();
 
@@ -50,36 +54,13 @@ export async function fetchContentPostById(id: string): Promise<ContentPost | nu
   return data as ContentPost;
 }
 
-/**
- * Récupère un post par son slug
- */
-export async function fetchContentPostBySlug(slug: string): Promise<ContentPost | null> {
-  if (!supabase) return null;
-
-  const { data, error } = await supabase
-    .from('content_posts')
-    .select('*')
-    .eq('slug', slug)
-    .single();
-
-  if (error || !data) {
-    console.error('Erreur fetch content post par slug:', error);
-    return null;
-  }
-
-  return data as ContentPost;
-}
-
-/**
- * Récupère les posts publiés
- */
 export async function fetchPublishedPosts(): Promise<ContentPost[]> {
   if (!supabase) return [];
 
   const { data, error } = await supabase
     .from('content_posts')
     .select('*')
-    .eq('published', true)
+    .eq('status', 'published')
     .order('published_at', { ascending: false });
 
   if (error) {
@@ -87,19 +68,16 @@ export async function fetchPublishedPosts(): Promise<ContentPost[]> {
     return [];
   }
 
-  return data || [];
+  return (data || []) as ContentPost[];
 }
 
-/**
- * Récupère les posts par type
- */
 export async function fetchPostsByType(type: ContentPostType): Promise<ContentPost[]> {
   if (!supabase) return [];
 
   const { data, error } = await supabase
     .from('content_posts')
     .select('*')
-    .eq('type', type)
+    .eq('category', type)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -107,36 +85,30 @@ export async function fetchPostsByType(type: ContentPostType): Promise<ContentPo
     return [];
   }
 
-  return data || [];
+  return (data || []) as ContentPost[];
 }
 
-// ============================================
-// CRÉATION
-// ============================================
-
-/**
- * Crée un nouveau post de contenu
- */
-export async function createContentPost(postData: {
-  title: string;
-  slug: string;
-  type: ContentPostType;
-  content: string;
-  excerpt?: string;
-  image?: string;
-  author: string;
-  published: boolean;
-  published_at?: string;
-}): Promise<ApiResponse<ContentPost>> {
+export async function createContentPost(postData: ContentPostFormData): Promise<ApiResponse<ContentPost>> {
   const db = requireSupabase();
+
+  const now = new Date().toISOString();
 
   const { data, error } = await db
     .from('content_posts')
-    .insert([{
-      ...postData,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }])
+    .insert([
+      {
+        id: createContentPostId(),
+        title: postData.title,
+        content: postData.content,
+        image_url: postData.image_url || null,
+        category: postData.category,
+        status: postData.status,
+        published_at: postData.status === 'published' ? postData.published_at || now : null,
+        scheduled_at: postData.status === 'scheduled' ? postData.scheduled_at || null : null,
+        created_at: now,
+        updated_at: now
+      }
+    ])
     .select()
     .single();
 
@@ -148,25 +120,33 @@ export async function createContentPost(postData: {
   return { data: data as ContentPost, error: null };
 }
 
-// ============================================
-// MISE À JOUR
-// ============================================
-
-/**
- * Met à jour un post de contenu
- */
 export async function updateContentPost(
   id: string,
-  postData: Partial<ContentPost>
+  postData: Partial<ContentPostFormData>
 ): Promise<ApiResponse<ContentPost>> {
   const db = requireSupabase();
+  const now = new Date().toISOString();
+
+  const normalizedPayload = {
+    ...postData,
+    published_at:
+      postData.status === 'published'
+        ? postData.published_at || now
+        : postData.status === 'draft'
+          ? null
+          : postData.published_at,
+    scheduled_at:
+      postData.status === 'scheduled'
+        ? postData.scheduled_at || null
+        : postData.status === 'published' || postData.status === 'draft'
+          ? null
+          : postData.scheduled_at,
+    updated_at: now
+  };
 
   const { data, error } = await db
     .from('content_posts')
-    .update({
-      ...postData,
-      updated_at: new Date().toISOString()
-    })
+    .update(normalizedPayload)
     .eq('id', id)
     .select()
     .single();
@@ -179,41 +159,17 @@ export async function updateContentPost(
   return { data: data as ContentPost, error: null };
 }
 
-/**
- * Publie ou dépublie un post
- */
 export async function togglePostPublication(
   id: string,
-  published: boolean
+  nextStatus: ContentPost['status']
 ): Promise<ApiResponse<ContentPost>> {
-  const db = requireSupabase();
-
-  const { data, error } = await db
-    .from('content_posts')
-    .update({
-      published,
-      published_at: published ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Erreur toggle publication post:', error);
-    return { data: null, error: error.message };
-  }
-
-  return { data: data as ContentPost, error: null };
+  return await updateContentPost(id, {
+    status: nextStatus,
+    published_at: nextStatus === 'published' ? new Date().toISOString() : null,
+    scheduled_at: nextStatus === 'scheduled' ? new Date().toISOString() : null
+  });
 }
 
-// ============================================
-// SUPPRESSION
-// ============================================
-
-/**
- * Supprime un post de contenu
- */
 export async function deleteContentPost(id: string): Promise<ApiResponse<boolean>> {
   const db = requireSupabase();
 
@@ -230,13 +186,6 @@ export async function deleteContentPost(id: string): Promise<ApiResponse<boolean
   return { data: true, error: null };
 }
 
-// ============================================
-// STATISTIQUES
-// ============================================
-
-/**
- * Récupère le nombre total de posts
- */
 export async function getTotalPostsCount(): Promise<number> {
   if (!supabase) return 0;
 
@@ -252,16 +201,13 @@ export async function getTotalPostsCount(): Promise<number> {
   return count || 0;
 }
 
-/**
- * Récupère le nombre de posts publiés
- */
 export async function getPublishedPostsCount(): Promise<number> {
   if (!supabase) return 0;
 
   const { count, error } = await supabase
     .from('content_posts')
     .select('*', { count: 'exact', head: true })
-    .eq('published', true);
+    .eq('status', 'published');
 
   if (error) {
     console.error('Erreur count posts publiés:', error);
