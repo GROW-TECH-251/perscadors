@@ -154,15 +154,32 @@ export interface ContentPost {
   updated_at: string;
 }
 
+export interface DeliveryZone {
+  id: string;
+  name: string;
+  fee: number;
+  freeThreshold: number;
+}
+
+export interface CustomerSegmentationSettings {
+  vip_threshold: number;
+  loyal_threshold: number;
+  big_cart_threshold: number;
+}
+
 export interface ShopSettings {
   shop_name: string;
   whatsapp_phone: string;
   currency: string;
-  delivery_zones: string[];
+  country: string;
+  delivery_zones: DeliveryZone[];
+  delivery_free_threshold: number;
+  delivery_time: string;
+  order_followup_template: string;
+  order_confirmed_template: string;
+  order_delivered_template: string;
+  customer_segmentation: CustomerSegmentationSettings;
   logo_url: string | null;
-  whatsapp_templates: Record<string, string>;
-  delivery_options: Record<string, unknown>;
-  customer_segmentation: Record<string, number>;
   updated_at: string;
 }
 

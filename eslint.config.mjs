@@ -13,8 +13,7 @@ const eslintConfig = defineConfig([
     "src/admin/AdminApp.tsx",
     "src/admin/hooks/**",
     "src/admin/screens/**",
-    "src/services/customerMetaService.ts",
-    "src/services/settingsService.ts"
+    "src/services/customerMetaService.ts"
   ]),
 ]);
 
