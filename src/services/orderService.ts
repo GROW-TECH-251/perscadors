@@ -142,10 +142,19 @@ export async function createOrderFromCart(orderData: {
     note: 'Commande créée depuis le panier'
   }];
 
+  // Mapping explicite vers les vraies colonnes de la table `orders`
+  // (subtotal -> total, total -> grand_total)
   const { data, error } = await db
     .from('orders')
     .insert([{
-      ...orderData,
+      order_number: orderData.order_number,
+      client_name: orderData.client_name,
+      client_phone: orderData.client_phone,
+      client_area: orderData.client_area,
+      items: orderData.items,
+      total: orderData.subtotal,
+      delivery_fee: orderData.delivery_fee,
+      grand_total: orderData.total,
       status: 'EN ATTENTE',
       history,
       created_at: new Date().toISOString(),
