@@ -40,3 +40,11 @@ export interface CartItem {
   selectedColor: string;
   quantity: number;
 }
+
+export interface CheckoutFormData {
+  client_name: string;
+  client_phone: string;
+  client_area: string;
+}
+
+export type CheckoutStep = 1 | 2 | 3;
