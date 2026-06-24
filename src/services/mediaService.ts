@@ -64,7 +64,12 @@ export async function uploadProductImage(
   file: File,
   productId: string
 ): Promise<ApiResponse<string>> {
-  const fileName = `${productId}/${Date.now()}-${file.name}`;
+  const cleanName = file.name
+    .replace(/'/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-zA-Z0-9._-]/g, '')
+    .toLowerCase();
+  const fileName = `${productId}/${Date.now()}-${cleanName}`;
   return await uploadImage(BUCKETS.PRODUCT_IMAGES, file, fileName);
 }
 
