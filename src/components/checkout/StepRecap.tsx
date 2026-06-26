@@ -11,7 +11,6 @@ interface Props {
 
 export function StepRecap({ onNext }: Props) {
   const { cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
-  const DELIVERY_FEE = 0;
 
   return (
     <div className="flex flex-col h-full">

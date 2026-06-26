@@ -3,10 +3,11 @@
 
 import { useState } from 'react';
 import { X, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
 import { StepRecap } from './StepRecap';
 import { StepForm } from './StepForm';
 import { StepConfirm } from './StepConfirm';
-import type { CheckoutFormData, CheckoutStep, CreatedOrder } from '@/types';
+import type { CheckoutFormData, CheckoutStep, CreatedOrder } from '@/admin/types';
 
 interface Props {
   isOpen: boolean;
@@ -102,12 +103,12 @@ export function CheckoutDrawer({ isOpen, onClose }: Props) {
                     {completedOrder.order_number}
                   </p>
                 </div>
-                <a
+                <Link
                   href={`/order/${completedOrder.public_token}`}
                   className="w-full py-3 border border-brand-gold/30 text-brand-gold font-bebas text-lg uppercase tracking-widest rounded hover:border-brand-gold transition-all text-center block"
                 >
                   Suivre ma commande
-                </a>
+                </Link>
                 <button
                   onClick={handleClose}
                   className="w-full py-3 bg-brand-gold hover:bg-brand-gold-light text-brand-bg font-bebas text-lg uppercase tracking-widest rounded transition-all"

@@ -6,7 +6,8 @@ import { Loader2, MessageSquareCode } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { createOrderFromCart } from '@/services/orderService';
 import { generateOrderNumber, buildWhatsAppMessage, openWhatsApp } from '@/services/whatsappService';
-import type { CheckoutFormData, CreatedOrder, OrderItem } from '@/types';
+import type { CheckoutFormData, CreatedOrder } from '@/admin/types';
+import type { OrderItem } from '@/admin/types';
 
 interface Props {
   formData: CheckoutFormData;

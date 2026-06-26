@@ -1,10 +1,11 @@
 // src/components/checkout/StepForm.tsx
 'use client';
 
-import { useState } from 'react';
-import type { CheckoutFormData } from '@/types';
+import { useState, useEffect } from 'react';
+import type { CheckoutFormData } from '@/admin/types';
+import { supabase } from '@/lib/supabase';
 
-const ZONES = ['Cotonou', 'Abomey-Calavi', 'Porto-Novo', 'Autre'];
+const FALLBACK_ZONES = ['Cotonou', 'Abomey-Calavi'];
 
 interface Props {
   defaultValues: CheckoutFormData;
@@ -15,6 +16,22 @@ interface Props {
 export function StepForm({ defaultValues, onNext, onBack }: Props) {
   const [form, setForm] = useState<CheckoutFormData>(defaultValues);
   const [errors, setErrors] = useState<Partial<CheckoutFormData>>({});
+  const [zones, setZones] = useState<string[]>(FALLBACK_ZONES);
+
+  useEffect(() => {
+    async function loadZones() {
+      if (!supabase) return;
+      const { data, error } = await supabase
+        .from('shop_settings')
+        .select('delivery_zones')
+        .single();
+
+      if (!error && data?.delivery_zones?.length) {
+        setZones([...data.delivery_zones, 'Autre']);
+      }
+    }
+    loadZones();
+  }, []);
 
   const validate = (): boolean => {
     const e: Partial<CheckoutFormData> = {};
@@ -73,7 +90,7 @@ export function StepForm({ defaultValues, onNext, onBack }: Props) {
             }`}
           >
             <option value="">Choisir une zone…</option>
-            {ZONES.map((z) => (
+            {zones.map((z) => (
               <option key={z} value={z}>{z}</option>
             ))}
           </select>

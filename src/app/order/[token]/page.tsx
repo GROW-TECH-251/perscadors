@@ -1,6 +1,7 @@
 // src/app/order/[token]/page.tsx
 import { supabase } from '@/lib/supabase';
 import type { OrderStatus } from '@/types';
+import Link from 'next/link';
 import { Package, Truck, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: React.ReactNode; color: string }> = {
@@ -140,7 +141,7 @@ function ErrorState({ message }: { message: string }) {
       <div className="text-center space-y-3">
         <XCircle size={48} className="text-red-400 mx-auto" />
         <p className="font-bebas text-xl">{message}</p>
-        <a href="/" className="text-brand-gold text-sm underline">Retour à l'accueil</a>
+        <Link href="/" className="text-brand-gold text-sm underline">Retour à l&apos;accueil</Link>
       </div>
     </div>
   );
