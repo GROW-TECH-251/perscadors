@@ -1,11 +1,11 @@
 // src/admin/components.tsx
 // ============================================
-// Composants UI pour l'administration (Next.js)
+// Composants UI pour l'administration (Levier 3 : Bottom Bar Navigation)
 // ============================================
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -22,7 +22,8 @@ import {
   Tag,
   CheckSquare,
   Search,
-  Loader2
+  Loader2,
+  MoreHorizontal
 } from 'lucide-react';
 import type { AdminScreen, NavItem, OrderStatus } from './types';
 
@@ -142,40 +143,129 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
   onNavigate,
   lowStockCount = 0
 }) => {
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const getIcon = (iconName: string) => iconMap[iconName] || <Package size={20} />;
-  const mobileItems = ADMIN_NAV_ITEMS.slice(0, 5);
+  
+  // Les 4 icônes primaires de la Bottom Bar
+  const primaryItems = ADMIN_NAV_ITEMS.slice(0, 4);
+  // Les autres items vont dans le tiroir "Plus"
+  const moreItems = ADMIN_NAV_ITEMS.slice(4);
+
+  const handleTabClick = (screen: AdminScreen) => {
+    setIsMoreOpen(false);
+    onNavigate(screen);
+  };
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0A] border-t border-brand-gold/20 z-40 safe-area-bottom">
-      <div className="grid grid-cols-5 gap-1">
-        {mobileItems.map((item) => {
-          const isActive = currentScreen === item.id;
-          const showBadge = item.id === 'stockAlerts' && lowStockCount > 0;
+    <>
+      {/* Overlay du Menu Plus */}
+      {isMoreOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
+          onClick={() => setIsMoreOpen(false)}
+        />
+      )}
 
-          return (
+      {/* Levier 3 : Tiroir de Menu d'Actions Rapides (Floating Action Menu) */}
+      {isMoreOpen && (
+        <div className="fixed inset-x-0 bottom-16 bg-[#0A0A0A]/95 backdrop-blur-2xl border-t border-brand-gold/25 rounded-t-3xl p-6 shadow-[0_-20px_70px_rgba(10,10,10,0.85)] z-50 lg:hidden animate-slide-up-fade space-y-4">
+          <div className="flex items-center justify-between border-b border-brand-gold/15 pb-3">
+            <span className="font-bebas text-xl text-brand-text uppercase tracking-wider">
+              Menu & Pilotes Avancés
+            </span>
             <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => setIsMoreOpen(false)}
+              className="p-1.5 rounded-full bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20 transition-colors cursor-pointer"
               type="button"
-              aria-label={`Aller à ${item.label}`}
-              className={`flex flex-col items-center justify-center py-3 px-2 cursor-pointer ${
-                isActive ? 'text-brand-gold' : 'text-gray-400'
-              }`}
+              aria-label="Fermer menu"
             >
-              <div className="relative">
-                {getIcon(item.icon)}
-                {showBadge && (
-                  <span className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {lowStockCount}
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] mt-1 font-medium">{item.label}</span>
+              <X size={18} />
             </button>
-          );
-        })}
-      </div>
-    </nav>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {moreItems.map((item) => {
+              const isActive = currentScreen === item.id;
+              const showBadge = item.id === 'stockAlerts' && lowStockCount > 0;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleTabClick(item.id)}
+                  type="button"
+                  className={`flex items-center gap-3 p-4 rounded-2xl border transition-all duration-200 active:scale-95 cursor-pointer ${
+                    isActive
+                      ? 'bg-brand-gold text-[#0A0A0A] border-brand-gold font-bold shadow-[0_4px_15px_rgba(184,149,42,0.25)]'
+                      : 'bg-brand-bg-alt text-gray-300 border-brand-gold/15 hover:border-brand-gold/40 hover:text-white'
+                  }`}
+                >
+                  <div className="relative flex-shrink-0">
+                    {getIcon(item.icon)}
+                    {showBadge && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {lowStockCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-bebas text-base uppercase tracking-wider truncate">
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Levier 3 : Bottom Bar Navigation en Verre Dépoli */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/90 backdrop-blur-xl border-t border-brand-gold/20 z-50 safe-area-bottom shadow-[0_-10px_40px_rgba(10,10,10,0.65)]">
+        <div className="grid grid-cols-5 gap-1 py-1 px-2">
+          {primaryItems.map((item) => {
+            const isActive = currentScreen === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleTabClick(item.id)}
+                type="button"
+                aria-label={`Aller à ${item.label}`}
+                className={`flex flex-col items-center justify-center py-2 px-1 cursor-pointer transition-all duration-200 group ${
+                  isActive ? 'text-brand-gold scale-105' : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                <div className={`relative transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}>
+                  {getIcon(item.icon)}
+                </div>
+                <span className="text-[10px] mt-1 font-medium tracking-wide truncate max-w-full">
+                  {item.label}
+                </span>
+                {/* Point d'activation premium */}
+                {isActive && (
+                  <div className="w-1.5 h-1.5 bg-brand-gold rounded-full mt-0.5 animate-scale-in shadow-[0_0_8px_rgba(184,149,42,0.8)]" />
+                )}
+              </button>
+            );
+          })}
+
+          {/* Bouton "Plus / Menu" */}
+          <button
+            onClick={() => setIsMoreOpen(!isMoreOpen)}
+            type="button"
+            aria-label="Ouvrir le menu avancé"
+            className={`flex flex-col items-center justify-center py-2 px-1 cursor-pointer transition-all duration-200 ${
+              isMoreOpen ? 'text-brand-gold scale-105' : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <div className={`relative transition-transform duration-200 ${isMoreOpen ? 'scale-110 rotate-90' : ''}`}>
+              <MoreHorizontal size={20} />
+            </div>
+            <span className="text-[10px] mt-1 font-medium tracking-wide">Menu</span>
+            {isMoreOpen && (
+              <div className="w-1.5 h-1.5 bg-brand-gold rounded-full mt-0.5 animate-scale-in shadow-[0_0_8px_rgba(184,149,42,0.8)]" />
+            )}
+          </button>
+        </div>
+      </nav>
+    </>
   );
 };
 
