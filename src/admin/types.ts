@@ -1,6 +1,6 @@
 // src/admin/types.ts
 // ============================================
-// Types TypeScript pour l'administration
+// Types TypeScript pour l'administration et le Checkout
 // ============================================
 
 export type AdminScreen = 
@@ -83,7 +83,10 @@ export interface OrderHistoryEntry {
 export interface AdminOrder {
   id: number;
   order_number: string;
+  public_token?: string;
   status: OrderStatus;
+  payment_status?: string;
+  payment_method?: string;
   client_name: string;
   client_phone: string;
   client_area: string;
@@ -92,6 +95,7 @@ export interface AdminOrder {
   subtotal?: number;
   delivery_fee?: number;
   total: number;
+  grand_total?: number;
   created_at: string;
   updated_at: string;
 }
@@ -192,3 +196,17 @@ export interface ApiResponse<T> {
   data: T | null;
   error: string | null;
 }
+
+// ============================================
+// CHECKOUT (pôle commandes & WhatsApp)
+// ============================================
+
+export interface CheckoutFormData {
+  client_name: string;
+  client_phone: string;
+  client_area: string;
+}
+
+export type CheckoutStep = 1 | 2 | 3;
+
+export type CreatedOrder = AdminOrder;
