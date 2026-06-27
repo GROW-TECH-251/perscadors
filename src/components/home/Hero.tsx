@@ -44,6 +44,19 @@ export const Hero: React.FC = () => {
       {/* Content wrapper - Centered */}
       <div className="relative z-20 max-w-5xl mx-auto text-center px-4 sm:px-6 lg:px-8 space-y-8 flex flex-col items-center justify-center">
         
+        {/* Premium Typography Hierarchy - Level 2 Immersive Hero */}
+        <div className="space-y-4 animate-slide-up-fade">
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold border border-brand-gold/20 backdrop-blur-md shadow-lg">
+            Collection Premium • Bénin
+          </span>
+          <h1 className="font-bebas text-5xl sm:text-7xl lg:text-8xl tracking-wider text-white uppercase drop-shadow-2xl leading-none">
+            Vioutou t&apos;habille. <span className="text-brand-gold">Tu règnes.</span>
+          </h1>
+          <p className="text-brand-text-muted max-w-2xl mx-auto text-base sm:text-xl font-light leading-relaxed">
+            La marque de mode streetwear premium. Statut, style, modernité et une élégance sans compromis. Impose ta présence dans la rue.
+          </p>
+        </div>
+
         {/* Action CTAs Centered - Enhanced premium interactions */}
         <div
           className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 animate-slide-up-fade"
