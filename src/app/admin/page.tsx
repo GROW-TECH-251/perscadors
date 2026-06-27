@@ -13,13 +13,14 @@ import { fetchAdminOrders } from '@/services/orderService';
 import { fetchCustomerSummaries } from '@/services/customerService';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
 import { AdminCard, AdminButton } from '@/admin/components';
-import { Package, ShoppingCart, Users, DollarSign, TrendingUp, AlertTriangle, Eye, Edit, Trash2, MessageCircle, Share2, Award } from 'lucide-react';
+import { Package, ShoppingCart, Users, DollarSign, TrendingUp, AlertTriangle, Eye, Edit, Trash2, MessageCircle, Share2, Award, X } from 'lucide-react';
 import type { AdminProduct, AdminOrder, ShopSettings } from '@/admin/types';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
+  const [storyToast, setStoryToast] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalOrders: 0,
@@ -111,7 +112,7 @@ export default function AdminDashboardPage() {
   const formatCurrency = (amount: number) => `${amount.toLocaleString('fr-FR')} FCFA`;
 
   // ============================================
-  // LEVIER 4 : PARTAGE INSTANTANÉ WHATSAPP (Effet IKEA)
+  // LEVIER 4 : PARTAGE INSTANTANÉ WHATSAPP (Correction Bloqueur de Popups)
   // ============================================
   const handleShareStory = async (product: AdminProduct) => {
     const message = formatWhatsAppMessage(settings.story_share_template, {
@@ -122,12 +123,16 @@ export default function AdminDashboardPage() {
 
     try {
       await navigator.clipboard.writeText(message);
-      alert(`=== MISSION STORY WHATSAPP ===\n\nTexte copié dans le presse-papier !\n\nColle-le directement dans ton onglet Statut sur WhatsApp. Tu peux y ajouter la photo du produit pour un impact maximal 🚀`);
-      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(message), '_blank');
     } catch (error: unknown) {
       console.error('Erreur copie story:', error);
-      window.open('https://wa.me/?text=' + encodeURIComponent(message), '_blank');
     }
+
+    // 1. Ouvrir WhatsApp DIRECTEMENT dans le fil d'exécution (évite le bloqueur de popups des navigateurs !)
+    window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(message), '_blank');
+
+    // 2. Afficher la notification Toast visuelle non bloquante
+    setStoryToast(product.name);
+    setTimeout(() => setStoryToast(null), 7000);
   };
 
   const handleBroadcastVIP = (product: AdminProduct) => {
@@ -154,7 +159,25 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {/* Toast de notification de partage Story */}
+      {storyToast && (
+        <div className="fixed top-6 right-6 bg-brand-gold text-[#0A0A0A] p-6 rounded-2xl shadow-[0_20px_50px_rgba(184,149,42,0.5)] z-50 max-w-sm animate-slide-up-fade border border-brand-gold-light flex items-start gap-4 backdrop-blur-md">
+          <div className="p-2.5 bg-[#0A0A0A] text-brand-gold rounded-xl flex-shrink-0 shadow">
+            <Share2 size={24} />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-bebas text-xl uppercase tracking-wider font-bold">Mission Story WhatsApp</h4>
+            <p className="text-xs mt-1 leading-relaxed font-medium">
+              Le script publicitaire pour <strong>{storyToast}</strong> a été copié dans ton presse-papier. Colle-le directement dans l&apos;onglet <strong>Statut</strong> de WhatsApp ! 🚀
+            </p>
+          </div>
+          <button onClick={() => setStoryToast(null)} className="p-1 hover:bg-black/10 rounded-full text-[#0A0A0A] cursor-pointer" aria-label="Fermer la notification">
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">

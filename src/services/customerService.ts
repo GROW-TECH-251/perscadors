@@ -38,7 +38,8 @@ export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
     return [];
   }
 
-  if (customerMetaError) {
+  // Interception propre de l'erreur PGRST205 (table customer_meta manquante)
+  if (customerMetaError && customerMetaError.code !== 'PGRST205') {
     console.error('Erreur fetch customer_meta:', customerMetaError);
   }
 
