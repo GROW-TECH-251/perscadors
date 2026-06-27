@@ -64,9 +64,9 @@ export async function uploadImage(
 
 export async function uploadProductImage(
   file: File,
-  productId: string = 'draft'
+  productId: string | number = 'draft'
 ): Promise<ApiResponse<string>> {
-  const safeProductId = ensurePathSegment(productId);
+  const safeProductId = ensurePathSegment(String(productId));
   const safeFileName = sanitizeFileName(file.name);
   const filePath = `${safeProductId}/${Date.now()}-${safeFileName}`;
 

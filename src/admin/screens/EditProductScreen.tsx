@@ -35,7 +35,9 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
     slug: '',
     category: 'basket-pour-homme',
     price: 0,
-    stock: undefined,
+    image_url: '',
+    stock: 0,
+    demand: 0,
     sizes: [],
     colors: [],
     outOfStockSizes: [],
@@ -53,22 +55,24 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Déclarer loadProduct AVANT useEffect avec useCallback
-  const loadProduct = useCallback(async (id: string) => {
+  const loadProduct = useCallback(async (id: number) => {
     try {
       const data = await fetchProductById(id);
       if (data) {
         setFormData({
           name: data.name,
-          slug: data.slug,
+          slug: data.slug || '',
           category: data.category,
           price: data.price,
-          stock: data.stock,
+          image_url: data.image_url || '',
+          stock: data.stock || 0,
+          demand: data.demand || 0,
           sizes: data.sizes || [],
           colors: data.colors || [],
           outOfStockSizes: data.outOfStockSizes || [],
           outOfStockColors: data.outOfStockColors || [],
-          images: data.images || [],
-          description: data.description,
+          images: data.images || (data.image_url ? [data.image_url] : []),
+          description: data.description || '',
           visible: data.visible,
           badge: data.badge || '',
           isPopular: data.isPopular || false
@@ -83,7 +87,7 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
   useEffect(() => {
     const initProduct = async () => {
       if (product?.id) {
-        await loadProduct(product.id);
+        await loadProduct(Number(product.id));
       }
     };
     initProduct();
@@ -99,10 +103,11 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
       const result = await uploadProductImage(file, productId);
 
       if (result.data) {
-        setFormData({
-          ...formData,
-          images: [...formData.images, result.data]
-        });
+        setFormData((prev) => ({
+          ...prev,
+          image_url: prev.image_url || (result.data as string),
+          images: [...(prev.images || []), result.data as string]
+        }));
       }
     } catch (err: unknown) {
       console.error('Erreur upload image:', err);
@@ -113,46 +118,46 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
   };
 
   const handleRemoveImage = (index: number) => {
-    setFormData({
-      ...formData,
-      images: formData.images.filter((_, i) => i !== index)
-    });
+    setFormData((prev) => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== index)
+    }));
   };
 
   const handleAddSize = () => {
     if (newSize && !formData.sizes.includes(newSize)) {
-      setFormData({
-        ...formData,
-        sizes: [...formData.sizes, newSize]
-      });
+      setFormData((prev) => ({
+        ...prev,
+        sizes: [...prev.sizes, newSize]
+      }));
       setNewSize('');
     }
   };
 
   const handleRemoveSize = (size: string) => {
-    setFormData({
-      ...formData,
-      sizes: formData.sizes.filter(s => s !== size),
-      outOfStockSizes: formData.outOfStockSizes.filter(s => s !== size)
-    });
+    setFormData((prev) => ({
+      ...prev,
+      sizes: prev.sizes.filter((s) => s !== size),
+      outOfStockSizes: (prev.outOfStockSizes || []).filter((s) => s !== size)
+    }));
   };
 
   const handleAddColor = () => {
     if (newColor && !formData.colors.includes(newColor)) {
-      setFormData({
-        ...formData,
-        colors: [...formData.colors, newColor]
-      });
+      setFormData((prev) => ({
+        ...prev,
+        colors: [...prev.colors, newColor]
+      }));
       setNewColor('');
     }
   };
 
   const handleRemoveColor = (color: string) => {
-    setFormData({
-      ...formData,
-      colors: formData.colors.filter(c => c !== color),
-      outOfStockColors: formData.outOfStockColors.filter(c => c !== color)
-    });
+    setFormData((prev) => ({
+      ...prev,
+      colors: prev.colors.filter((c) => c !== color),
+      outOfStockColors: (prev.outOfStockColors || []).filter((c) => c !== color)
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,7 +166,7 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
 
     try {
       if (product?.id) {
-        await updateProduct(product.id, formData);
+        await updateProduct(Number(product.id), formData);
       } else {
         await createProduct(formData);
       }
@@ -203,7 +208,7 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
             />
             <AdminInput
               label="Slug (URL)"
-              value={formData.slug}
+              value={formData.slug || ''}
               onChange={(v) => setFormData({ ...formData, slug: v })}
               placeholder="mon-produit"
               required
@@ -226,7 +231,7 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
             <AdminInput
               label="Stock"
               value={formData.stock !== undefined ? formData.stock.toString() : ''}
-              onChange={(v) => setFormData({ ...formData, stock: v ? Number(v) : undefined })}
+              onChange={(v) => setFormData({ ...formData, stock: v ? Number(v) : 0 })}
               type="number"
               placeholder="Laisser vide pour stock illimité"
             />
@@ -241,7 +246,7 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
           <div className="mt-4">
             <AdminTextarea
               label="Description"
-              value={formData.description}
+              value={formData.description || ''}
               onChange={(v) => setFormData({ ...formData, description: v })}
               rows={4}
               required
@@ -290,9 +295,9 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
               </label>
             </div>
 
-            {formData.images.length > 0 && (
+            {(formData.images || []).length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {formData.images.map((img, index) => (
+                {(formData.images || []).map((img, index) => (
                   <div key={index} className="relative aspect-square bg-brand-bg rounded-lg overflow-hidden group">
                     <img src={img} alt={`Product ${index}`} className="w-full h-full object-cover" />
                     <button
@@ -350,18 +355,18 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
                   <label className="flex items-center gap-1 text-xs">
                     <input
                       type="checkbox"
-                      checked={formData.outOfStockSizes.includes(size)}
+                      checked={(formData.outOfStockSizes || []).includes(size)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setFormData({
-                            ...formData,
-                            outOfStockSizes: [...formData.outOfStockSizes, size]
-                          });
+                          setFormData((prev) => ({
+                            ...prev,
+                            outOfStockSizes: [...(prev.outOfStockSizes || []), size]
+                          }));
                         } else {
-                          setFormData({
-                            ...formData,
-                            outOfStockSizes: formData.outOfStockSizes.filter(s => s !== size)
-                          });
+                          setFormData((prev) => ({
+                            ...prev,
+                            outOfStockSizes: (prev.outOfStockSizes || []).filter((s) => s !== size)
+                          }));
                         }
                       }}
                       className="w-3 h-3"
@@ -413,18 +418,18 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
                   <label className="flex items-center gap-1 text-xs">
                     <input
                       type="checkbox"
-                      checked={formData.outOfStockColors.includes(color)}
+                      checked={(formData.outOfStockColors || []).includes(color)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setFormData({
-                            ...formData,
-                            outOfStockColors: [...formData.outOfStockColors, color]
-                          });
+                          setFormData((prev) => ({
+                            ...prev,
+                            outOfStockColors: [...(prev.outOfStockColors || []), color]
+                          }));
                         } else {
-                          setFormData({
-                            ...formData,
-                            outOfStockColors: formData.outOfStockColors.filter(c => c !== color)
-                          });
+                          setFormData((prev) => ({
+                            ...prev,
+                            outOfStockColors: (prev.outOfStockColors || []).filter((c) => c !== color)
+                          }));
                         }
                       }}
                       className="w-3 h-3"

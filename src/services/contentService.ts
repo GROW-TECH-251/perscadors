@@ -11,8 +11,14 @@ export interface ContentPostFormData {
   title: string;
   content: string;
   image_url?: string | null;
+  image?: string;
   category: ContentPostType;
+  type?: string;
   status: ContentPost['status'];
+  published?: boolean;
+  author?: string;
+  slug?: string;
+  excerpt?: string;
   published_at?: string | null;
   scheduled_at?: string | null;
 }
@@ -100,10 +106,10 @@ export async function createContentPost(postData: ContentPostFormData): Promise<
         id: createContentPostId(),
         title: postData.title,
         content: postData.content,
-        image_url: postData.image_url || null,
-        category: postData.category,
-        status: postData.status,
-        published_at: postData.status === 'published' ? postData.published_at || now : null,
+        image_url: postData.image_url || postData.image || null,
+        category: postData.category || postData.type || 'Annonce',
+        status: postData.status || (postData.published ? 'published' : 'draft'),
+        published_at: (postData.status === 'published' || postData.published) ? postData.published_at || now : null,
         scheduled_at: postData.status === 'scheduled' ? postData.scheduled_at || null : null,
         created_at: now,
         updated_at: now
@@ -129,10 +135,13 @@ export async function updateContentPost(
 
   const normalizedPayload = {
     ...postData,
+    image_url: postData.image_url || postData.image || undefined,
+    category: postData.category || postData.type || undefined,
+    status: postData.status || (postData.published ? 'published' : postData.published === false ? 'draft' : undefined),
     published_at:
-      postData.status === 'published'
+      (postData.status === 'published' || postData.published)
         ? postData.published_at || now
-        : postData.status === 'draft'
+        : (postData.status === 'draft' || postData.published === false)
           ? null
           : postData.published_at,
     scheduled_at:

@@ -24,13 +24,13 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
   return (data || []) as AdminProduct[];
 }
 
-export async function fetchProductById(id: number): Promise<AdminProduct | null> {
+export async function fetchProductById(id: number | string): Promise<AdminProduct | null> {
   if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('products')
     .select('*')
-    .eq('id', id)
+    .eq('id', Number(id))
     .single();
 
   if (error || !data) {
@@ -49,7 +49,7 @@ export async function createProduct(formData: ProductFormData): Promise<ApiRespo
     .from('products')
     .insert([{
       ...formData,
-      demand: 0,
+      demand: formData.demand || 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }])
@@ -64,7 +64,7 @@ export async function createProduct(formData: ProductFormData): Promise<ApiRespo
 }
 
 export async function updateProduct(
-  id: number,
+  id: number | string,
   formData: Partial<ProductFormData>
 ): Promise<ApiResponse<AdminProduct>> {
   if (!supabase) {
@@ -77,7 +77,7 @@ export async function updateProduct(
       ...formData,
       updated_at: new Date().toISOString()
     })
-    .eq('id', id)
+    .eq('id', Number(id))
     .select()
     .single();
 
@@ -88,7 +88,7 @@ export async function updateProduct(
   return { data: data as AdminProduct, error: null };
 }
 
-export async function deleteProduct(id: number): Promise<ApiResponse<boolean>> {
+export async function deleteProduct(id: number | string): Promise<ApiResponse<boolean>> {
   if (!supabase) {
     return { data: false, error: 'Supabase non configuré' };
   }
@@ -96,7 +96,7 @@ export async function deleteProduct(id: number): Promise<ApiResponse<boolean>> {
   const { error } = await supabase
     .from('products')
     .delete()
-    .eq('id', id);
+    .eq('id', Number(id));
 
   if (error) {
     return { data: false, error: error.message };

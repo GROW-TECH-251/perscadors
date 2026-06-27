@@ -50,10 +50,16 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ onBack }) =>
     
     try {
       if (editingCategory?.id) {
-        await updateCategory(editingCategory.id, formData);
+        await updateCategory(editingCategory.id, {
+          ...formData,
+          category: formData.slug,
+          position: formData.order
+        });
       } else {
         await createCategory({
           ...formData,
+          category: formData.slug,
+          position: categories.length,
           order: categories.length
         });
       }
@@ -69,15 +75,15 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ onBack }) =>
     setEditingCategory(category);
     setFormData({
       name: category.name,
-      slug: category.slug,
+      slug: category.slug || category.category || '',
       description: category.description || '',
       visible: category.visible,
-      order: category.order
+      order: category.order || category.position || 0
     });
     setIsCreating(false);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette catégorie ?')) {
       return;
     }
@@ -231,7 +237,7 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ onBack }) =>
                     <h3 className="font-bebas text-lg text-brand-text uppercase">
                       {category.name}
                     </h3>
-                    <p className="text-xs text-brand-text-muted">{category.slug}</p>
+                    <p className="text-xs text-brand-text-muted">{category.slug || category.category}</p>
                   </div>
                 </div>
                 {!category.visible && (

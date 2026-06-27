@@ -65,12 +65,12 @@ export const ContentPostsScreen: React.FC<ContentPostsScreenProps> = ({ onBack }
     setEditingPost(post);
     setFormData({
       title: post.title,
-      slug: post.slug,
-      type: post.type,
+      slug: post.slug || post.id || '',
+      type: post.type || post.category || 'news',
       content: post.content,
       excerpt: post.excerpt || '',
-      image: post.image || '',
-      published: post.published
+      image: post.image || post.image_url || '',
+      published: post.published ?? (post.status === 'published')
     });
     setIsEditing(true);
   };
@@ -97,7 +97,9 @@ export const ContentPostsScreen: React.FC<ContentPostsScreenProps> = ({ onBack }
       } else {
         await createContentPost({
           ...formData,
-          author: 'Admin'
+          author: 'Admin',
+          category: formData.type,
+          status: formData.published ? 'published' : 'draft'
         });
       }
       await loadPosts();
@@ -247,62 +249,66 @@ export const ContentPostsScreen: React.FC<ContentPostsScreenProps> = ({ onBack }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {posts.map((post) => (
-            <AdminCard key={post.id} className="p-0 overflow-hidden">
-              {post.image && (
-                <div className="aspect-video bg-brand-bg">
-                  <img src={post.image} alt={post.title} className="w-full h-full object-cover" />
-                </div>
-              )}
-
-              <div className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="text-xs text-brand-gold uppercase tracking-wider">
-                      {post.type}
-                    </span>
-                    <h3 className="font-bebas text-lg text-brand-text uppercase mt-1">
-                      {post.title}
-                    </h3>
+          {posts.map((post) => {
+            const displayImage = post.image || post.image_url;
+            const isPublished = post.published ?? (post.status === 'published');
+            return (
+              <AdminCard key={post.id} className="p-0 overflow-hidden">
+                {displayImage && (
+                  <div className="aspect-video bg-brand-bg">
+                    <img src={displayImage} alt={post.title} className="w-full h-full object-cover" />
                   </div>
-                  {post.published ? (
-                    <Eye size={16} className="text-green-500" />
-                  ) : (
-                    <EyeOff size={16} className="text-gray-400" />
-                  )}
-                </div>
-
-                {post.excerpt && (
-                  <p className="text-sm text-brand-text-muted line-clamp-2">
-                    {post.excerpt}
-                  </p>
                 )}
 
-                <p className="text-xs text-brand-text-muted">
-                  {new Date(post.created_at).toLocaleDateString('fr-FR')}
-                </p>
+                <div className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-xs text-brand-gold uppercase tracking-wider">
+                        {post.type || post.category}
+                      </span>
+                      <h3 className="font-bebas text-lg text-brand-text uppercase mt-1">
+                        {post.title}
+                      </h3>
+                    </div>
+                    {isPublished ? (
+                      <Eye size={16} className="text-green-500" />
+                    ) : (
+                      <EyeOff size={16} className="text-gray-400" />
+                    )}
+                  </div>
 
-                <div className="flex gap-2 pt-3 border-t border-brand-gold/10">
-                  <AdminButton
-                    variant="secondary"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleEdit(post)}
-                  >
-                    <Edit size={14} />
-                    Modifier
-                  </AdminButton>
-                  <button
-                    onClick={() => handleDelete(post.id)}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                    aria-label="Supprimer"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {post.excerpt && (
+                    <p className="text-sm text-brand-text-muted line-clamp-2">
+                      {post.excerpt}
+                    </p>
+                  )}
+
+                  <p className="text-xs text-brand-text-muted">
+                    {new Date(post.created_at).toLocaleDateString('fr-FR')}
+                  </p>
+
+                  <div className="flex gap-2 pt-3 border-t border-brand-gold/10">
+                    <AdminButton
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleEdit(post)}
+                    >
+                      <Edit size={14} />
+                      Modifier
+                    </AdminButton>
+                    <button
+                      onClick={() => handleDelete(post.id)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                      aria-label="Supprimer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </AdminCard>
-          ))}
+              </AdminCard>
+            );
+          })}
         </div>
       )}
     </div>

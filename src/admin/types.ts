@@ -33,13 +33,18 @@ export interface AdminProduct {
   category: string;
   price: number;
   image_url: string | null;
+  images: string[];
   sizes: string[];
   colors: string[];
+  outOfStockSizes: string[];
+  outOfStockColors: string[];
   demand: number;
   stock: number;
   badge: string | null;
   description: string | null;
   visible: boolean;
+  slug: string;
+  isPopular: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -49,13 +54,18 @@ export interface ProductFormData {
   category: string;
   price: number;
   image_url: string;
+  images?: string[];
   sizes: string[];
   colors: string[];
+  outOfStockSizes?: string[];
+  outOfStockColors?: string[];
   stock: number;
   demand: number;
   badge: string;
   description: string;
   visible: boolean;
+  slug?: string;
+  isPopular?: boolean;
 }
 
 export type OrderStatus = 
@@ -92,10 +102,10 @@ export interface AdminOrder {
   client_area: string;
   items: OrderItem[];
   history: OrderHistoryEntry[];
-  subtotal?: number;
-  delivery_fee?: number;
+  subtotal: number;
+  delivery_fee: number;
   total: number;
-  grand_total?: number;
+  grand_total: number;
   created_at: string;
   updated_at: string;
 }
@@ -135,23 +145,30 @@ export interface AdminCategory {
   id: number;
   name: string;
   category: string;
-  description: string | null;
-  image_url: string | null;
+  slug?: string;
+  description?: string | null;
+  image_url?: string | null;
   visible: boolean;
   position: number;
+  order?: number;
   created_at: string;
   updated_at: string;
 }
 
-export type ContentPostType = 'Arrivage' | 'Promotion' | 'Nouveauté' | 'Annonce';
+export type ContentPostType = 'Arrivage' | 'Promotion' | 'Nouveauté' | 'Annonce' | 'news' | string;
 
 export interface ContentPost {
   id: string;
   title: string;
+  slug: string;
   content: string;
+  excerpt: string;
   image_url: string | null;
+  image: string;
   category: ContentPostType;
-  status: 'draft' | 'published' | 'scheduled';
+  type: string;
+  status: 'draft' | 'published' | 'scheduled' | string;
+  published: boolean;
   published_at: string | null;
   scheduled_at: string | null;
   created_at: string;

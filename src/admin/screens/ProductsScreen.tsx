@@ -41,7 +41,7 @@ export const ProductsScreen: React.FC<ProductsScreenProps> = ({ onEdit, onBack }
     loadData();
   }, [loadProducts]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
       return;
     }
@@ -185,7 +185,7 @@ export const ProductsScreen: React.FC<ProductsScreenProps> = ({ onEdit, onBack }
               {/* Product Image */}
               <div className="relative aspect-square bg-brand-bg">
                 <img
-                  src={product.images?.[0] || '/images/placeholder.jpg'}
+                  src={product.images?.[0] || product.image_url || '/images/placeholder.jpg'}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />

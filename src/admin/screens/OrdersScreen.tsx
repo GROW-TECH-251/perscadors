@@ -41,7 +41,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({ onBack }) => {
     loadData();
   }, [loadOrders]);
 
-  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+  const handleStatusChange = async (orderId: number, newStatus: OrderStatus) => {
     try {
       await updateOrderStatus(orderId, newStatus);
       await loadOrders();
@@ -353,12 +353,12 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({ onBack }) => {
             <div className="border-t border-brand-gold/20 pt-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-brand-text-muted">Sous-total</span>
-                <span className="text-brand-text">{formatCurrency(selectedOrder.subtotal)}</span>
+                <span className="text-brand-text">{formatCurrency(selectedOrder.subtotal || 0)}</span>
               </div>
-              {selectedOrder.delivery_fee > 0 && (
+              {(selectedOrder.delivery_fee || 0) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-brand-text-muted">Livraison</span>
-                  <span className="text-brand-text">{formatCurrency(selectedOrder.delivery_fee)}</span>
+                  <span className="text-brand-text">{formatCurrency(selectedOrder.delivery_fee || 0)}</span>
                 </div>
               )}
               <div className="flex justify-between text-lg font-bold">

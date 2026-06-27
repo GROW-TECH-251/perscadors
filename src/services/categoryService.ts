@@ -29,13 +29,13 @@ export async function fetchCategories(): Promise<AdminCategory[]> {
   return (data || []) as AdminCategory[];
 }
 
-export async function fetchCategoryById(id: number): Promise<AdminCategory | null> {
+export async function fetchCategoryById(id: number | string): Promise<AdminCategory | null> {
   const db = requireSupabase();
 
   const { data, error } = await db
     .from('categories')
     .select('*')
-    .eq('id', id)
+    .eq('id', Number(id))
     .single();
 
   if (error || !data) {
@@ -112,7 +112,7 @@ export async function createCategory(categoryData: CategoryFormData): Promise<Ap
 // ============================================
 
 export async function updateCategory(
-  id: number,
+  id: number | string,
   categoryData: Partial<CategoryFormData>
 ): Promise<ApiResponse<AdminCategory>> {
   const db = requireSupabase();
@@ -123,7 +123,7 @@ export async function updateCategory(
       ...categoryData,
       updated_at: new Date().toISOString()
     })
-    .eq('id', id)
+    .eq('id', Number(id))
     .select()
     .single();
 
@@ -139,13 +139,13 @@ export async function updateCategory(
 // SUPPRESSION
 // ============================================
 
-export async function deleteCategory(id: number): Promise<ApiResponse<boolean>> {
+export async function deleteCategory(id: number | string): Promise<ApiResponse<boolean>> {
   const db = requireSupabase();
 
   const { error } = await db
     .from('categories')
     .delete()
-    .eq('id', id);
+    .eq('id', Number(id));
 
   if (error) {
     console.error('Erreur suppression catégorie:', error);
@@ -159,11 +159,11 @@ export async function deleteCategory(id: number): Promise<ApiResponse<boolean>> 
 // UTILITAIRES
 // ============================================
 
-export async function reorderCategories(categoryIds: number[]): Promise<ApiResponse<boolean>> {
+export async function reorderCategories(categoryIds: (number | string)[]): Promise<ApiResponse<boolean>> {
   const db = requireSupabase();
 
   const updates = categoryIds.map((id, index) => ({
-    id,
+    id: Number(id),
     position: index
   }));
 

@@ -84,13 +84,13 @@ export async function fetchAdminOrders(): Promise<AdminOrder[]> {
   return (data || []) as AdminOrder[];
 }
 
-export async function fetchOrderById(id: number): Promise<AdminOrder | null> {
+export async function fetchOrderById(id: number | string): Promise<AdminOrder | null> {
   const db = requireSupabase();
 
   const { data, error } = await db
     .from('orders')
     .select('*')
-    .eq('id', id)
+    .eq('id', Number(id))
     .single();
 
   if (error || !data) {
@@ -194,13 +194,13 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
 // ============================================
 
 export async function updateOrderStatus(
-  id: number,
+  id: number | string,
   newStatus: OrderStatus,
   note?: string
 ): Promise<ApiResponse<AdminOrder>> {
   const db = requireSupabase();
 
-  const currentOrder = await fetchOrderById(id);
+  const currentOrder = await fetchOrderById(Number(id));
   if (!currentOrder) {
     return { data: null, error: 'Commande non trouvée' };
   }
@@ -220,7 +220,7 @@ export async function updateOrderStatus(
       history: updatedHistory,
       updated_at: new Date().toISOString()
     })
-    .eq('id', id)
+    .eq('id', Number(id))
     .select()
     .single();
 
@@ -233,7 +233,7 @@ export async function updateOrderStatus(
 }
 
 export async function updateOrder(
-  id: number,
+  id: number | string,
   orderData: Partial<AdminOrder>
 ): Promise<ApiResponse<AdminOrder>> {
   const db = requireSupabase();
@@ -244,7 +244,7 @@ export async function updateOrder(
       ...orderData,
       updated_at: new Date().toISOString()
     })
-    .eq('id', id)
+    .eq('id', Number(id))
     .select()
     .single();
 
@@ -260,13 +260,13 @@ export async function updateOrder(
 // SUPPRESSION
 // ============================================
 
-export async function deleteOrder(id: number): Promise<ApiResponse<boolean>> {
+export async function deleteOrder(id: number | string): Promise<ApiResponse<boolean>> {
   const db = requireSupabase();
 
   const { error } = await db
     .from('orders')
     .delete()
-    .eq('id', id);
+    .eq('id', Number(id));
 
   if (error) {
     console.error('Erreur suppression commande:', error);

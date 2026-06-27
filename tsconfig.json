@@ -39,9 +39,9 @@
   ],
   "exclude": [
     "node_modules",
-    "src/admin/AdminApp.tsx",
-    "src/admin/hooks/**/*",
-    "src/admin/screens/**/*",
-    "src/services/customerMetaService.ts"
+    
+    
+    
+    
   ]
 }
