@@ -1,6 +1,6 @@
 // src/app/admin/page.tsx
 // ============================================
-// Dashboard Admin Premium (Levier 4 : Booster de Rentabilité)
+// Dashboard Admin Premium (Levier 4 : Effet IKEA & Partage Story Vrai)
 // ============================================
 
 'use client';
@@ -11,13 +11,15 @@ import { useRouter } from 'next/navigation';
 import { fetchAdminProducts, deleteProduct } from '@/services/productService';
 import { fetchAdminOrders } from '@/services/orderService';
 import { fetchCustomerSummaries } from '@/services/customerService';
+import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
 import { AdminCard, AdminButton } from '@/admin/components';
 import { Package, ShoppingCart, Users, DollarSign, TrendingUp, AlertTriangle, Eye, Edit, Trash2, MessageCircle, Share2, Award } from 'lucide-react';
-import type { AdminProduct, AdminOrder } from '@/admin/types';
+import type { AdminProduct, AdminOrder, ShopSettings } from '@/admin/types';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalOrders: 0,
@@ -31,11 +33,16 @@ export default function AdminDashboardPage() {
 
   const loadDashboardData = useCallback(async () => {
     try {
-      const [products, orders, customers] = await Promise.all([
+      const [products, orders, customers, shopSettings] = await Promise.all([
         fetchAdminProducts(),
         fetchAdminOrders(),
-        fetchCustomerSummaries()
+        fetchCustomerSummaries(),
+        fetchShopSettings()
       ]);
+
+      if (shopSettings) {
+        setSettings(shopSettings);
+      }
 
       const totalRevenue = orders
         .filter((order) => order.status === 'LIVRÉE')
@@ -101,20 +108,39 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const formatCurrency = (amount: number) => `${amount.toLocaleString('fr-FR')} FCFA`;
+
   // ============================================
-  // LEVIER 4 : PARTAGE INSTANTANÉ WHATSAPP DES BEST-SELLERS
+  // LEVIER 4 : PARTAGE INSTANTANÉ WHATSAPP (Effet IKEA)
   // ============================================
-  const handleShareStory = (product: AdminProduct) => {
-    const text = `🔥 *BEST-SELLER HP COLLECTION* 🔥\n\nDécouvrez notre pièce la plus prisée : *${product.name}* à seulement *${product.price.toLocaleString()} FCFA*.\n\n👑 _Vioutou t'habille. Tu règnes._\n👉 Réservez votre taille directement ici : https://hpcollection.bj`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  const handleShareStory = async (product: AdminProduct) => {
+    const message = formatWhatsAppMessage(settings.story_share_template, {
+      shopName: settings.shop_name,
+      productName: product.name,
+      productPrice: formatCurrency(product.price)
+    });
+
+    try {
+      await navigator.clipboard.writeText(message);
+      alert(`=== MISSION STORY WHATSAPP ===\n\nTexte copié dans le presse-papier !\n\nColle-le directement dans ton onglet Statut sur WhatsApp. Tu peux y ajouter la photo du produit pour un impact maximal 🚀`);
+      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(message), '_blank');
+    } catch (error: unknown) {
+      console.error('Erreur copie story:', error);
+      window.open('https://wa.me/?text=' + encodeURIComponent(message), '_blank');
+    }
   };
 
   const handleBroadcastVIP = (product: AdminProduct) => {
-    const text = `👑 *ALERTE RUPTURE IMMINENTE VIP* 👑\n\nSalut la famille ! Notre best-seller *${product.name}* part à une vitesse folle (${product.price.toLocaleString()} FCFA).\n\nEn tant que client fidèle, on te prévient en premier. Réponds vite pour verrouiller ta commande avant qu'il ne reste plus rien ! 🚀`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-  };
+    const message = formatWhatsAppMessage(settings.vip_magic_template, {
+      shopName: settings.shop_name,
+      clientName: 'la famille',
+      productName: product.name,
+      productPrice: formatCurrency(product.price),
+      couponCode: 'VIP-VIOUTOU10'
+    });
 
-  const formatCurrency = (amount: number) => `${amount.toLocaleString('fr-FR')} FCFA`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+  };
 
   if (loading) {
     return (

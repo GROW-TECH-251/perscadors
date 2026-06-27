@@ -191,6 +191,7 @@ export interface CustomerSegmentationSettings {
 export interface ShopSettings {
   shop_name: string;
   whatsapp_phone: string;
+  driver_phone?: string;
   currency: string;
   country: string;
   delivery_zones: DeliveryZone[];
@@ -199,6 +200,9 @@ export interface ShopSettings {
   order_followup_template: string;
   order_confirmed_template: string;
   order_delivered_template: string;
+  story_share_template: string;
+  vip_magic_template: string;
+  driver_dispatch_template: string;
   customer_segmentation: CustomerSegmentationSettings;
   logo_url: string | null;
   updated_at: string;

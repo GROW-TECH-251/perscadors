@@ -1,6 +1,6 @@
 // src/app/admin/reglages/page.tsx
 // ============================================
-// Réglages boutique opérationnels
+// Réglages boutique opérationnels (Levier 4 : Effet IKEA & Personnalisation WhatsApp)
 // ============================================
 
 'use client';
@@ -9,7 +9,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea } from '@/admin/components';
-import { Settings, Save, Upload, Trash2, Plus, LogOut } from 'lucide-react';
+import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap, Share2 } from 'lucide-react';
 import { clearAdminSession } from '@/admin/auth';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
 import { fetchShopSettings, upsertShopSettings, getDefaultShopSettings } from '@/services/settingsService';
@@ -180,11 +180,11 @@ export default function AdminSettingsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
-            Configuration boutique
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
+            Personnalisation avancée • Effet IKEA
           </span>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Réglages</h1>
-          <p className="text-brand-text-muted mt-1">Configuration opérationnelle de la boutique</p>
+          <p className="text-brand-text-muted mt-1">Configuration opérationnelle et personnalisation des scripts WhatsApp</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
@@ -199,7 +199,7 @@ export default function AdminSettingsPage() {
         {[
           { id: 'general', label: 'Général' },
           { id: 'delivery', label: 'Livraison' },
-          { id: 'whatsapp', label: 'WhatsApp' },
+          { id: 'whatsapp', label: 'WhatsApp & Templates' },
           { id: 'segmentation', label: 'Segmentation' }
         ].map((tab) => (
           <button
@@ -287,7 +287,7 @@ export default function AdminSettingsPage() {
                   alt="Logo boutique"
                   fill
                   sizes="320px"
-                  className="object-contain"
+                  className="object-contain p-2"
                   unoptimized
                 />
               </div>
@@ -300,39 +300,45 @@ export default function AdminSettingsPage() {
         <AdminCard>
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">Zones de livraison</h2>
-            <AdminButton type="button" variant="secondary" onClick={handleAddZone}>
+            <AdminButton variant="primary" size="sm" onClick={handleAddZone}>
               <Plus size={16} />
               Ajouter une zone
             </AdminButton>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             {settings.delivery_zones.map((zone, index) => (
-              <div key={zone.id} className="p-4 bg-brand-bg-alt rounded-xl border border-brand-gold/10">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div key={zone.id || index} className="p-4 bg-brand-bg rounded-xl border border-brand-gold/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bebas text-lg text-brand-text uppercase">Zone #{index + 1}</h3>
+                  <button
+                    onClick={() => handleRemoveZone(index)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                    type="button"
+                    aria-label="Supprimer zone"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <AdminInput
-                    label="Nom"
+                    label="Nom de la zone"
                     value={zone.name}
                     onChange={(value) => handleZoneChange(index, 'name', value)}
                   />
                   <AdminInput
-                    label="Frais (FCFA)"
+                    label="Frais de livraison (FCFA)"
                     value={zone.fee}
                     onChange={(value) => handleZoneChange(index, 'fee', Number(value) || 0)}
                     type="number"
                   />
                   <AdminInput
-                    label="Seuil gratuit (FCFA)"
+                    label="Gratuit à partir de (FCFA)"
                     value={zone.freeThreshold}
                     onChange={(value) => handleZoneChange(index, 'freeThreshold', Number(value) || 0)}
                     type="number"
                   />
-                  <div className="flex items-end">
-                    <AdminButton type="button" variant="danger" onClick={() => handleRemoveZone(index)} className="w-full">
-                      <Trash2 size={16} />
-                      Supprimer
-                    </AdminButton>
-                  </div>
                 </div>
               </div>
             ))}
@@ -340,34 +346,107 @@ export default function AdminSettingsPage() {
         </AdminCard>
       )}
 
+      {/* Levier 4 : IKEA Effect & Personnalisation WhatsApp */}
       {activeTab === 'whatsapp' && (
-        <AdminCard>
-          <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase mb-6">Configuration WhatsApp</h2>
-          <div className="space-y-4">
+        <AdminCard className="space-y-8">
+          <div className="border-b border-brand-gold/15 pb-4">
+            <div className="flex items-center gap-3">
+              <MessageCircle size={24} className="text-brand-gold" />
+              <h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase">
+                Personnalisation WhatsApp & Effet IKEA
+              </h2>
+            </div>
+            <p className="text-sm text-brand-text-muted mt-1">
+              Investis dans ton produit en rédigeant tes propres scripts de relance, de story et d&apos;expédition. 
+              Mets-y ta personnalité, ton vocabulaire et ton style pour marquer tes clients.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <AdminInput
-              label="Numéro WhatsApp"
+              label="Numéro WhatsApp Principal (Boutique)"
               value={settings.whatsapp_phone}
               onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, whatsapp_phone: value }))}
-              placeholder="22967280018"
+              placeholder="Ex: 22967280018"
             />
-            <AdminTextarea
-              label="Template commande en attente"
-              value={settings.order_followup_template}
-              onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, order_followup_template: value }))}
-              rows={3}
+            <AdminInput
+              label="Numéro WhatsApp du Livreur (Optionnel)"
+              value={settings.driver_phone || ''}
+              onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, driver_phone: value }))}
+              placeholder="Ex: 229XXXXXXXX (Pour envoi direct livreur)"
             />
-            <AdminTextarea
-              label="Template commande confirmée"
-              value={settings.order_confirmed_template}
-              onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, order_confirmed_template: value }))}
-              rows={3}
-            />
-            <AdminTextarea
-              label="Template commande livrée"
-              value={settings.order_delivered_template}
-              onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, order_delivered_template: value }))}
-              rows={3}
-            />
+          </div>
+
+          <div className="space-y-6 pt-4 border-t border-brand-gold/10">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-brand-gold font-bebas text-lg uppercase tracking-wider">
+                <Share2 size={18} /> Template : Partage en Story WhatsApp
+              </div>
+              <p className="text-xs text-brand-text-muted">
+                Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{productName}"}</code>, <code className="text-brand-gold">{"{productPrice}"}</code>
+              </p>
+              <AdminTextarea
+                value={settings.story_share_template}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, story_share_template: value }))}
+                rows={4}
+                placeholder="Ex: 🔥 BEST-SELLER {shopName} 🔥..."
+              />
+            </div>
+
+            <div className="space-y-2 pt-4 border-t border-brand-gold/10">
+              <div className="flex items-center gap-2 text-brand-gold font-bebas text-lg uppercase tracking-wider">
+                <Zap size={18} /> Template : Relance Magique VIP (Clients dormants)
+              </div>
+              <p className="text-xs text-brand-text-muted">
+                Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{couponCode}"}</code>
+              </p>
+              <AdminTextarea
+                value={settings.vip_magic_template}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, vip_magic_template: value }))}
+                rows={5}
+                placeholder="Ex: 👑 {shopName} — OFFRE SECRÈTE VIP 👑..."
+              />
+            </div>
+
+            <div className="space-y-2 pt-4 border-t border-brand-gold/10">
+              <div className="flex items-center gap-2 text-brand-gold font-bebas text-lg uppercase tracking-wider">
+                <Truck size={18} /> Template : Expédition au Livreur
+              </div>
+              <p className="text-xs text-brand-text-muted">
+                Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{orderId}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{clientPhone}"}</code>, <code className="text-brand-gold">{"{clientArea}"}</code>, <code className="text-brand-gold">{"{itemsList}"}</code>, <code className="text-brand-gold">{"{orderTotal}"}</code>
+              </p>
+              <AdminTextarea
+                value={settings.driver_dispatch_template}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, driver_dispatch_template: value }))}
+                rows={6}
+                placeholder="Ex: 🚀 MISSION LIVRAISON {shopName} 🚀..."
+              />
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-brand-gold/10">
+              <h3 className="font-bebas text-lg text-brand-text uppercase tracking-wider">Templates de suivi de commande standards</h3>
+              <p className="text-xs text-brand-text-muted">
+                Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{orderId}"}</code>
+              </p>
+              <AdminTextarea
+                label="Message - En attente"
+                value={settings.order_followup_template}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, order_followup_template: value }))}
+                rows={3}
+              />
+              <AdminTextarea
+                label="Message - Confirmée"
+                value={settings.order_confirmed_template}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, order_confirmed_template: value }))}
+                rows={3}
+              />
+              <AdminTextarea
+                label="Message - Livrée"
+                value={settings.order_delivered_template}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, order_delivered_template: value }))}
+                rows={3}
+              />
+            </div>
           </div>
         </AdminCard>
       )}

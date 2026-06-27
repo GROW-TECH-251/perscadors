@@ -1,6 +1,6 @@
 // src/app/admin/commandes/page.tsx
 // ============================================
-// Gestion des Commandes (Levier 2 : Gestion Logistique Éclair)
+// Gestion des Commandes (Levier 4 : Effet IKEA & Expédition Personnalisée)
 // ============================================
 
 'use client';
@@ -10,11 +10,13 @@ import Image from 'next/image';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea } from '@/admin/components';
 import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo, FileText, Send } from 'lucide-react';
 import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus } from '@/services/orderService';
+import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
 import { exportOrdersToCsv } from '@/utils/exportCsv';
-import type { AdminOrder, OrderStatus } from '@/admin/types';
+import type { AdminOrder, OrderStatus, ShopSettings } from '@/admin/types';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -28,8 +30,14 @@ export default function AdminOrdersPage() {
   const loadOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchAdminOrders();
-      setOrders(data);
+      const [ordersData, shopSettings] = await Promise.all([
+        fetchAdminOrders(),
+        fetchShopSettings()
+      ]);
+      setOrders(ordersData);
+      if (shopSettings) {
+        setSettings(shopSettings);
+      }
     } catch (error: unknown) {
       console.error('Erreur chargement commandes:', error);
     } finally {
@@ -45,7 +53,7 @@ export default function AdminOrdersPage() {
   }, [loadOrders]);
 
   // ============================================
-  // LEVIER 2 : GESTION LOGISTIQUE ÉCLAIR (Vitesse WhatsApp)
+  // LEVIER 2 & 4 : GESTION LOGISTIQUE ÉCLAIR (Effet IKEA)
   // ============================================
 
   // 1. Changement d'état instantané en 1 clic (Quick Status Toggle)
@@ -72,27 +80,29 @@ export default function AdminOrdersPage() {
     }
   };
 
-  // 2. Bouton "Expédier via WhatsApp" (Dispatch to Driver)
+  // 2. Bouton "Expédier via WhatsApp" (Dispatch to Driver personnalisé)
   const handleDispatchToDriver = (order: AdminOrder) => {
-    const message =
-      `🚀 *MISSION LIVRAISON HP COLLECTION* 🚀\n\n` +
-      `📦 *Réf Commande :* ${order.order_number}\n` +
-      `👤 *Client :* ${order.client_name}\n` +
-      `📱 *Contact :* ${order.client_phone}\n` +
-      `📍 *Lieu de livraison :* ${order.client_area}\n\n` +
-      `🛒 *Articles à remettre au client :*\n` +
-      `${order.items.map(item => `• ${item.name} (Taille ${item.size}, ${item.color}) x${item.quantity}`).join('\n')}\n\n` +
-      `💰 *Montant net à encaisser :* ${order.total.toLocaleString()} FCFA\n\n` +
-      `_Merci de confirmer la bonne réception de cette mission et d'entamer la livraison._`;
+    const itemsText = order.items.map(item => `• ${item.name} (Taille ${item.size}, ${item.color}) x${item.quantity}`).join('\n');
+    
+    const message = formatWhatsAppMessage(settings.driver_dispatch_template, {
+      shopName: settings.shop_name,
+      orderId: order.order_number,
+      clientName: order.client_name,
+      clientPhone: order.client_phone,
+      clientArea: order.client_area,
+      itemsList: itemsText,
+      orderTotal: order.total.toLocaleString() + ' FCFA'
+    });
 
     const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+    const targetPhone = settings.driver_phone ? settings.driver_phone.replace(/\D/g, '') : '';
+    window.open(`https://wa.me/${targetPhone}?text=${encodedMessage}`, '_blank');
   };
 
   // 3. Génération et copie instantanée du bordereau livreur (Delivery Slip Copy)
   const handleCopyDeliverySlip = async (order: AdminOrder) => {
     const slip =
-      `=== BORDEREAU DE LIVRAISON HP COLLECTION ===\n` +
+      `=== BORDEREAU DE LIVRAISON ${settings.shop_name.toUpperCase()} ===\n` +
       `RÉFÉRENCE : ${order.order_number}\n` +
       `CLIENT : ${order.client_name}\n` +
       `TÉLÉPHONE : ${order.client_phone}\n` +
@@ -204,7 +214,7 @@ export default function AdminOrdersPage() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
-            Gestion Logistique Éclair
+            Gestion Logistique Éclair • Effet IKEA
           </span>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Commandes</h1>
           <p className="text-brand-text-muted mt-1">{orders.length} commandes enregistrées</p>
@@ -424,7 +434,7 @@ export default function AdminOrdersPage() {
             <div className="p-4 bg-emerald-950/40 border border-emerald-800/50 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-sm">
               <div>
                 <h4 className="font-bebas text-lg text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                  <Truck size={18} /> Mission Livreur
+                  <Truck size={18} /> Mission Livreur (Personnalisée)
                 </h4>
                 <p className="text-xs text-brand-text-muted mt-0.5">
                   Générez un ordre de livraison WhatsApp ou copiez le bordereau propre.

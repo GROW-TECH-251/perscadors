@@ -1,6 +1,6 @@
 // src/app/admin/clients/page.tsx
 // ============================================
-// Gestion des Clients (Levier 4 : Relance Magique WhatsApp)
+// Gestion des Clients (Levier 4 : Effet IKEA & Relance Magique Personnalisée)
 // ============================================
 
 'use client';
@@ -11,8 +11,9 @@ import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, Admin
 import { Users, Phone, MapPin, Tag, MessageCircle, Copy, Download, Eye, Save, Zap } from 'lucide-react';
 import { fetchCustomerSummaries, upsertCustomerMeta } from '@/services/customerService';
 import { fetchOrdersByPhone } from '@/services/orderService';
+import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
 import { exportCustomersToCsv } from '@/utils/exportCsv';
-import type { CustomerSummary, CustomerSegment, AdminOrder } from '@/admin/types';
+import type { CustomerSummary, CustomerSegment, AdminOrder, ShopSettings } from '@/admin/types';
 
 function getSegmentBadgeColor(segment: CustomerSegment) {
   switch (segment) {
@@ -47,6 +48,7 @@ function getOrderStatusBadgeVariant(status: AdminOrder['status']): 'success' | '
 export default function AdminCustomersPage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
+  const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [segmentFilter, setSegmentFilter] = useState<CustomerSegment | 'all'>('all');
@@ -61,8 +63,14 @@ export default function AdminCustomersPage() {
   const loadCustomers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchCustomerSummaries();
-      setCustomers(data);
+      const [customersData, shopSettings] = await Promise.all([
+        fetchCustomerSummaries(),
+        fetchShopSettings()
+      ]);
+      setCustomers(customersData);
+      if (shopSettings) {
+        setSettings(shopSettings);
+      }
     } catch (error: unknown) {
       console.error('Erreur chargement clients:', error);
     } finally {
@@ -92,15 +100,14 @@ export default function AdminCustomersPage() {
   };
 
   // ============================================
-  // LEVIER 4 : BOOSTER DE RENTABILITÉ (Relance Magique)
+  // LEVIER 4 : BOOSTER DE RENTABILITÉ (Relance Magique Personnalisée)
   // ============================================
   const handleMagicFollowup = (customer: CustomerSummary) => {
-    const message =
-      `👑 *HP COLLECTION — OFFRE SECRÈTE VIP* 👑\n\n` +
-      `Salut ${customer.name} ! Ça fait un moment qu'on n'a pas vu ton élégance dans nos commandes.\n\n` +
-      `Vioutou t'a sélectionné une pièce exclusive de notre nouvel arrivage avec un code promo secret : *VIP-VIOUTOU10* (-10% sur ton prochain panier).\n\n` +
-      `👉 Découvre les nouveautés ici : https://hpcollection.bj\n\n` +
-      `_Réponds directement à ce message pour réserver ta taille avant la rupture ! 🚀_`;
+    const message = formatWhatsAppMessage(settings.vip_magic_template, {
+      shopName: settings.shop_name,
+      clientName: customer.name,
+      couponCode: 'VIP-VIOUTOU10'
+    });
 
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${customer.phone}?text=${encodedMessage}`, '_blank');
@@ -200,7 +207,7 @@ export default function AdminCustomersPage() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
-            Booster de Rentabilité
+            Booster de Rentabilité • Effet IKEA
           </span>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Clients</h1>
           <p className="text-brand-text-muted mt-1">{customers.length} clients uniques</p>
