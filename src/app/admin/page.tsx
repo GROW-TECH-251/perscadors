@@ -1,6 +1,6 @@
 // src/app/admin/page.tsx
 // ============================================
-// Dashboard Admin Premium
+// Dashboard Admin Premium (Levier 4 : Booster de Rentabilité)
 // ============================================
 
 'use client';
@@ -12,7 +12,7 @@ import { fetchAdminProducts, deleteProduct } from '@/services/productService';
 import { fetchAdminOrders } from '@/services/orderService';
 import { fetchCustomerSummaries } from '@/services/customerService';
 import { AdminCard, AdminButton } from '@/admin/components';
-import { Package, ShoppingCart, Users, DollarSign, TrendingUp, AlertTriangle, Eye, Edit, Trash2 } from 'lucide-react';
+import { Package, ShoppingCart, Users, DollarSign, TrendingUp, AlertTriangle, Eye, Edit, Trash2, MessageCircle, Share2, Award } from 'lucide-react';
 import type { AdminProduct, AdminOrder } from '@/admin/types';
 
 export default function AdminDashboardPage() {
@@ -101,6 +101,19 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // ============================================
+  // LEVIER 4 : PARTAGE INSTANTANÉ WHATSAPP DES BEST-SELLERS
+  // ============================================
+  const handleShareStory = (product: AdminProduct) => {
+    const text = `🔥 *BEST-SELLER HP COLLECTION* 🔥\n\nDécouvrez notre pièce la plus prisée : *${product.name}* à seulement *${product.price.toLocaleString()} FCFA*.\n\n👑 _Vioutou t'habille. Tu règnes._\n👉 Réservez votre taille directement ici : https://hpcollection.bj`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleBroadcastVIP = (product: AdminProduct) => {
+    const text = `👑 *ALERTE RUPTURE IMMINENTE VIP* 👑\n\nSalut la famille ! Notre best-seller *${product.name}* part à une vitesse folle (${product.price.toLocaleString()} FCFA).\n\nEn tant que client fidèle, on te prévient en premier. Réponds vite pour verrouiller ta commande avant qu'il ne reste plus rien ! 🚀`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
   const formatCurrency = (amount: number) => `${amount.toLocaleString('fr-FR')} FCFA`;
 
   if (loading) {
@@ -118,14 +131,14 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
-            Vue premium back-office
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
+            Vue premium back-office • Booster de Rentabilité
           </span>
           <h1 className="font-bebas text-4xl tracking-wider text-brand-text uppercase mt-3">
             Dashboard
           </h1>
           <p className="text-brand-text-muted mt-1">
-            Vue d&apos;ensemble de votre boutique HP Collection
+            Vue d&apos;ensemble et pilotage en temps réel de votre boutique HP Collection
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -290,12 +303,12 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-brand-gold">{formatCurrency(order.total)}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded ${
+                    <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold ${
                       order.status === 'LIVRÉE'
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-emerald-100 text-emerald-800'
                         : order.status === 'EN ATTENTE'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-blue-100 text-blue-700'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-blue-100 text-blue-800'
                     }`}>
                       {order.status}
                     </span>
@@ -306,14 +319,20 @@ export default function AdminDashboardPage() {
           )}
         </AdminCard>
 
-        <AdminCard>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">
-              Produits Populaires
-            </h2>
+        {/* Levier 4 : Top 3 Best-Sellers en Temps Réel avec Boosters WhatsApp */}
+        <AdminCard className="border-brand-gold/30 shadow-lg bg-gradient-to-b from-brand-bg-alt via-brand-bg to-brand-bg-alt">
+          <div className="flex items-center justify-between mb-6 border-b border-brand-gold/15 pb-4">
+            <div>
+              <span className="text-xs font-bebas text-brand-gold uppercase tracking-widest flex items-center gap-1.5">
+                <Award size={14} className="text-brand-gold" /> Pilote Best-Sellers
+              </span>
+              <h2 className="font-bebas text-2xl tracking-wider text-white uppercase mt-1">
+                Top 3 Produits Populaires
+              </h2>
+            </div>
             <AdminButton variant="secondary" size="sm" onClick={() => router.push('/admin/produits')}>
               <Edit size={14} />
-              Gérer
+              Catalogue
             </AdminButton>
           </div>
 
@@ -323,51 +342,73 @@ export default function AdminDashboardPage() {
               <p>Aucun produit populaire</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {topProducts.map((product) => (
+            <div className="space-y-4">
+              {topProducts.map((product, index) => (
                 <div
                   key={product.id}
-                  className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg border border-brand-gold/10 hover:border-brand-gold/30 transition-colors"
+                  className="p-4 bg-brand-bg rounded-2xl border border-brand-gold/20 hover:border-brand-gold/50 transition-all shadow-md group/bestseller relative"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-12 h-12 bg-brand-bg rounded-lg overflow-hidden">
+                  <div className="absolute top-3 right-3 flex gap-1 z-10">
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/admin/produits/${product.id}`)}
+                      className="p-2 bg-brand-bg-alt border border-brand-gold/15 hover:border-brand-gold rounded-xl transition-colors cursor-pointer text-brand-text-muted hover:text-brand-gold"
+                      aria-label="Modifier"
+                    >
+                      <Edit size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProduct(product.id)}
+                      className="p-2 bg-brand-bg-alt border border-brand-gold/15 hover:border-red-500 rounded-xl transition-colors cursor-pointer text-brand-text-muted hover:text-red-500"
+                      aria-label="Supprimer"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-4 mb-3 pr-16">
+                    <div className="relative w-16 h-16 bg-brand-bg-alt rounded-xl overflow-hidden flex-shrink-0 border border-brand-gold/10">
                       {product.image_url ? (
                         <Image
                           src={product.image_url}
                           alt={product.name}
                           fill
-                          sizes="48px"
-                          className="object-cover"
+                          sizes="64px"
+                          className="object-cover group-hover/bestseller:scale-105 transition-transform duration-300"
                           unoptimized
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-brand-text-muted">
-                          <Package size={20} />
+                          <Package size={24} />
                         </div>
                       )}
+                      <div className="absolute top-1 left-1 w-5 h-5 bg-brand-gold text-[#0A0A0A] rounded-full flex items-center justify-center text-xs font-bold font-mono shadow">
+                        #{index + 1}
+                      </div>
                     </div>
                     <div>
-                      <p className="font-medium text-brand-text truncate max-w-[200px]">{product.name}</p>
-                      <p className="text-xs text-brand-text-muted">{formatCurrency(product.price)}</p>
-                      {product.badge && (
-                        <p className="text-[11px] text-brand-gold uppercase tracking-wide mt-1">{product.badge}</p>
-                      )}
+                      <p className="font-bebas text-xl text-brand-text uppercase tracking-wide truncate max-w-[200px]">{product.name}</p>
+                      <p className="text-sm font-bold text-brand-gold">{formatCurrency(product.price)}</p>
+                      <p className="text-xs text-brand-text-muted mt-0.5">Stock dispo: {product.stock ?? '∞'}</p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+
+                  {/* Levier 4 : Boutons Marketing WhatsApp Directs */}
+                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-brand-gold/10">
                     <button
-                      onClick={() => router.push(`/admin/produits/${product.id}`)}
-                      className="p-2 hover:bg-brand-gold/10 rounded transition-colors cursor-pointer"
-                      aria-label="Modifier"
+                      type="button"
+                      onClick={() => handleShareStory(product)}
+                      className="flex items-center justify-center gap-1.5 py-2 px-3 bg-brand-bg-alt border border-brand-gold/20 hover:border-brand-gold text-white hover:text-brand-gold text-xs font-bebas uppercase tracking-wider rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm"
                     >
-                      <Edit size={16} className="text-brand-text" />
+                      <Share2 size={13} /> Partager Story WA
                     </button>
                     <button
-                      onClick={() => handleDeleteProduct(product.id)}
-                      className="p-2 hover:bg-red-100 rounded transition-colors cursor-pointer"
-                      aria-label="Supprimer"
+                      type="button"
+                      onClick={() => handleBroadcastVIP(product)}
+                      className="flex items-center justify-center gap-1.5 py-2 px-3 bg-[#25D366] hover:bg-[#20BA5A] text-white text-xs font-bebas uppercase tracking-wider rounded-xl shadow-md active:scale-95 transition-all cursor-pointer font-bold"
                     >
-                      <Trash2 size={16} className="text-red-500" />
+                      <MessageCircle size={13} /> Diffuser aux VIP
                     </button>
                   </div>
                 </div>

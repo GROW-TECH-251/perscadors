@@ -1,6 +1,6 @@
 // src/app/admin/clients/page.tsx
 // ============================================
-// Gestion des Clients
+// Gestion des Clients (Levier 4 : Relance Magique WhatsApp)
 // ============================================
 
 'use client';
@@ -8,7 +8,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, AdminInput, AdminTextarea, AdminBadge } from '@/admin/components';
-import { Users, Phone, MapPin, Tag, MessageCircle, Copy, Download, Eye, Save } from 'lucide-react';
+import { Users, Phone, MapPin, Tag, MessageCircle, Copy, Download, Eye, Save, Zap } from 'lucide-react';
 import { fetchCustomerSummaries, upsertCustomerMeta } from '@/services/customerService';
 import { fetchOrdersByPhone } from '@/services/orderService';
 import { exportCustomersToCsv } from '@/utils/exportCsv';
@@ -80,7 +80,7 @@ export default function AdminCustomersPage() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert('Copié !');
+      alert('Copié dans le presse-papier !');
     } catch (error: unknown) {
       console.error('Erreur copie:', error);
     }
@@ -89,6 +89,21 @@ export default function AdminCustomersPage() {
   const openWhatsApp = (phone: string, message: string) => {
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${phone}?text=${encodedMessage}`, '_blank');
+  };
+
+  // ============================================
+  // LEVIER 4 : BOOSTER DE RENTABILITÉ (Relance Magique)
+  // ============================================
+  const handleMagicFollowup = (customer: CustomerSummary) => {
+    const message =
+      `👑 *HP COLLECTION — OFFRE SECRÈTE VIP* 👑\n\n` +
+      `Salut ${customer.name} ! Ça fait un moment qu'on n'a pas vu ton élégance dans nos commandes.\n\n` +
+      `Vioutou t'a sélectionné une pièce exclusive de notre nouvel arrivage avec un code promo secret : *VIP-VIOUTOU10* (-10% sur ton prochain panier).\n\n` +
+      `👉 Découvre les nouveautés ici : https://hpcollection.bj\n\n` +
+      `_Réponds directement à ce message pour réserver ta taille avant la rupture ! 🚀_`;
+
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/${customer.phone}?text=${encodedMessage}`, '_blank');
   };
 
   const filteredCustomers = useMemo(() => {
@@ -169,16 +184,28 @@ export default function AdminCustomersPage() {
     }
   };
 
-  if (loading) return <div className="p-8">Chargement...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
+          <p className="text-brand-text-muted">Chargement des clients...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Clients</h1>
-          <p className="text-brand-text-muted mt-1">{customers.length} clients</p>
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
+            Booster de Rentabilité
+          </span>
+          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Clients</h1>
+          <p className="text-brand-text-muted mt-1">{customers.length} clients uniques</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
           <AdminButton
             variant="secondary"
@@ -245,108 +272,118 @@ export default function AdminCustomersPage() {
         <AdminEmptyState icon={<Users size={48} />} title="Aucun client" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCustomers.map((customer) => (
-            <AdminCard key={customer.phone}>
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="font-bebas text-xl text-brand-text uppercase">{customer.name}</h3>
-                  <p className="text-sm text-brand-text-muted">{customer.phone}</p>
+          {filteredCustomers.map((customer) => {
+            const isToFollowup = customer.segments.includes('À relancer');
+            return (
+              <AdminCard key={customer.phone} className="relative group/client border-brand-gold/15 hover:border-brand-gold/40 transition-all shadow-md hover:shadow-xl">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="font-bebas text-xl text-brand-text uppercase">{customer.name}</h3>
+                    <p className="text-sm text-brand-text-muted font-mono mt-0.5">{customer.phone}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    {customer.segments.slice(0, 2).map((segment) => (
+                      <span
+                        key={segment}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg backdrop-blur-sm ${getSegmentBadgeColor(segment)}`}
+                      >
+                        {segment}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1 justify-end">
-                  {customer.segments.slice(0, 2).map((segment) => (
-                    <span
-                      key={segment}
-                      className={`px-2 py-0.5 text-xs font-medium rounded ${getSegmentBadgeColor(segment)}`}
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-brand-text-muted">
+                    <MapPin size={14} className="text-brand-gold" />
+                    <span>{customer.area}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-brand-text-muted">
+                    <Phone size={14} className="text-brand-gold" />
+                    <span>{customer.phone}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm mb-4 bg-brand-bg p-3 rounded-xl border border-brand-gold/10">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-brand-text-muted">Commandes</p>
+                    <p className="font-bebas text-2xl text-brand-text mt-0.5">{customer.orderCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-brand-text-muted">Total dépensé</p>
+                    <p className="font-bebas text-2xl text-brand-gold mt-0.5">{customer.totalSpent.toLocaleString()} FCFA</p>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-brand-gold/10 mb-4 space-y-1">
+                  <p className="text-xs text-brand-text-muted">
+                    Dernière commande : {new Date(customer.lastOrderDate).toLocaleDateString('fr-FR')}
+                  </p>
+                  <p className="text-xs text-brand-text-muted">
+                    Statut : {customer.lastOrderStatus}
+                  </p>
+                </div>
+
+                {customer.tags && customer.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    {customer.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2.5 py-1 bg-brand-bg text-brand-text text-xs rounded-lg border border-brand-gold/10 flex items-center gap-1.5"
+                      >
+                        <Tag size={12} className="text-brand-gold" />
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Levier 4 : Bouton de Relance Magique WhatsApp */}
+                <div className="space-y-2 pt-2 border-t border-brand-gold/10">
+                  <button
+                    type="button"
+                    onClick={() => handleMagicFollowup(customer)}
+                    className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bebas text-base uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer shadow-md ${
+                      isToFollowup
+                        ? 'bg-gradient-to-r from-brand-gold to-yellow-500 text-[#0A0A0A] font-bold shadow-[0_4px_15px_rgba(184,149,42,0.3)] hover:scale-[1.02]'
+                        : 'bg-[#25D366] hover:bg-[#20BA5A] text-white'
+                    }`}
+                  >
+                    {isToFollowup ? <Zap size={18} className="text-[#0A0A0A] fill-current animate-bounce" /> : <MessageCircle size={18} />}
+                    <span>{isToFollowup ? 'Relance Magique VIP' : 'Contacter sur WhatsApp'}</span>
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <AdminButton
+                      variant="secondary"
+                      size="sm"
+                      className="w-full justify-center text-xs"
+                      onClick={() => {
+                        const message = `Bonjour ${customer.name}, merci pour votre confiance chez HP Collection ! Découvrez nos nouvelles arrivées cette semaine. 🛍️`;
+                        copyToClipboard(message);
+                      }}
                     >
-                      {segment}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-sm text-brand-text-muted">
-                  <MapPin size={14} />
-                  <span>{customer.area}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-brand-text-muted">
-                  <Phone size={14} />
-                  <span>{customer.phone}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-                <div>
-                  <p className="text-brand-text-muted">Commandes</p>
-                  <p className="font-bold text-brand-text">{customer.orderCount}</p>
-                </div>
-                <div>
-                  <p className="text-brand-text-muted">Total dépensé</p>
-                  <p className="font-bold text-brand-gold">{customer.totalSpent.toLocaleString()} FCFA</p>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-brand-gold/10 mb-4">
-                <p className="text-xs text-brand-text-muted">
-                  Dernière commande : {new Date(customer.lastOrderDate).toLocaleDateString('fr-FR')}
-                </p>
-                <p className="text-xs text-brand-text-muted">
-                  Statut : {customer.lastOrderStatus}
-                </p>
-              </div>
-
-              {customer.tags && customer.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {customer.tags.slice(0, 3).map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-0.5 bg-brand-bg-alt text-brand-text text-xs rounded flex items-center gap-1"
+                      <Copy size={13} />
+                      Copier msg
+                    </AdminButton>
+                    <AdminButton
+                      variant="primary"
+                      size="sm"
+                      className="w-full justify-center text-xs"
+                      onClick={() => handleOpenCustomerDetails(customer)}
                     >
-                      <Tag size={10} />
-                      {tag}
-                    </span>
-                  ))}
+                      <Eye size={13} />
+                      Détails
+                    </AdminButton>
+                  </div>
                 </div>
-              )}
-
-              <div className="flex gap-2 flex-wrap">
-                <AdminButton
-                  variant="secondary"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => {
-                    const message = `Bonjour ${customer.name}, merci pour votre confiance chez HP Collection ! Découvrez nos nouvelles arrivées cette semaine. 🛍️`;
-                    copyToClipboard(message);
-                  }}
-                >
-                  <Copy size={14} />
-                  Copier message
-                </AdminButton>
-                <AdminButton
-                  variant="success"
-                  size="sm"
-                  onClick={() => {
-                    const message = `Bonjour ${customer.name}, merci pour votre confiance chez HP Collection ! Découvrez nos nouvelles arrivées cette semaine. 🛍️`;
-                    openWhatsApp(customer.phone, message);
-                  }}
-                >
-                  <MessageCircle size={14} />
-                  WhatsApp
-                </AdminButton>
-                <AdminButton
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleOpenCustomerDetails(customer)}
-                >
-                  <Eye size={14} />
-                  Détails
-                </AdminButton>
-              </div>
-            </AdminCard>
-          ))}
+              </AdminCard>
+            );
+          })}
         </div>
       )}
 
+      {/* Détails Modale */}
       {selectedCustomer && (
         <AdminModal
           isOpen={detailsOpen}
@@ -404,12 +441,31 @@ export default function AdminCustomersPage() {
               </div>
             </div>
 
+            {/* Encart Levier 4 Modale */}
+            <div className="p-4 bg-brand-gold/10 border border-brand-gold/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-sm">
+              <div>
+                <h4 className="font-bebas text-lg text-brand-gold uppercase tracking-wider flex items-center gap-2">
+                  <Zap size={18} className="text-brand-gold fill-current animate-pulse" /> Relance Magique VIP
+                </h4>
+                <p className="text-xs text-brand-text-muted mt-0.5">
+                  Générez un message WhatsApp ultra-persuasif avec un coupon secret de -10%.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleMagicFollowup(selectedCustomer)}
+                className="px-5 py-2.5 bg-brand-gold hover:bg-brand-gold-light text-[#0A0A0A] text-xs font-bebas uppercase tracking-wider rounded-xl shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 font-bold"
+              >
+                <MessageCircle size={15} /> Déclencher Relance
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-brand-text-muted mb-2">Segments</p>
                 <div className="flex flex-wrap gap-2">
                   {selectedCustomer.segments.map((segment) => (
-                    <span key={segment} className={`px-2 py-1 text-xs font-medium rounded ${getSegmentBadgeColor(segment)}`}>
+                    <span key={segment} className={`px-2.5 py-1 text-xs font-semibold rounded-lg ${getSegmentBadgeColor(segment)}`}>
                       {segment}
                     </span>
                   ))}
