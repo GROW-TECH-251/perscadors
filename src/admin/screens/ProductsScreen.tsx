@@ -1,12 +1,12 @@
 // src/admin/screens/ProductsScreen.tsx
 // ============================================
-// Écran de gestion des produits
+// Écran de gestion des produits (Levier 1 : Quick Inline Editing)
 // ============================================
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge } from '../components';
-import { Package, Plus, Edit, Trash2, AlertTriangle } from 'lucide-react';
-import { fetchAdminProducts, deleteProduct } from '@/services/productService';
+import { Package, Plus, Edit, Trash2, Check, X, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { fetchAdminProducts, deleteProduct, updateProduct } from '@/services/productService';
 import type { AdminProduct } from '@/admin/types';
 
 interface ProductsScreenProps {
@@ -20,7 +20,11 @@ export const ProductsScreen: React.FC<ProductsScreenProps> = ({ onEdit, onBack }
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'visible' | 'hidden' | 'low-stock'>('all');
 
-  // Déclarer la fonction AVANT useEffect avec useCallback
+  // États pour l'édition rapide en ligne du prix (Quick Inline Editing)
+  const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
+  const [tempPrice, setTempPrice] = useState<number>(0);
+  const [savingId, setSavingId] = useState<number | null>(null);
+
   const loadProducts = useCallback(async () => {
     setLoading(true);
     try {
@@ -33,7 +37,6 @@ export const ProductsScreen: React.FC<ProductsScreenProps> = ({ onEdit, onBack }
     }
   }, []);
 
-  // Maintenant useEffect peut appeler loadProducts
   useEffect(() => {
     const loadData = async () => {
       await loadProducts();
@@ -52,6 +55,68 @@ export const ProductsScreen: React.FC<ProductsScreenProps> = ({ onEdit, onBack }
     } catch (err: unknown) {
       console.error('Erreur suppression produit:', err);
       alert('Erreur lors de la suppression');
+    }
+  };
+
+  // ============================================
+  // LEVIER 1 : QUICK INLINE EDITING (Vitesse WhatsApp)
+  // ============================================
+
+  // 1. Bascule d'affichage en 1 clic (Toggle Visibility)
+  const handleToggleVisibility = async (id: number, nextVisible: boolean) => {
+    setSavingId(id);
+    try {
+      // Mise à jour optimiste locale pour une réactivité instantanée
+      setProducts((currentProducts) =>
+        currentProducts.map((p) => (p.id === id ? { ...p, visible: nextVisible } : p))
+      );
+      await updateProduct(id, { visible: nextVisible });
+    } catch (err: unknown) {
+      console.error('Erreur bascule visibilité:', err);
+      alert('Erreur lors de la mise à jour de la visibilité');
+      await loadProducts(); // Rollback en cas d'erreur
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  // 2. Sauvegarde du prix en ligne (Inline Price Edit)
+  const handleSavePrice = async (id: number) => {
+    setSavingId(id);
+    try {
+      setProducts((currentProducts) =>
+        currentProducts.map((p) => (p.id === id ? { ...p, price: tempPrice } : p))
+      );
+      setEditingPriceId(null);
+      await updateProduct(id, { price: tempPrice });
+    } catch (err: unknown) {
+      console.error('Erreur sauvegarde prix:', err);
+      alert('Erreur lors de la sauvegarde du prix');
+      await loadProducts();
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  // 3. Bascule d'une taille en "Épuisé" instantanément (Quick Stock Toggling)
+  const handleToggleSizeStock = async (id: number, size: string, currentOutOfStock: string[]) => {
+    setSavingId(id);
+    const isCurrentlyOutOfStock = currentOutOfStock.includes(size);
+    const updatedOutOfStock = isCurrentlyOutOfStock
+      ? currentOutOfStock.filter((s) => s !== size)
+      : [...currentOutOfStock, size];
+
+    try {
+      setProducts((currentProducts) =>
+        currentProducts.map((p) => (p.id === id ? { ...p, outOfStockSizes: updatedOutOfStock } : p))
+      );
+      await updateProduct(id, { outOfStockSizes: updatedOutOfStock });
+    } catch (err: unknown) {
+      console.error('Erreur bascule stock taille:', err);
+      alert('Erreur lors de la mise à jour du stock pour cette taille');
+      await loadProducts();
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -180,100 +245,183 @@ export const ProductsScreen: React.FC<ProductsScreenProps> = ({ onEdit, onBack }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
-            <AdminCard key={product.id} className="p-0 overflow-hidden">
-              {/* Product Image */}
-              <div className="relative aspect-square bg-brand-bg">
-                <img
-                  src={product.images?.[0] || product.image_url || '/images/placeholder.jpg'}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-                
-                {/* Badges */}
-                <div className="absolute top-3 left-3 flex flex-col gap-2">
-                  {!product.visible && (
-                    <AdminBadge variant="default">Caché</AdminBadge>
-                  )}
-                  {(product.stock || 0) <= 5 && (
-                    <AdminBadge variant="danger">Stock faible</AdminBadge>
-                  )}
-                  {product.isPopular && (
-                    <AdminBadge variant="success">Populaire</AdminBadge>
-                  )}
-                </div>
+          {filteredProducts.map((product) => {
+            const isEditingPrice = editingPriceId === product.id;
+            const outOfStockList = product.outOfStockSizes || [];
 
-                {/* Quick Actions */}
-                <div className="absolute top-3 right-3 flex gap-2 opacity-0 hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => onEdit(product)}
-                    className="p-2 bg-white rounded-full shadow-lg hover:bg-brand-gold hover:text-white transition-colors cursor-pointer"
-                    aria-label="Modifier"
-                  >
-                    <Edit size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(product.id)}
-                    className="p-2 bg-white rounded-full shadow-lg hover:bg-red-500 hover:text-white transition-colors cursor-pointer"
-                    aria-label="Supprimer"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
+            return (
+              <AdminCard key={product.id} className="p-0 overflow-hidden relative group/card border-brand-gold/15 hover:border-brand-gold/40 transition-all shadow-md hover:shadow-xl">
+                {/* Product Image */}
+                <div className="relative aspect-square bg-brand-bg overflow-hidden">
+                  <img
+                    src={product.images?.[0] || product.image_url || '/images/placeholder.jpg'}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                  />
+                  
+                  {/* Badges */}
+                  <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
+                    {!product.visible ? (
+                      <span className="px-2.5 py-1 bg-gray-900/90 text-gray-400 border border-gray-700 text-xs font-semibold rounded-lg backdrop-blur-sm flex items-center gap-1.5">
+                        <EyeOff size={12} /> Caché
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 bg-emerald-950/90 text-emerald-400 border border-emerald-800 text-xs font-semibold rounded-lg backdrop-blur-sm flex items-center gap-1.5">
+                        <Eye size={12} /> Visible
+                      </span>
+                    )}
+                    {(product.stock || 0) <= 5 && (
+                      <span className="px-2.5 py-1 bg-red-950/90 text-red-400 border border-red-800 text-xs font-semibold rounded-lg backdrop-blur-sm">
+                        Stock faible ({product.stock || 0})
+                      </span>
+                    )}
+                    {product.isPopular && (
+                      <span className="px-2.5 py-1 bg-brand-gold/20 text-brand-gold border border-brand-gold/40 text-xs font-semibold rounded-lg backdrop-blur-sm">
+                        Populaire
+                      </span>
+                    )}
+                  </div>
 
-              {/* Product Info */}
-              <div className="p-4 space-y-3">
-                <div>
-                  <h3 className="font-bebas text-lg text-brand-text uppercase leading-tight truncate">
-                    {product.name}
-                  </h3>
-                  <p className="text-xs text-brand-text-muted mt-1">
-                    {product.category}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-brand-gold">
-                    {formatCurrency(product.price)}
-                  </span>
-                  <span className="text-xs text-brand-text-muted">
-                    Stock: {product.stock || '∞'}
-                  </span>
-                </div>
-
-                {/* Sizes & Colors */}
-                <div className="flex flex-wrap gap-1">
-                  {product.sizes?.slice(0, 4).map((size) => (
-                    <span
-                      key={size}
-                      className="px-2 py-0.5 bg-brand-bg-alt text-brand-text text-xs rounded"
+                  {/* Levier 1 : Toggle Visibility Switch en 1 Clic */}
+                  <div className="absolute top-3 right-3 flex gap-2 z-10">
+                    <button
+                      onClick={() => handleToggleVisibility(product.id, !product.visible)}
+                      disabled={savingId === product.id}
+                      className={`p-2.5 rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm ${
+                        product.visible
+                          ? 'bg-emerald-500 text-[#0A0A0A] hover:bg-emerald-400'
+                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                      }`}
+                      title={product.visible ? 'Masquer le produit' : 'Rendre visible'}
+                      aria-label="Bascule visibilité"
                     >
-                      {size}
-                    </span>
-                  ))}
-                  {product.sizes && product.sizes.length > 4 && (
-                    <span className="px-2 py-0.5 text-brand-text-muted text-xs">
-                      +{product.sizes.length - 4}
-                    </span>
-                  )}
+                      {product.visible ? <Eye size={18} /> : <EyeOff size={18} />}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(product.id)}
+                      className="p-2.5 bg-red-950/80 text-red-400 hover:bg-red-600 hover:text-white rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm opacity-0 group-hover/card:opacity-100"
+                      aria-label="Supprimer"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+
+                  {/* Overlay subtil */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent opacity-80 pointer-events-none" />
                 </div>
 
-                {/* Actions */}
-                <div className="flex gap-2 pt-2 border-t border-brand-gold/10">
-                  <AdminButton
-                    variant="secondary"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => onEdit(product)}
-                  >
-                    <Edit size={14} />
-                    Modifier
-                  </AdminButton>
+                {/* Product Info */}
+                <div className="p-5 space-y-4 bg-brand-bg-alt relative z-20">
+                  <div>
+                    <h3 className="font-bebas text-2xl text-brand-text uppercase leading-tight truncate">
+                      {product.name}
+                    </h3>
+                    <p className="text-xs text-brand-text-muted uppercase tracking-widest mt-0.5">
+                      {product.category.replace(/-/g, ' ')}
+                    </p>
+                  </div>
+
+                  {/* Levier 1 : Édition du prix en ligne (Inline Price Edit) */}
+                  <div className="flex items-center justify-between py-2 border-y border-brand-gold/10">
+                    <div>
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-text-muted block mb-1">
+                        Prix de vente
+                      </span>
+                      {isEditingPrice ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            value={tempPrice}
+                            onChange={(e) => setTempPrice(Number(e.target.value) || 0)}
+                            className="w-28 px-2 py-1 bg-brand-bg border border-brand-gold rounded text-brand-gold font-bold text-lg focus:outline-none"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleSavePrice(product.id)}
+                            className="p-1.5 bg-brand-gold text-[#0A0A0A] rounded hover:bg-brand-gold-light transition-colors cursor-pointer"
+                            aria-label="Valider prix"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            onClick={() => setEditingPriceId(null)}
+                            className="p-1.5 bg-gray-800 text-gray-400 rounded hover:bg-gray-700 hover:text-white transition-colors cursor-pointer"
+                            aria-label="Annuler prix"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingPriceId(product.id);
+                            setTempPrice(product.price);
+                          }}
+                          className="font-bebas text-2xl text-brand-gold hover:text-brand-gold-light transition-colors cursor-pointer flex items-center gap-1 group/price"
+                          title="Modifier le prix rapidement"
+                        >
+                          <span>{formatCurrency(product.price)}</span>
+                          <Edit size={14} className="text-brand-text-muted group-hover/price:text-brand-gold opacity-0 group-hover/price:opacity-100 transition-opacity ml-1" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-text-muted block mb-1">
+                        Stock dispo
+                      </span>
+                      <span className="text-sm font-medium text-brand-text">
+                        {product.stock !== undefined && product.stock !== null ? product.stock : '∞'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Levier 1 : Tailles interactives en 1 clic (Toggle Stock Tailles) */}
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-text-muted block">
+                      Disponibilité par taille (Clic pour basculer en Épuisé)
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {product.sizes?.map((size) => {
+                        const isOutOfStock = outOfStockList.includes(size);
+                        return (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => handleToggleSizeStock(product.id, size, outOfStockList)}
+                            disabled={savingId === product.id}
+                            className={`px-3 py-1.5 rounded-lg font-bebas text-sm uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer border ${
+                              isOutOfStock
+                                ? 'bg-gray-900 text-gray-600 border-gray-800 line-through opacity-60 hover:opacity-100 hover:border-brand-gold/40'
+                                : 'bg-brand-gold/10 text-brand-text border-brand-gold/20 hover:border-brand-gold hover:text-brand-bg hover:bg-brand-gold shadow-sm'
+                            }`}
+                            title={isOutOfStock ? 'Marquer disponible' : 'Marquer épuisé'}
+                          >
+                            {size} {isOutOfStock ? '❌' : '✅'}
+                          </button>
+                        );
+                      })}
+                      {!product.sizes?.length && (
+                        <span className="text-xs text-brand-text-muted italic">Aucune taille définie</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions d'édition complète */}
+                  <div className="pt-2 border-t border-brand-gold/10">
+                    <AdminButton
+                      variant="secondary"
+                      size="sm"
+                      className="w-full justify-center gap-2"
+                      onClick={() => onEdit(product)}
+                    >
+                      <Edit size={14} />
+                      Édition complète de la fiche
+                    </AdminButton>
+                  </div>
                 </div>
-              </div>
-            </AdminCard>
-          ))}
+              </AdminCard>
+            );
+          })}
         </div>
       )}
     </div>
