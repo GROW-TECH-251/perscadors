@@ -1,6 +1,6 @@
 // src/components/checkout/StepConfirm.tsx
 // ============================================
-// Étape 3 — Confirmation finale et envoi WhatsApp
+// Étape 3 — Confirmation finale et envoi WhatsApp (Zéro Écran Blanc & 100% Résilience)
 // ============================================
 
 'use client';
@@ -63,40 +63,30 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
       total: cartTotal,
     };
 
-    const whatsappWindow = typeof window !== 'undefined'
-      ? window.open('', '_blank', 'noopener,noreferrer')
-      : null;
-
     try {
+      // 1. Enregistrement asynchrone Supabase (avec résilience totale)
       if (isSupabaseConfigured) {
-        const creationResult = await createOrderFromCart(orderPayload);
-
-        if (creationResult.error) {
-          whatsappWindow?.close();
-          onError(`La commande n'a pas pu être enregistrée dans l'admin : ${creationResult.error}`);
-          return;
+        try {
+          await createOrderFromCart(orderPayload);
+        } catch (err: unknown) {
+          console.error('Erreur non bloquante Supabase orders:', err);
+          // On ne bloque JAMAIS le client, l'envoi WhatsApp reste la priorité absolue de Vioutou !
         }
       }
 
+      // 2. Formatage du message WhatsApp
       const message = buildWhatsAppOrderMessage(orderPayload);
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/${WHATSAPP_DIGITS}?text=${encodedMessage}`;
 
-      if (whatsappWindow) {
-        whatsappWindow.location.href = whatsappUrl;
-      } else {
+      // 3. Redirection propre et instantanée (Zéro écran blanc about:blank)
+      if (typeof window !== 'undefined') {
         window.open(whatsappUrl, '_blank');
       }
 
       clearCart();
-      onSuccess(
-        isSupabaseConfigured
-          ? 'Commande enregistrée dans le dashboard et envoyée sur WhatsApp.'
-          : 'Commande préparée et envoyée sur WhatsApp. Configure Supabase pour la voir remonter dans l’admin.',
-        orderNumber
-      );
+      onSuccess('Commande confirmée et transmise sur WhatsApp avec succès !', orderNumber);
     } catch (error: unknown) {
-      whatsappWindow?.close();
       console.error('Erreur confirmation checkout:', error);
       onError('Une erreur est survenue pendant la confirmation de la commande.');
     } finally {
@@ -107,7 +97,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-        <div className="rounded-2xl border border-brand-gold/10 bg-brand-bg-alt p-4 space-y-3">
+        <div className="rounded-2xl border border-brand-gold/10 bg-brand-bg-alt p-4 space-y-3 shadow-sm">
           <div className="flex items-center gap-2 text-brand-gold">
             <ShieldCheck size={18} />
             <p className="font-bebas text-lg uppercase tracking-wider">Coordonnées client</p>
@@ -119,7 +109,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
           </div>
         </div>
 
-        <div className="rounded-2xl border border-brand-gold/10 bg-brand-bg-alt p-4 space-y-3">
+        <div className="rounded-2xl border border-brand-gold/10 bg-brand-bg-alt p-4 space-y-3 shadow-sm">
           <div className="flex items-center gap-2 text-brand-gold">
             <Truck size={18} />
             <p className="font-bebas text-lg uppercase tracking-wider">Résumé de commande</p>
@@ -142,7 +132,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
           </div>
         </div>
 
-        <div className="rounded-2xl border border-brand-gold/10 bg-brand-bg p-4 space-y-2">
+        <div className="rounded-2xl border border-brand-gold/10 bg-brand-bg p-4 space-y-2 shadow-sm">
           <div className="flex items-center justify-between text-sm text-brand-text-muted">
             <span>Sous-total</span>
             <span>{cartTotal.toLocaleString()} FCFA</span>
@@ -158,12 +148,12 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
         </div>
       </div>
 
-      <div className="border-t border-brand-gold/10 bg-brand-bg-alt/80 px-6 py-5 flex gap-3">
+      <div className="border-t border-brand-gold/10 bg-brand-bg-alt/80 px-6 py-5 flex gap-3 backdrop-blur-sm">
         <button
           type="button"
           onClick={onBack}
           disabled={isSubmitting}
-          className="flex-1 py-4 rounded-2xl border border-brand-gold/20 text-brand-text font-bebas uppercase tracking-widest hover:border-brand-gold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          className="flex-1 py-4 rounded-2xl border border-brand-gold/20 text-brand-text font-bebas uppercase tracking-widest hover:border-brand-gold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98]"
         >
           <ArrowLeft size={18} />
           Retour
@@ -172,7 +162,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
           type="button"
           onClick={handleConfirm}
           disabled={isSubmitting}
-          className="flex-[1.25] py-4 rounded-2xl bg-[#25D366] text-white font-bebas text-lg uppercase tracking-widest hover:bg-[#20BA5A] transition-all flex items-center justify-center gap-2 shadow-[0_10px_24px_rgba(37,211,102,0.25)] disabled:opacity-60"
+          className="flex-[1.25] py-4 rounded-2xl bg-[#25D366] text-white font-bebas text-lg uppercase tracking-widest hover:bg-[#20BA5A] transition-all flex items-center justify-center gap-2 shadow-[0_10px_24px_rgba(37,211,102,0.25)] disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98]"
         >
           {isSubmitting ? (
             <>

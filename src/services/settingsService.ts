@@ -1,12 +1,13 @@
 // src/services/settingsService.ts
 // ============================================
-// Service de gestion des réglages boutique (Priorité 3 : FAQ Dynamique + Fix PGRST204)
+// Service de gestion des réglages boutique (Correction d'identifiant Supabase INT & Résilience)
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
 import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData, FAQItem } from '@/admin/types';
 
-const SETTINGS_ROW_ID = 'default';
+// CORRECTION CAPITALE : Dans Supabase, id est un INT (1), pas un texte ('default') !
+const SETTINGS_ROW_ID = 1;
 
 const DEFAULT_DELIVERY_ZONES: DeliveryZone[] = [
   { id: 'cotonou', name: 'Cotonou', fee: 1000, freeThreshold: 50000 },
@@ -207,7 +208,7 @@ export async function upsertShopSettings(
     .single();
 
   if (error) {
-    console.error('Erreur sauvegarde shop_settings (interception PGRST204/RLS):', error);
+    console.error('Erreur sauvegarde shop_settings (interception RLS/INT):', error);
     // Interception silencieuse des erreurs RLS et PGRST204.
     // On retourne le nextSettings localement pour que l'interface applique immédiatement le changement en mémoire !
     return { 
