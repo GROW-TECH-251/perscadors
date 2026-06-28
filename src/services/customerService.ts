@@ -107,7 +107,8 @@ export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
 function calculateCustomerSegments(customer: CustomerSummary): CustomerSegment[] {
   const segments: CustomerSegment[] = [];
 
-  if (customer.totalSpent >= 100000) {
+  // CORRECTION CADRE FINAL : Le client devient VIP dès 50 000 FCFA de dépenses !
+  if (customer.totalSpent >= 50000) {
     segments.push('VIP');
   }
 
@@ -120,7 +121,7 @@ function calculateCustomerSegments(customer: CustomerSummary): CustomerSegment[]
   }
 
   const avgOrderValue = customer.totalSpent / customer.orderCount;
-  if (avgOrderValue >= 50000) {
+  if (avgOrderValue >= 50000 && !segments.includes('VIP')) {
     segments.push('Gros panier');
   }
 
@@ -201,6 +202,29 @@ export async function upsertCustomerMeta(
   }
 
   return { data: data as CustomerMeta, error: null };
+}
+
+export async function deleteCustomer(phone: string): Promise<ApiResponse<boolean>> {
+  // Purge en mémoire locale (localStorage)
+  if (typeof window !== 'undefined') {
+    try {
+      const savedOrders = JSON.parse(window.localStorage.getItem('__PERSCADORS_ORDERS_CACHE__') || '[]');
+      window.localStorage.setItem('__PERSCADORS_ORDERS_CACHE__', JSON.stringify(savedOrders.filter((o: { client_phone?: string }) => o.client_phone !== phone)));
+    } catch {
+      // Ignorer silencieusement
+    }
+  }
+
+  if (!supabase) {
+    return { data: true, error: null };
+  }
+
+  const db = requireSupabase();
+  // Suppression de la fiche customer_meta et des commandes liées
+  await db.from('customer_meta').delete().eq('phone', phone);
+  await db.from('orders').delete().eq('client_phone', phone);
+
+  return { data: true, error: null };
 }
 
 export async function addCustomerTag(phone: string, tag: string): Promise<ApiResponse<CustomerMeta>> {

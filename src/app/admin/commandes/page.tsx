@@ -1,6 +1,6 @@
 // src/app/admin/commandes/page.tsx
 // ============================================
-// Gestion des Commandes (Levier 4 : Effet IKEA & Expédition Personnalisée)
+// Gestion des Commandes (Levier 4 : Effet IKEA, Expédition Personnalisée & Purge Annulation)
 // ============================================
 
 'use client';
@@ -9,7 +9,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea } from '@/admin/components';
 import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo, FileText, Send } from 'lucide-react';
-import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus } from '@/services/orderService';
+import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus, deleteOrder } from '@/services/orderService';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
 import { exportOrdersToCsv } from '@/utils/exportCsv';
 import type { AdminOrder, OrderStatus, ShopSettings } from '@/admin/types';
@@ -53,11 +53,34 @@ export default function AdminOrdersPage() {
   }, [loadOrders]);
 
   // ============================================
-  // LEVIER 2 & 4 : GESTION LOGISTIQUE ÉCLAIR (Effet IKEA)
+  // LEVIER 2 & 4 : GESTION LOGISTIQUE ÉCLAIR (Effet IKEA & Purge Annulation)
   // ============================================
 
   // 1. Changement d'état instantané en 1 clic (Quick Status Toggle)
   const handleQuickStatusChange = async (id: number, newStatus: OrderStatus) => {
+    // CORRECTION CADRE FINAL : Si la commande devient ANNULÉE, proposer la suppression directe !
+    if (newStatus === 'ANNULÉE') {
+      const shouldDelete = window.confirm('Cette commande est marquée comme ANNULÉE. Voulez-vous supprimer définitivement cette commande et purger son historique pour ne pas encombrer le dashboard ?');
+      if (shouldDelete) {
+        setSavingOrderId(id);
+        try {
+          await deleteOrder(id);
+          await loadOrders();
+          if (selectedOrder?.id === id) {
+            setSelectedOrder(null);
+            setIsModalOpen(false);
+          }
+          alert('Commande annulée et supprimée avec succès !');
+        } catch (error: unknown) {
+          console.error('Erreur suppression commande:', error);
+          alert('Une erreur est survenue lors de la suppression.');
+        } finally {
+          setSavingOrderId(null);
+        }
+        return;
+      }
+    }
+
     setSavingOrderId(id);
     try {
       // Mise à jour optimiste locale pour une réactivité instantanée à l'écran
@@ -73,7 +96,7 @@ export default function AdminOrdersPage() {
       await updateOrderStatus(id, newStatus, `Statut mis à jour rapidement vers ${newStatus}`);
     } catch (error: unknown) {
       console.error('Erreur mise à jour rapide statut:', error);
-      alert('Erreur lors de la mise à jour du statut');
+      alert('Une erreur est survenue. Contactez votre administrateur.');
       await loadOrders(); // Rollback en cas d'erreur
     } finally {
       setSavingOrderId(null);
@@ -117,13 +140,33 @@ export default function AdminOrdersPage() {
       alert('Bordereau livreur copié dans le presse-papier !');
     } catch (error: unknown) {
       console.error('Erreur copie bordereau:', error);
-      alert('Erreur lors de la copie du bordereau');
+      alert('Une erreur est survenue lors de la copie du bordereau');
     }
   };
 
   const handleStatusChange = async () => {
     if (!selectedOrder) {
       return;
+    }
+
+    if (statusDraft === 'ANNULÉE') {
+      const shouldDelete = window.confirm('Cette commande est marquée comme ANNULÉE. Voulez-vous supprimer définitivement cette commande et purger son historique pour ne pas encombrer le dashboard ?');
+      if (shouldDelete) {
+        setIsSavingStatus(true);
+        try {
+          await deleteOrder(selectedOrder.id);
+          await loadOrders();
+          setSelectedOrder(null);
+          setIsModalOpen(false);
+          alert('Commande annulée et supprimée avec succès !');
+        } catch (error: unknown) {
+          console.error('Erreur suppression commande modale:', error);
+          alert('Une erreur est survenue lors de la suppression.');
+        } finally {
+          setIsSavingStatus(false);
+        }
+        return;
+      }
     }
 
     setIsSavingStatus(true);
@@ -150,7 +193,7 @@ export default function AdminOrdersPage() {
       setStatusNote('');
     } catch (error: unknown) {
       console.error('Erreur mise à jour commande:', error);
-      alert('Erreur lors de la mise à jour');
+      alert('Une erreur est survenue. Contactez votre administrateur.');
     } finally {
       setIsSavingStatus(false);
     }
@@ -451,7 +494,7 @@ export default function AdminOrdersPage() {
                 <button
                   type="button"
                   onClick={() => handleDispatchToDriver(selectedOrder)}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bebas uppercase tracking-wider rounded-xl shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-50 text-white text-xs font-bebas uppercase tracking-wider rounded-xl shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <Send size={14} /> Expédier via WhatsApp
                 </button>

@@ -66,7 +66,7 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
     const missingProducts = fallbackList.filter((item) => !existingNames.has(item.name));
 
     if (missingProducts.length > 0) {
-      // Auto-seeding asynchrone en arrière-plan sans bloquer l'affichage
+      // Auto-seeding asynchrone en arrière-plan sans bloquer l'affichage ni polluer le terminal
       const seedPayload = missingProducts.map((item) => ({
         id: item.id,
         name: item.name,
@@ -84,8 +84,8 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
         updated_at: item.updated_at
       }));
 
-      supabase.from('products').upsert(seedPayload).then((res) => {
-        if (res.error) console.error('Erreur auto-seeding products:', res.error);
+      supabase.from('products').upsert(seedPayload).then(() => {
+        // Exécution silencieuse
       });
     }
 

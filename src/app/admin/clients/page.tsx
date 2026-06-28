@@ -1,6 +1,6 @@
 // src/app/admin/clients/page.tsx
 // ============================================
-// Gestion des Clients (Levier 4 : Effet IKEA & Relance Magique Personnalisée)
+// Gestion des Clients (Levier 4 : Relance Magique VIP 50k & Suppression Client)
 // ============================================
 
 'use client';
@@ -8,8 +8,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, AdminInput, AdminTextarea, AdminBadge } from '@/admin/components';
-import { Users, Phone, MapPin, Tag, MessageCircle, Copy, Download, Eye, Save, Zap } from 'lucide-react';
-import { fetchCustomerSummaries, upsertCustomerMeta } from '@/services/customerService';
+import { Users, Phone, MapPin, Tag, MessageCircle, Copy, Download, Eye, Save, Zap, Trash2 } from 'lucide-react';
+import { fetchCustomerSummaries, upsertCustomerMeta, deleteCustomer } from '@/services/customerService';
 import { fetchOrdersByPhone } from '@/services/orderService';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
 import { exportCustomersToCsv } from '@/utils/exportCsv';
@@ -100,8 +100,27 @@ export default function AdminCustomersPage() {
   };
 
   // ============================================
-  // LEVIER 4 : BOOSTER DE RENTABILITÉ (Relance Magique Personnalisée)
+  // LEVIER 4 : SUPPRESSION CLIENT & RELANCE MAGIQUE VIP (Seuil 50k)
   // ============================================
+  const handleDeleteCustomer = async (phone: string) => {
+    if (!window.confirm('Voulez-vous réellement supprimer ce client du tableau de bord ? Cette action est irréversible et purgera ses commandes locales pour désencombrer l’administration.')) {
+      return;
+    }
+
+    try {
+      await deleteCustomer(phone);
+      setCustomers((current) => current.filter((c) => c.phone !== phone));
+      if (selectedCustomer?.phone === phone) {
+        setDetailsOpen(false);
+        setSelectedCustomer(null);
+      }
+      alert('Client supprimé avec succès !');
+    } catch (error: unknown) {
+      console.error('Erreur suppression client:', error);
+      alert('Une erreur est survenue lors de la suppression.');
+    }
+  };
+
   const handleMagicFollowup = (customer: CustomerSummary) => {
     const message = formatWhatsAppMessage(settings.vip_magic_template, {
       shopName: settings.shop_name,
@@ -207,7 +226,7 @@ export default function AdminCustomersPage() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
-            Booster de Rentabilité • Effet IKEA
+            Booster de Rentabilité • VIP 50k
           </span>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Clients</h1>
           <p className="text-brand-text-muted mt-1">{customers.length} clients uniques</p>
@@ -280,10 +299,23 @@ export default function AdminCustomersPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCustomers.map((customer) => {
-            const isToFollowup = customer.segments.includes('À relancer');
+            // CORRECTION CADRE FINAL : Si le client a dépensé >= 50 000 FCFA, on active le bouton VIP Magique !
+            const isVIP = customer.segments.includes('VIP') || customer.totalSpent >= 50000;
             return (
               <AdminCard key={customer.phone} className="relative group/client border-brand-gold/15 hover:border-brand-gold/40 transition-all shadow-md hover:shadow-xl">
-                <div className="flex items-start justify-between mb-4">
+                {/* BOUTON SUPPRESSION CLIENT (Poubelle Flottante) */}
+                <div className="absolute top-3 right-3 z-20 opacity-0 group-hover/client:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCustomer(customer.phone)}
+                    className="p-2 bg-red-950/80 text-red-400 hover:bg-red-600 hover:text-white rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm"
+                    title="Supprimer ce client"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                <div className="flex items-start justify-between mb-4 pr-10">
                   <div>
                     <h3 className="font-bebas text-xl text-brand-text uppercase">{customer.name}</h3>
                     <p className="text-sm text-brand-text-muted font-mono mt-0.5">{customer.phone}</p>
@@ -345,19 +377,25 @@ export default function AdminCustomersPage() {
                   </div>
                 )}
 
-                {/* Levier 4 : Bouton de Relance Magique WhatsApp */}
+                {/* Levier 4 : Bouton de Relance Magique VIP (Seuil 50k) */}
                 <div className="space-y-2 pt-2 border-t border-brand-gold/10">
                   <button
                     type="button"
-                    onClick={() => handleMagicFollowup(customer)}
+                    onClick={() => {
+                      if (isVIP) {
+                        handleMagicFollowup(customer);
+                      } else {
+                        openWhatsApp(customer.phone, `Bonjour ${customer.name}, merci pour votre confiance chez HP Collection ! Découvrez nos nouvelles arrivées cette semaine. 🛍️`);
+                      }
+                    }}
                     className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bebas text-base uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer shadow-md ${
-                      isToFollowup
+                      isVIP
                         ? 'bg-gradient-to-r from-brand-gold to-yellow-500 text-[#0A0A0A] font-bold shadow-[0_4px_15px_rgba(184,149,42,0.3)] hover:scale-[1.02]'
                         : 'bg-[#25D366] hover:bg-[#20BA5A] text-white'
                     }`}
                   >
-                    {isToFollowup ? <Zap size={18} className="text-[#0A0A0A] fill-current animate-bounce" /> : <MessageCircle size={18} />}
-                    <span>{isToFollowup ? 'Relance Magique VIP' : 'Contacter sur WhatsApp'}</span>
+                    {isVIP ? <Zap size={18} className="text-[#0A0A0A] fill-current animate-bounce" /> : <MessageCircle size={18} />}
+                    <span>{isVIP ? 'Relance Magique VIP' : 'Contacter sur WhatsApp'}</span>
                   </button>
 
                   <div className="grid grid-cols-2 gap-2">
