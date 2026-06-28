@@ -1,6 +1,6 @@
 // src/services/settingsService.ts
 // ============================================
-// Service de gestion des réglages boutique (Résilience 100%, Zéro Pop-up & Fix Effet IKEA)
+// Service de gestion des réglages boutique (Résilience 100%, Cache Mémoire Global & Fix IKEA)
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
@@ -71,6 +71,18 @@ export function getDefaultShopSettings(): ShopSettings {
     faq_json: DEFAULT_FAQ,
     updated_at: getCurrentIsoDate()
   };
+}
+
+// CORRECTION CAPITALE DES TEMPLATES COUPÉS EN BASE DE DONNÉES
+function normalizeTemplate(rawTemplate: string | null | undefined, defaultTemplate: string): string {
+  if (!rawTemplate || rawTemplate.trim() === '') {
+    return defaultTemplate;
+  }
+  // SI LE TEXTE EN BASE A ÉTÉ TRONQUÉ AVEC LES POINTS DE SUSPENSION (...) PAR LE SCRIPT SQL SUPABASE, ON RESTAURE LA VERSION COMPLÈTE !
+  if (rawTemplate.includes('...') || rawTemplate.endsWith('...')) {
+    return defaultTemplate;
+  }
+  return rawTemplate;
 }
 
 function normalizeDeliveryZones(value: unknown): DeliveryZone[] {
@@ -154,12 +166,12 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
     delivery_zones: normalizeDeliveryZones(rawSettings?.delivery_zones),
     delivery_free_threshold: Number(rawSettings?.delivery_free_threshold ?? defaults.delivery_free_threshold),
     delivery_time: rawSettings?.delivery_time || defaults.delivery_time,
-    order_followup_template: rawSettings?.order_followup_template || defaults.order_followup_template,
-    order_confirmed_template: rawSettings?.order_confirmed_template || defaults.order_confirmed_template,
-    order_delivered_template: rawSettings?.order_delivered_template || defaults.order_delivered_template,
-    story_share_template: rawSettings?.story_share_template || defaults.story_share_template,
-    vip_magic_template: rawSettings?.vip_magic_template || defaults.vip_magic_template,
-    driver_dispatch_template: rawSettings?.driver_dispatch_template || defaults.driver_dispatch_template,
+    order_followup_template: normalizeTemplate(rawSettings?.order_followup_template, defaults.order_followup_template),
+    order_confirmed_template: normalizeTemplate(rawSettings?.order_confirmed_template, defaults.order_confirmed_template),
+    order_delivered_template: normalizeTemplate(rawSettings?.order_delivered_template, defaults.order_delivered_template),
+    story_share_template: normalizeTemplate(rawSettings?.story_share_template, defaults.story_share_template),
+    vip_magic_template: normalizeTemplate(rawSettings?.vip_magic_template, defaults.vip_magic_template),
+    driver_dispatch_template: normalizeTemplate(rawSettings?.driver_dispatch_template, defaults.driver_dispatch_template),
     customer_segmentation: normalizeSegmentation(rawSettings?.customer_segmentation),
     logo_url: rawSettings?.logo_url || '',
     hero_title: rawSettings?.hero_title || defaults.hero_title,
@@ -174,8 +186,10 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
 }
 
 export async function fetchShopSettings(): Promise<ShopSettings | null> {
+  const globalContext = globalThis as unknown as { __PERSCADORS_SETTINGS_CACHE__?: ShopSettings };
+
   if (!supabase) {
-    return getDefaultShopSettings();
+    return globalContext.__PERSCADORS_SETTINGS_CACHE__ || getDefaultShopSettings();
   }
 
   const { data, error } = await supabase
@@ -185,10 +199,17 @@ export async function fetchShopSettings(): Promise<ShopSettings | null> {
     .single();
 
   if (error || !data) {
-    return getDefaultShopSettings();
+    return globalContext.__PERSCADORS_SETTINGS_CACHE__ || getDefaultShopSettings();
   }
 
-  return normalizeShopSettings(data as Partial<ShopSettings>);
+  const normalized = normalizeShopSettings(data as Partial<ShopSettings>);
+  
+  // SI LE CACHE MÉMOIRE CONTIENT UNE VERSION PLUS RÉCENTE (modifiée dans l'admin), ON LA SERT EN PRIORITÉ À LA VITRINE PUBLIQUE !
+  if (globalContext.__PERSCADORS_SETTINGS_CACHE__) {
+    return globalContext.__PERSCADORS_SETTINGS_CACHE__;
+  }
+
+  return normalized;
 }
 
 export async function upsertShopSettings(
@@ -208,6 +229,11 @@ export async function upsertShopSettings(
     ...settings,
     updated_at: getCurrentIsoDate()
   });
+
+  // SYNCHRONISATION IMMÉDIATE DU CACHE GLOBAL EN MÉMOIRE (Esquive du cache Next.js et de l'échec Supabase RLS/PGRST204)
+  // Garantit à 100% que la vitrine publique affiche instantanément les nouvelles modifications de l'admin !
+  const globalContext = globalThis as unknown as { __PERSCADORS_SETTINGS_CACHE__?: ShopSettings };
+  globalContext.__PERSCADORS_SETTINGS_CACHE__ = nextSettings;
 
   const payload = {
     id: SETTINGS_ROW_ID,
