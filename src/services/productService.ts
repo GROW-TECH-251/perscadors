@@ -1,6 +1,6 @@
 // src/services/productService.ts
 // ============================================
-// Service de gestion des produits (Cadre Final : Synchronisation & Auto-Seeding du Repo)
+// Service de gestion des produits (Cadre Final : Synchronisation Intelligente & Auto-Seeding)
 // ============================================
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
@@ -56,33 +56,42 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
     return fallbackList;
   }
 
-  // CADRE FINAL : Si la table Supabase est vide (ex: base neuve), on peuple automatiquement et on retourne le catalogue d'origine !
-  if (!data || data.length === 0) {
-    console.log('Catalogue Supabase vide : Injection automatique des articles d’origine du repo...');
+  // CADRE FINAL : Synchronisation Intelligente (Merge & Auto-Seeding)
+  // Si la table Supabase contient moins de produits que le catalogue d'origine (ex: juste 1 produit de test),
+  // on peuple automatiquement les articles manquants en arrière-plan et on affiche la liste fusionnée instantanément !
+  if (!data || data.length < fallbackList.length) {
+    console.log('Catalogue Supabase incomplet ou vide : Injection automatique des articles d’origine du repo...');
     
-    // Auto-seeding asynchrone en arrière-plan sans bloquer l'affichage
-    const seedPayload = fallbackList.map((item) => ({
-      id: item.id,
-      name: item.name,
-      category: item.category,
-      price: item.price,
-      image_url: item.image_url,
-      sizes: item.sizes,
-      colors: item.colors,
-      demand: item.demand,
-      stock: item.stock,
-      badge: item.badge,
-      description: item.description,
-      visible: item.visible,
-      created_at: item.created_at,
-      updated_at: item.updated_at
-    }));
+    const existingNames = new Set((data || []).map((p: { name?: string }) => p.name));
+    const missingProducts = fallbackList.filter((item) => !existingNames.has(item.name));
 
-    supabase.from('products').upsert(seedPayload).then((res) => {
-      if (res.error) console.error('Erreur auto-seeding products:', res.error);
-    });
+    if (missingProducts.length > 0) {
+      // Auto-seeding asynchrone en arrière-plan sans bloquer l'affichage
+      const seedPayload = missingProducts.map((item) => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        price: item.price,
+        image_url: item.image_url,
+        sizes: item.sizes,
+        colors: item.colors,
+        demand: item.demand,
+        stock: item.stock,
+        badge: item.badge,
+        description: item.description,
+        visible: item.visible,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      }));
 
-    return fallbackList;
+      supabase.from('products').upsert(seedPayload).then((res) => {
+        if (res.error) console.error('Erreur auto-seeding products:', res.error);
+      });
+    }
+
+    // On retourne la liste fusionnée complète instantanément à l'écran !
+    const mergedList = [...(data || []), ...missingProducts];
+    return mergedList as AdminProduct[];
   }
 
   return (data || []) as AdminProduct[];
