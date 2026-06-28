@@ -2,16 +2,25 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import type { ShopSettings } from '@/admin/types';
 
 export const Hero: React.FC = () => {
   const [videoSrc, setVideoSrc] = useState<string>('');
+  const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
 
   useEffect(() => {
-    // Defer loading the massive video until after the critical page rendering is complete
-    const timer = setTimeout(() => {
-      setVideoSrc('/images/ARRIEREPLAN/7679830-uhd_4096_2160_25fps.mp4');
-    }, 800);
-    return () => clearTimeout(timer);
+    async function loadHeroSettings() {
+      const data = await fetchShopSettings();
+      if (data) {
+        setSettings(data);
+        const timer = setTimeout(() => {
+          setVideoSrc(data.hero_video_url || '/images/ARRIEREPLAN/7679830-uhd_4096_2160_25fps.mp4');
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    }
+    loadHeroSettings();
   }, []);
 
   return (
@@ -47,13 +56,13 @@ export const Hero: React.FC = () => {
         {/* Premium Typography Hierarchy - Level 2 Immersive Hero */}
         <div className="space-y-4 animate-slide-up-fade">
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold border border-brand-gold/20 backdrop-blur-md shadow-lg">
-            Collection Premium • Bénin
+            Collection Premium • {settings.country || 'Bénin'}
           </span>
           <h1 className="font-bebas text-5xl sm:text-7xl lg:text-8xl tracking-wider text-white uppercase drop-shadow-2xl leading-none">
-            Vioutou t&apos;habille. <span className="text-brand-gold">Tu règnes.</span>
+            {settings.hero_title.split('.')[0]}. <span className="text-brand-gold">{settings.hero_title.split('.')[1] ? settings.hero_title.split('.')[1].trim() + '.' : ''}</span>
           </h1>
           <p className="text-brand-text-muted max-w-2xl mx-auto text-base sm:text-xl font-light leading-relaxed">
-            La marque de mode streetwear premium. Statut, style, modernité et une élégance sans compromis. Impose ta présence dans la rue.
+            {settings.hero_subtitle}
           </p>
         </div>
 

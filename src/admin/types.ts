@@ -189,6 +189,18 @@ export interface CustomerSegmentationSettings {
   big_cart_threshold: number;
 }
 
+export interface TestimonialVideo {
+  src: string;
+  title: string;
+  description: string;
+}
+
+export interface TestimonialsData {
+  screenshot_url: string;
+  screenshot_quote: string;
+  videos: TestimonialVideo[];
+}
+
 export interface ShopSettings {
   shop_name: string;
   whatsapp_phone: string;
@@ -206,6 +218,13 @@ export interface ShopSettings {
   driver_dispatch_template: string;
   customer_segmentation: CustomerSegmentationSettings;
   logo_url: string | null;
+  // Priorité 2 : Administration de la Vitrine Publique
+  hero_title: string;
+  hero_subtitle: string;
+  hero_video_url: string;
+  footer_description: string;
+  floating_whatsapp_text: string;
+  testimonials_json: TestimonialsData;
   updated_at: string;
 }
 

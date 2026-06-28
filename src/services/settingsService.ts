@@ -4,7 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
-import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings } from '@/admin/types';
+import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData } from '@/admin/types';
 
 const SETTINGS_ROW_ID = 'default';
 
@@ -19,6 +19,16 @@ const DEFAULT_SEGMENTATION: CustomerSegmentationSettings = {
   vip_threshold: 100000,
   loyal_threshold: 3,
   big_cart_threshold: 50000
+};
+
+const DEFAULT_TESTIMONIALS: TestimonialsData = {
+  screenshot_url: '/images/Temoignages/photos/témoignageclient.jpeg',
+  screenshot_quote: "Tu connais #HPcollection c'est la meilleure prêt à porter du Bénin 🇧🇯 actuellement chez Honoré Perscadors...",
+  videos: [
+    { src: '/images/Temoignages/video/client.mp4', title: 'Avis Client #1', description: 'Validation de l\'outfit complet par un king local.' },
+    { src: '/images/Temoignages/video/client2.mp4', title: 'Avis Client #2', description: 'Review des baskets premium à la réception.' },
+    { src: '/images/Temoignages/video/client3.mp4', title: 'Avis Client #3', description: 'Un look validé à 100% sur Cotonou.' }
+  ]
 };
 
 function getCurrentIsoDate(): string {
@@ -43,6 +53,12 @@ export function getDefaultShopSettings(): ShopSettings {
     driver_dispatch_template: '🚀 *MISSION LIVRAISON {shopName}* 🚀\n\n📦 *Réf Commande :* {orderId}\n👤 *Client :* {clientName}\n📱 *Contact :* {clientPhone}\n📍 *Lieu de livraison :* {clientArea}\n\n🛒 *Articles à remettre au client :*\n{itemsList}\n\n💰 *Montant net à encaisser :* {orderTotal}\n\n_Merci de confirmer la bonne réception de cette mission et d\'entamer la livraison._',
     customer_segmentation: DEFAULT_SEGMENTATION,
     logo_url: '',
+    hero_title: 'Vioutou t\'habille. Tu règnes.',
+    hero_subtitle: 'La marque de mode streetwear premium. Statut, style, modernité et une élégance sans compromis. Impose ta présence dans la rue.',
+    hero_video_url: '/images/ARRIEREPLAN/7679830-uhd_4096_2160_25fps.mp4',
+    footer_description: 'La marque de mode streetwear premium au Bénin. Statut, style, modernité et une élégance sans compromis.',
+    floating_whatsapp_text: 'Bonjour Vioutou ! Je viens du site HP Collection et j\'aimerais discuter de vos outfits.',
+    testimonials_json: DEFAULT_TESTIMONIALS,
     updated_at: getCurrentIsoDate()
   };
 }
@@ -82,6 +98,19 @@ function normalizeSegmentation(value: unknown): CustomerSegmentationSettings {
   };
 }
 
+function normalizeTestimonials(value: unknown): TestimonialsData {
+  if (!value || typeof value !== 'object') {
+    return DEFAULT_TESTIMONIALS;
+  }
+
+  const cand = value as Partial<TestimonialsData>;
+  return {
+    screenshot_url: cand.screenshot_url || DEFAULT_TESTIMONIALS.screenshot_url,
+    screenshot_quote: cand.screenshot_quote || DEFAULT_TESTIMONIALS.screenshot_quote,
+    videos: Array.isArray(cand.videos) && cand.videos.length > 0 ? cand.videos : DEFAULT_TESTIMONIALS.videos
+  };
+}
+
 function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undefined): ShopSettings {
   const defaults = getDefaultShopSettings();
 
@@ -102,6 +131,12 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
     driver_dispatch_template: rawSettings?.driver_dispatch_template || defaults.driver_dispatch_template,
     customer_segmentation: normalizeSegmentation(rawSettings?.customer_segmentation),
     logo_url: rawSettings?.logo_url || '',
+    hero_title: rawSettings?.hero_title || defaults.hero_title,
+    hero_subtitle: rawSettings?.hero_subtitle || defaults.hero_subtitle,
+    hero_video_url: rawSettings?.hero_video_url || defaults.hero_video_url,
+    footer_description: rawSettings?.footer_description || defaults.footer_description,
+    floating_whatsapp_text: rawSettings?.floating_whatsapp_text || defaults.floating_whatsapp_text,
+    testimonials_json: normalizeTestimonials(rawSettings?.testimonials_json),
     updated_at: rawSettings?.updated_at || defaults.updated_at
   };
 }

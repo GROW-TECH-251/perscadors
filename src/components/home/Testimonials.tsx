@@ -1,26 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import type { ShopSettings } from '@/admin/types';
 
 export const Testimonials: React.FC = () => {
-  const videos = [
-    {
-      src: '/images/Temoignages/video/client.mp4',
-      title: 'Avis Client #1',
-      description: 'Validation de l\'outfit complet par un king local.'
-    },
-    {
-      src: '/images/Temoignages/video/client2.mp4',
-      title: 'Avis Client #2',
-      description: 'Review des baskets premium à la réception.'
-    },
-    {
-      src: '/images/Temoignages/video/client3.mp4',
-      title: 'Avis Client #3',
-      description: 'Un look validé à 100% sur Cotonou.'
+  const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
+
+  useEffect(() => {
+    async function loadTestimonials() {
+      const data = await fetchShopSettings();
+      if (data) setSettings(data);
     }
-  ];
+    loadTestimonials();
+  }, []);
+
+  const data = settings.testimonials_json;
 
   return (
     <section id="testimonials" className="py-24 bg-brand-bg-alt border-y border-brand-gold/10">
@@ -32,7 +28,7 @@ export const Testimonials: React.FC = () => {
           </h2>
           <div className="w-20 h-1 bg-brand-gold mx-auto mb-4" />
           <p className="text-brand-text-muted max-w-xl mx-auto text-base sm:text-lg">
-            Découvre les retours en direct de nos kings et reines qui s&apos;habillent chez HP Collection.
+            Découvre les retours en direct de nos kings et reines qui s&apos;habillent chez {settings.shop_name}.
           </p>
         </div>
 
@@ -46,7 +42,7 @@ export const Testimonials: React.FC = () => {
                 En direct de WhatsApp 💬
               </span>
               <h3 className="font-bebas text-3xl tracking-wide text-brand-text uppercase leading-none">
-                La référence au Bénin
+                La référence au {settings.country}
               </h3>
               <p className="text-sm text-brand-text-muted mt-2 leading-relaxed">
                 Nos clients partagent leur satisfaction sur les réseaux sociaux. Voici l&apos;avis partagé sur WhatsApp par Poyor Poyor.
@@ -57,22 +53,23 @@ export const Testimonials: React.FC = () => {
             <div className="relative w-full h-[180px] sm:h-[220px] rounded-lg overflow-hidden border-2 border-brand-gold/10 shadow-lg bg-white flex items-center justify-center p-2">
               <div className="relative w-full h-full">
                 <Image
-                  src="/images/Temoignages/photos/témoignageclient.jpeg"
+                  src={data.screenshot_url || '/images/Temoignages/photos/témoignageclient.jpeg'}
                   alt="Témoignage Poyor Poyor"
                   fill
                   className="object-contain"
+                  unoptimized
                 />
               </div>
             </div>
 
             <div className="p-4 bg-brand-bg-alt rounded-lg border-l-4 border-brand-gold text-xs leading-relaxed text-brand-text-muted italic">
-              &quot;Tu connais #HPcollection c&apos;est la meilleure prêt à porter du Bénin 🇧🇯 actuellement chez Honoré Perscadors...&quot;
+              &quot;{data.screenshot_quote}&quot;
             </div>
           </div>
 
           {/* Videos column (Right, 7 cols) */}
           <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {videos.map((vid, index) => (
+            {data.videos.map((vid, index) => (
               <div
                 key={index}
                 className="flex flex-col bg-brand-bg border border-brand-gold/10 rounded-2xl overflow-hidden shadow-xl"

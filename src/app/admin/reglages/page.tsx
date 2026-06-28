@@ -1,6 +1,6 @@
 // src/app/admin/reglages/page.tsx
 // ============================================
-// Réglages boutique opérationnels (Levier 4 : Effet IKEA & Personnalisation WhatsApp)
+// Réglages boutique opérationnels & Administration Vitrine (Priorité 2)
 // ============================================
 
 'use client';
@@ -9,11 +9,11 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea } from '@/admin/components';
-import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap, Share2 } from 'lucide-react';
+import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap, Share2, Monitor, Star } from 'lucide-react';
 import { clearAdminSession } from '@/admin/auth';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
 import { fetchShopSettings, upsertShopSettings, getDefaultShopSettings } from '@/services/settingsService';
-import type { DeliveryZone, ShopSettings } from '@/admin/types';
+import type { DeliveryZone, ShopSettings, TestimonialVideo } from '@/admin/types';
 
 function createDeliveryZone(): DeliveryZone {
   return {
@@ -27,11 +27,13 @@ function createDeliveryZone(): DeliveryZone {
 export default function AdminSettingsPage() {
   const router = useRouter();
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'delivery' | 'whatsapp' | 'segmentation'>('general');
+  const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
+  const [activeTab, setActiveTab] = useState<'general' | 'vitrine' | 'delivery' | 'whatsapp' | 'segmentation'>('general');
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -111,9 +113,7 @@ export default function AdminSettingsPage() {
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     if (!file.type.startsWith('image/')) {
       alert('Veuillez sélectionner une image valide.');
@@ -139,16 +139,12 @@ export default function AdminSettingsPage() {
       alert('Erreur lors de l’upload du logo');
     } finally {
       setUploadingLogo(false);
-      if (logoInputRef.current) {
-        logoInputRef.current.value = '';
-      }
+      if (logoInputRef.current) logoInputRef.current.value = '';
     }
   };
 
   const handleRemoveLogo = async () => {
-    if (!settings.logo_url) {
-      return;
-    }
+    if (!settings.logo_url) return;
 
     const shouldDelete = window.confirm('Supprimer aussi le logo du stockage Supabase ?');
     if (shouldDelete) {
@@ -159,10 +155,55 @@ export default function AdminSettingsPage() {
       }
     }
 
-    setSettings((currentSettings) => ({
-      ...currentSettings,
-      logo_url: ''
-    }));
+    setSettings((currentSettings) => ({ ...currentSettings, logo_url: '' }));
+  };
+
+  // Upload image témoignage
+  const handleScreenshotUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingScreenshot(true);
+    try {
+      const compressed = await compressImage(file, 800);
+      const result = await uploadBrandAsset(compressed, 'testimonials/screenshot');
+
+      if (result.error || !result.data) {
+        alert(result.error || 'Erreur d’upload');
+        return;
+      }
+
+      setSettings((currentSettings) => ({
+        ...currentSettings,
+        testimonials_json: {
+          ...currentSettings.testimonials_json,
+          screenshot_url: result.data || ''
+        }
+      }));
+    } catch (error: unknown) {
+      console.error('Erreur upload screenshot:', error);
+      alert('Erreur lors de l’upload');
+    } finally {
+      setUploadingScreenshot(false);
+      if (screenshotInputRef.current) screenshotInputRef.current.value = '';
+    }
+  };
+
+  const handleVideoChange = (index: number, field: keyof TestimonialVideo, value: string) => {
+    setSettings((currentSettings) => {
+      const nextVideos = [...currentSettings.testimonials_json.videos];
+      nextVideos[index] = {
+        ...nextVideos[index],
+        [field]: value
+      };
+      return {
+        ...currentSettings,
+        testimonials_json: {
+          ...currentSettings.testimonials_json,
+          videos: nextVideos
+        }
+      };
+    });
   };
 
   if (loading) {
@@ -181,14 +222,14 @@ export default function AdminSettingsPage() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
-            Personnalisation avancée • Effet IKEA
+            Personnalisation avancée • 100% Administrable
           </span>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Réglages</h1>
-          <p className="text-brand-text-muted mt-1">Configuration opérationnelle et personnalisation des scripts WhatsApp</p>
+          <p className="text-brand-text-muted mt-1">Configuration opérationnelle et personnalisation de la vitrine publique</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
-          <AdminButton variant="primary" onClick={handleSave} loading={saving || uploadingLogo}>
+          <AdminButton variant="primary" onClick={handleSave} loading={saving || uploadingLogo || uploadingScreenshot}>
             <Save size={18} />
             Enregistrer
           </AdminButton>
@@ -198,6 +239,7 @@ export default function AdminSettingsPage() {
       <div className="flex flex-wrap gap-2 border-b border-brand-gold/20 pb-3">
         {[
           { id: 'general', label: 'Général' },
+          { id: 'vitrine', label: 'Vitrine & Textes (Hero/Footer)' },
           { id: 'delivery', label: 'Livraison' },
           { id: 'whatsapp', label: 'WhatsApp & Templates' },
           { id: 'segmentation', label: 'Segmentation' }
@@ -296,6 +338,160 @@ export default function AdminSettingsPage() {
         </AdminCard>
       )}
 
+      {/* Priorité 2 : Gestion de la Vitrine Publique */}
+      {activeTab === 'vitrine' && (
+        <div className="space-y-6">
+          <AdminCard className="space-y-6">
+            <div className="flex items-center gap-3 border-b border-brand-gold/15 pb-4">
+              <Monitor size={24} className="text-brand-gold" />
+              <div>
+                <h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase">
+                  Section Hero (En-tête de la page d&apos;accueil)
+                </h2>
+                <p className="text-sm text-brand-text-muted mt-1">
+                  Pilote instantanément l&apos;accroche principale et la vidéo d&apos;arrière-plan de ta boutique.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <AdminInput
+                label="Grand Titre Principal (Accroche Hero)"
+                value={settings.hero_title}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, hero_title: value }))}
+                placeholder="Ex: Vioutou t'habille. Tu règnes."
+              />
+              <AdminTextarea
+                label="Sous-titre descriptif (Proposition de valeur)"
+                value={settings.hero_subtitle}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, hero_subtitle: value }))}
+                rows={3}
+              />
+              <AdminInput
+                label="URL de la vidéo d'arrière-plan"
+                value={settings.hero_video_url}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, hero_video_url: value }))}
+                placeholder="/images/ARRIEREPLAN/..."
+              />
+            </div>
+          </AdminCard>
+
+          <AdminCard className="space-y-6">
+            <div className="flex items-center gap-3 border-b border-brand-gold/15 pb-4">
+              <Star size={24} className="text-brand-gold" />
+              <div>
+                <h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase">
+                  Section Témoignages & Preuve Sociale
+                </h2>
+                <p className="text-sm text-brand-text-muted mt-1">
+                  Gère la capture d&apos;écran WhatsApp de référence et les vidéos de tes influenceurs.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-bebas text-lg uppercase text-brand-gold">1. Capture WhatsApp de Référence (Poyor Poyor)</h3>
+              <div className="flex items-center gap-4">
+                <input
+                  ref={screenshotInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleScreenshotUpload}
+                  disabled={uploadingScreenshot}
+                  className="hidden"
+                  id="screenshot-upload"
+                />
+                <label
+                  htmlFor="screenshot-upload"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-gold text-[#0A0A0A] rounded-xl cursor-pointer hover:bg-brand-gold-light transition-colors font-medium font-bebas uppercase tracking-wider text-sm shadow-md"
+                >
+                  <Upload size={18} />
+                  {uploadingScreenshot ? 'Upload en cours...' : 'Changer l’image WhatsApp'}
+                </label>
+              </div>
+
+              {settings.testimonials_json.screenshot_url && (
+                <div className="relative w-48 h-48 bg-white rounded-xl overflow-hidden border border-brand-gold/20 p-2 shadow">
+                  <Image
+                    src={settings.testimonials_json.screenshot_url}
+                    alt="Témoignage"
+                    fill
+                    sizes="192px"
+                    className="object-contain"
+                    unoptimized
+                  />
+                </div>
+              )}
+
+              <AdminTextarea
+                label="Citation affichée sous la capture"
+                value={settings.testimonials_json.screenshot_quote}
+                onChange={(value) => setSettings((currentSettings) => ({
+                  ...currentSettings,
+                  testimonials_json: { ...currentSettings.testimonials_json, screenshot_quote: value }
+                }))}
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-6 pt-6 border-t border-brand-gold/15">
+              <h3 className="font-bebas text-lg uppercase text-brand-gold">2. Vidéos de Validation Clients (MP4)</h3>
+              {settings.testimonials_json.videos.map((vid, index) => (
+                <div key={index} className="p-4 bg-brand-bg rounded-xl border border-brand-gold/10 space-y-3">
+                  <h4 className="font-bebas text-base text-brand-text uppercase">Vidéo #{index + 1}</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <AdminInput
+                      label="Titre de la vidéo"
+                      value={vid.title}
+                      onChange={(value) => handleVideoChange(index, 'title', value)}
+                    />
+                    <AdminInput
+                      label="URL de la vidéo (MP4)"
+                      value={vid.src}
+                      onChange={(value) => handleVideoChange(index, 'src', value)}
+                    />
+                  </div>
+                  <AdminInput
+                    label="Description rapide"
+                    value={vid.description}
+                    onChange={(value) => handleVideoChange(index, 'description', value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </AdminCard>
+
+          <AdminCard className="space-y-6">
+            <div className="flex items-center gap-3 border-b border-brand-gold/15 pb-4">
+              <Settings size={24} className="text-brand-gold" />
+              <div>
+                <h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase">
+                  Pied de Page (Footer) & Widget WhatsApp Flottant
+                </h2>
+                <p className="text-sm text-brand-text-muted mt-1">
+                  Personnalise le message de bienvenue de ta bulle WhatsApp et le résumé de ta marque.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <AdminTextarea
+                label="Description de la marque (Footer)"
+                value={settings.footer_description}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, footer_description: value }))}
+                rows={3}
+              />
+              <AdminInput
+                label="Texte pré-encodé du bouton WhatsApp flottant"
+                value={settings.floating_whatsapp_text}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, floating_whatsapp_text: value }))}
+                placeholder="Ex: Bonjour Vioutou ! Je viens du site..."
+              />
+            </div>
+          </AdminCard>
+        </div>
+      )}
+
       {activeTab === 'delivery' && (
         <AdminCard>
           <div className="flex items-center justify-between mb-6">
@@ -346,7 +542,6 @@ export default function AdminSettingsPage() {
         </AdminCard>
       )}
 
-      {/* Levier 4 : IKEA Effect & Personnalisation WhatsApp */}
       {activeTab === 'whatsapp' && (
         <AdminCard className="space-y-8">
           <div className="border-b border-brand-gold/15 pb-4">
