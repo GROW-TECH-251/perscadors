@@ -1,8 +1,7 @@
 // src/services/contentService.ts
 // ============================================
-// Service de gestion du contenu / actualités
+// Service de gestion du contenu / actualités (Sans message technique)
 // ============================================
-// CRUD pour les posts de contenu via Supabase
 
 import { requireSupabase, supabase } from '@/lib/supabase';
 import type { ContentPost, ContentPostType, ApiResponse } from '@/admin/types';
@@ -22,6 +21,8 @@ export interface ContentPostFormData {
   published_at?: string | null;
   scheduled_at?: string | null;
 }
+
+const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
 function createContentPostId(): string {
   return globalThis.crypto?.randomUUID?.() || `post-${Date.now()}`;
@@ -96,7 +97,6 @@ export async function fetchPostsByType(type: ContentPostType): Promise<ContentPo
 
 export async function createContentPost(postData: ContentPostFormData): Promise<ApiResponse<ContentPost>> {
   const db = requireSupabase();
-
   const now = new Date().toISOString();
 
   const { data, error } = await db
@@ -120,7 +120,7 @@ export async function createContentPost(postData: ContentPostFormData): Promise<
 
   if (error) {
     console.error('Erreur création content post:', error);
-    return { data: null, error: error.message };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   return { data: data as ContentPost, error: null };
@@ -162,7 +162,7 @@ export async function updateContentPost(
 
   if (error) {
     console.error('Erreur mise à jour content post:', error);
-    return { data: null, error: error.message };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   return { data: data as ContentPost, error: null };
@@ -189,7 +189,7 @@ export async function deleteContentPost(id: string): Promise<ApiResponse<boolean
 
   if (error) {
     console.error('Erreur suppression content post:', error);
-    return { data: false, error: error.message };
+    return { data: false, error: USER_ERROR_MSG };
   }
 
   return { data: true, error: null };

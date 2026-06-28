@@ -1,8 +1,7 @@
 // src/services/orderService.ts
 // ============================================
-// Service de gestion des commandes
+// Service de gestion des commandes (Sans message technique)
 // ============================================
-// CRUD complet pour les commandes via Supabase
 
 import { requireSupabase, supabase } from '@/lib/supabase';
 import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse } from '@/admin/types';
@@ -27,9 +26,7 @@ export interface PublicCheckoutPayload {
   total: number;
 }
 
-// ============================================
-// UTILITAIRES PUBLICS
-// ============================================
+const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
 export function generateOrderNumber(date: Date = new Date()): string {
   const datePart = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
@@ -63,10 +60,6 @@ export function buildWhatsAppOrderMessage(payload: PublicCheckoutPayload): strin
 
   return message;
 }
-
-// ============================================
-// LECTURE
-// ============================================
 
 export async function fetchAdminOrders(): Promise<AdminOrder[]> {
   if (!supabase) return [];
@@ -152,10 +145,6 @@ export async function fetchOrdersByPhone(phone: string): Promise<AdminOrder[]> {
   return (data || []) as AdminOrder[];
 }
 
-// ============================================
-// CRÉATION
-// ============================================
-
 export async function createOrderFromCart(orderData: PublicCheckoutPayload): Promise<ApiResponse<AdminOrder>> {
   const db = requireSupabase();
 
@@ -183,15 +172,11 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
 
   if (error) {
     console.error('Erreur création commande:', error);
-    return { data: null, error: error.message };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   return { data: data as AdminOrder, error: null };
 }
-
-// ============================================
-// MISE À JOUR
-// ============================================
 
 export async function updateOrderStatus(
   id: number | string,
@@ -226,7 +211,7 @@ export async function updateOrderStatus(
 
   if (error) {
     console.error('Erreur mise à jour statut commande:', error);
-    return { data: null, error: error.message };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   return { data: data as AdminOrder, error: null };
@@ -250,15 +235,11 @@ export async function updateOrder(
 
   if (error) {
     console.error('Erreur mise à jour commande:', error);
-    return { data: null, error: error.message };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   return { data: data as AdminOrder, error: null };
 }
-
-// ============================================
-// SUPPRESSION
-// ============================================
 
 export async function deleteOrder(id: number | string): Promise<ApiResponse<boolean>> {
   const db = requireSupabase();
@@ -270,15 +251,11 @@ export async function deleteOrder(id: number | string): Promise<ApiResponse<bool
 
   if (error) {
     console.error('Erreur suppression commande:', error);
-    return { data: false, error: error.message };
+    return { data: false, error: USER_ERROR_MSG };
   }
 
   return { data: true, error: null };
 }
-
-// ============================================
-// STATISTIQUES
-// ============================================
 
 export async function getTotalOrdersCount(): Promise<number> {
   if (!supabase) return 0;

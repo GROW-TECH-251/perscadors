@@ -1,10 +1,12 @@
 // src/services/productService.ts
 // ============================================
-// Service de gestion des produits
+// Service de gestion des produits (Sans message technique)
 // ============================================
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { AdminProduct, ProductFormData, ApiResponse } from '@/admin/types';
+
+const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
 export async function fetchAdminProducts(): Promise<AdminProduct[]> {
   if (!isSupabaseConfigured || !supabase) {
@@ -42,7 +44,7 @@ export async function fetchProductById(id: number | string): Promise<AdminProduc
 
 export async function createProduct(formData: ProductFormData): Promise<ApiResponse<AdminProduct>> {
   if (!supabase) {
-    return { data: null, error: 'Supabase non configuré' };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   const { data, error } = await supabase
@@ -57,7 +59,8 @@ export async function createProduct(formData: ProductFormData): Promise<ApiRespo
     .single();
 
   if (error) {
-    return { data: null, error: error.message };
+    console.error('Erreur création produit:', error);
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   return { data: data as AdminProduct, error: null };
@@ -68,7 +71,7 @@ export async function updateProduct(
   formData: Partial<ProductFormData>
 ): Promise<ApiResponse<AdminProduct>> {
   if (!supabase) {
-    return { data: null, error: 'Supabase non configuré' };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   const { data, error } = await supabase
@@ -82,7 +85,8 @@ export async function updateProduct(
     .single();
 
   if (error) {
-    return { data: null, error: error.message };
+    console.error('Erreur update produit:', error);
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   return { data: data as AdminProduct, error: null };
@@ -90,7 +94,7 @@ export async function updateProduct(
 
 export async function deleteProduct(id: number | string): Promise<ApiResponse<boolean>> {
   if (!supabase) {
-    return { data: false, error: 'Supabase non configuré' };
+    return { data: false, error: USER_ERROR_MSG };
   }
 
   const { error } = await supabase
@@ -99,7 +103,8 @@ export async function deleteProduct(id: number | string): Promise<ApiResponse<bo
     .eq('id', Number(id));
 
   if (error) {
-    return { data: false, error: error.message };
+    console.error('Erreur suppression produit:', error);
+    return { data: false, error: USER_ERROR_MSG };
   }
 
   return { data: true, error: null };

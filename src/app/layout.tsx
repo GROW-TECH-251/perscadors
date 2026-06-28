@@ -1,8 +1,10 @@
 // src/app/layout.tsx
 // ============================================
-// Layout Racine Next.js (SANS Navbar/Footer)
+// Layout Racine Next.js (Forcé Dynamique pour esquiver le cache statique)
 // ============================================
-// Les pages publiques ajoutent leur propre Navbar/Footer
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import type { Metadata } from 'next';
 import { Barlow, Bebas_Neue } from 'next/font/google';

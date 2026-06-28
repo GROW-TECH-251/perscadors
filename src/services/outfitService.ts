@@ -1,10 +1,12 @@
 // src/services/outfitService.ts
 // ============================================
-// Service de gestion des HP Looks (Module HPB)
+// Service de gestion des HP Looks (Module HPB sans message technique)
 // ============================================
 
 import { requireSupabase, supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { AdminOutfit, OutfitFormData, ApiResponse } from '@/admin/types';
+
+const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
 export async function fetchAdminOutfits(): Promise<AdminOutfit[]> {
   if (!isSupabaseConfigured || !supabase) {
@@ -43,7 +45,7 @@ export async function fetchOutfitById(id: number | string): Promise<AdminOutfit 
 
 export async function createOutfit(formData: OutfitFormData): Promise<ApiResponse<AdminOutfit>> {
   if (!supabase) {
-    return { data: null, error: 'Supabase non configuré' };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   const db = requireSupabase();
@@ -64,7 +66,7 @@ export async function createOutfit(formData: OutfitFormData): Promise<ApiRespons
 
   if (error) {
     console.error('Erreur création outfit:', error);
-    return { data: null, error: error.message };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   return { data: data as AdminOutfit, error: null };
@@ -75,7 +77,7 @@ export async function updateOutfit(
   formData: Partial<OutfitFormData>
 ): Promise<ApiResponse<AdminOutfit>> {
   if (!supabase) {
-    return { data: null, error: 'Supabase non configuré' };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   const db = requireSupabase();
@@ -92,7 +94,7 @@ export async function updateOutfit(
 
   if (error) {
     console.error('Erreur mise à jour outfit:', error);
-    return { data: null, error: error.message };
+    return { data: null, error: USER_ERROR_MSG };
   }
 
   return { data: data as AdminOutfit, error: null };
@@ -100,7 +102,7 @@ export async function updateOutfit(
 
 export async function deleteOutfit(id: number | string): Promise<ApiResponse<boolean>> {
   if (!supabase) {
-    return { data: false, error: 'Supabase non configuré' };
+    return { data: false, error: USER_ERROR_MSG };
   }
 
   const db = requireSupabase();
@@ -112,7 +114,7 @@ export async function deleteOutfit(id: number | string): Promise<ApiResponse<boo
 
   if (error) {
     console.error('Erreur suppression outfit:', error);
-    return { data: false, error: error.message };
+    return { data: false, error: USER_ERROR_MSG };
   }
 
   return { data: true, error: null };

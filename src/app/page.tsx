@@ -1,7 +1,10 @@
 // src/app/page.tsx
 // ============================================
-// Page d'Accueil Publique
+// Page d'Accueil Publique (Forcée Dynamique pour 100% de synchro)
 // ============================================
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Hero } from '@/components/home/Hero';
