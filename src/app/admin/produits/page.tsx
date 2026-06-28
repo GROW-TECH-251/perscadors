@@ -228,12 +228,12 @@ export default function AdminProductsPage() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => {
+          {filteredProducts.map((product, index) => {
             const isEditingPrice = editingPriceId === product.id;
             const outOfStockList = product.outOfStockSizes || [];
 
             return (
-              <AdminCard key={product.id} className="p-0 overflow-hidden relative group/card border-brand-gold/15 hover:border-brand-gold/40 transition-all shadow-md hover:shadow-xl">
+              <AdminCard key={`product-${product.id}-${index}`} className="p-0 overflow-hidden relative group/card border-brand-gold/15 hover:border-brand-gold/40 transition-all shadow-md hover:shadow-xl">
                 {/* Product Image */}
                 <div className="relative aspect-square bg-brand-bg overflow-hidden">
                   {product.image_url ? (

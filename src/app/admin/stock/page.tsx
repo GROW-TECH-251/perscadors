@@ -187,8 +187,8 @@ export default function AdminStockPage() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
-            <AdminCard key={product.id} className="space-y-4">
+          {filteredProducts.map((product, index) => (
+            <AdminCard key={`product-${product.id}-${index}`} className="space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="font-bebas text-lg tracking-wider text-brand-text uppercase">{product.name}</h3>

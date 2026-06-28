@@ -25,7 +25,7 @@ export const Hero: React.FC = () => {
 
   return (
     <section
-      className="relative w-full h-[calc(100vh-80px)] min-h-[600px] flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]"
+      className="relative w-full h-screen min-h-[700px] pt-20 flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]"
     >
       {/* Video Background */}
       <video
@@ -71,17 +71,17 @@ export const Hero: React.FC = () => {
           className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 animate-slide-up-fade"
         >
           <Link
-            href="#categories"
+            href="#carousel-outfits"
             className="group w-full sm:w-auto px-9 py-4.5 bg-brand-gold hover:bg-brand-gold-light active:bg-[#9F7F1F] text-[#0A0A0A] font-bebas text-xl tracking-[3px] uppercase transition-all duration-400 ease-[cubic-bezier(0.23,1.0,0.32,1)] hover:scale-[1.03] active:scale-[0.985] rounded-xl shadow-2xl hover:shadow-[0_20px_35px_-10px_rgb(0,0,0,0.5)] ring-1 ring-inset ring-black/10 text-center flex items-center justify-center gap-2.5"
           >
-            <span>Voir la collection</span>
+            <span>Voir les outfits</span>
             <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
           </Link>
           <Link
-            href="#carousel-outfits"
+            href="#categories"
             className="group w-full sm:w-auto px-9 py-4.5 bg-transparent border-2 border-white hover:border-brand-gold hover:text-brand-gold active:bg-white/5 text-white font-bebas text-xl tracking-[3px] uppercase transition-all duration-400 ease-[cubic-bezier(0.23,1.0,0.32,1)] hover:scale-[1.03] active:scale-[0.985] rounded-xl text-center flex items-center justify-center gap-2.5"
           >
-            <span>Voir les outfits</span>
+            <span>Voir la collection</span>
             <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
           </Link>
         </div>
@@ -89,7 +89,7 @@ export const Hero: React.FC = () => {
 
       {/* Scroll indicator - Enhanced premium micro-interaction */}
       <div 
-        onClick={() => document.getElementById('categories')?.scrollIntoView({ behavior: 'smooth' })}
+        onClick={() => document.getElementById('carousel-outfits')?.scrollIntoView({ behavior: 'smooth' })}
         className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 cursor-pointer group"
       >
         <span className="font-bebas text-sm tracking-[3.5px] uppercase text-brand-gold group-hover:text-brand-gold-light transition-colors duration-300">

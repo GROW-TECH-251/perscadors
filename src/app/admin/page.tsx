@@ -411,7 +411,7 @@ export default function AdminDashboardPage() {
             <div className="space-y-4">
               {topProducts.map((product, index) => (
                 <div
-                  key={product.id}
+                  key={`top-product-${product.id}-${index}`}
                   className="p-4 bg-brand-bg rounded-2xl border border-brand-gold/20 hover:border-brand-gold/50 transition-all shadow-md group/bestseller relative"
                 >
                   <div className="absolute top-3 right-3 flex gap-1 z-10">

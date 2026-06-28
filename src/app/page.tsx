@@ -1,6 +1,6 @@
 // src/app/page.tsx
 // ============================================
-// Page d'Accueil Publique (Forcée Dynamique pour 100% de synchro)
+// Page d'Accueil Publique (Forcée Dynamique & Conformité Cadre Final)
 // ============================================
 
 export const dynamic = 'force-dynamic';
@@ -16,10 +16,15 @@ import { FAQ } from '@/components/home/FAQ';
 export default function HomePage() {
   return (
     <PublicLayout>
+      {/* 1. Section Hero (Pleine page avec espace en-tête) */}
       <Hero />
-      <CategoryGrid />
+      {/* 2. Section HP Looks de Vioutou (Mes articles qui font craquer) */}
       <OutfitCarousel />
+      {/* 3. Section Collections / Catégories */}
+      <CategoryGrid />
+      {/* 4. Section Témoignages & Preuve sociale */}
       <Testimonials />
+      {/* 5. Section Foire Aux Questions (FAQ) */}
       <FAQ />
     </PublicLayout>
   );
