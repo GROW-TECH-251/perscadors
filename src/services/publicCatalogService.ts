@@ -1,4 +1,4 @@
-import type { AdminCategory, AdminProduct } from '@/admin/types';
+import type { AdminCategory, AdminProduct, AdminOutfit } from '@/admin/types';
 import { products as fallbackProducts } from '@/data/products';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { CatalogCategory, Outfit, Product, Size } from '@/types';
@@ -228,7 +228,7 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
     return getFallbackCatalogSnapshot();
   }
 
-  const [productsResponse, categoriesResponse] = await Promise.all([
+  const [productsResponse, categoriesResponse, outfitsResponse] = await Promise.all([
     supabase
       .from('products')
       .select('*')
@@ -238,7 +238,12 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
       .from('categories')
       .select('*')
       .eq('visible', true)
-      .order('position', { ascending: true })
+      .order('position', { ascending: true }),
+    supabase
+      .from('outfits')
+      .select('*')
+      .eq('visible', true)
+      .order('created_at', { ascending: false })
   ]);
 
   if (productsResponse.error) {
@@ -251,10 +256,34 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
     ? buildCategoriesFromProducts(normalizedProducts)
     : mergeCategoriesWithProducts(normalizedProducts, (categoriesResponse.data || []) as AdminCategory[]);
 
+  // Pôle 5 / Module HPB : Résolution dynamique des outfits Supabase avec fallback statique
+  let normalizedOutfits: Outfit[] = [];
+  if (!outfitsResponse.error && outfitsResponse.data && outfitsResponse.data.length > 0) {
+    normalizedOutfits = (outfitsResponse.data as AdminOutfit[]).map((outfitRow) => {
+      const productIds = Array.isArray(outfitRow.product_ids) ? outfitRow.product_ids : [];
+      const outfitProducts = productIds
+        .map((id) => normalizedProducts.find((p) => p.id === String(id)))
+        .filter(Boolean) as Product[];
+
+      const calculatedPrice = outfitProducts.reduce((sum, p) => sum + p.price, 0);
+      const finalPrice = outfitRow.custom_price !== null && outfitRow.custom_price !== undefined ? Number(outfitRow.custom_price) : calculatedPrice;
+
+      return {
+        id: String(outfitRow.id),
+        name: outfitRow.name,
+        image: outfitRow.image_url || '/images/LOGOSITE/logo.png',
+        price: finalPrice,
+        products: outfitProducts
+      };
+    });
+  } else {
+    normalizedOutfits = buildOutfitsFromProducts(normalizedProducts);
+  }
+
   return {
     products: normalizedProducts,
     categories: normalizedCategories,
-    outfits: buildOutfitsFromProducts(normalizedProducts),
+    outfits: normalizedOutfits,
     source: 'supabase'
   };
 }

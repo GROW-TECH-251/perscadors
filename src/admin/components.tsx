@@ -1,6 +1,6 @@
 // src/admin/components.tsx
 // ============================================
-// Composants UI pour l'administration (Levier 3 : Bottom Bar Navigation)
+// Composants UI pour l'administration (Levier 3 : Bottom Bar Navigation + Module HPB)
 // ============================================
 
 'use client';
@@ -23,7 +23,8 @@ import {
   CheckSquare,
   Search,
   Loader2,
-  MoreHorizontal
+  MoreHorizontal,
+  Sparkles
 } from 'lucide-react';
 import type { AdminScreen, NavItem, OrderStatus } from './types';
 
@@ -32,6 +33,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'products', label: 'Produits', icon: 'package' },
   { id: 'orders', label: 'Commandes', icon: 'cart' },
   { id: 'customers', label: 'Clients', icon: 'users' },
+  { id: 'hpb', label: 'HP Looks', icon: 'hpb' },
   { id: 'analytics', label: 'Analytics', icon: 'analytics' },
   { id: 'content', label: 'Contenu', icon: 'content' },
   { id: 'stockAlerts', label: 'Alertes Stock', icon: 'alerts' },
@@ -43,6 +45,7 @@ const iconMap: Record<string, React.ReactNode> = {
   package: <Package size={20} />,
   cart: <ShoppingCart size={20} />,
   users: <Users size={20} />,
+  hpb: <Sparkles size={20} className="text-brand-gold fill-current animate-pulse" />,
   analytics: <BarChart3 size={20} />,
   settings: <Settings size={20} />,
   content: <FileText size={20} />,
@@ -569,7 +572,7 @@ export const AdminModal: React.FC<{
       />
 
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-brand-bg rounded-2xl border border-brand-gold/30 shadow-2xl" role="document">
-        <div className="sticky top-0 flex items-center justify-between p-6 border-b border-brand-gold/10 bg-brand-bg">
+        <div className="sticky top-0 flex items-center justify-between p-6 border-b border-brand-gold/10 bg-brand-bg z-20">
           <h2 id="modal-title" className="font-bebas text-2xl tracking-wider text-brand-text uppercase">
             {title}
           </h2>
@@ -586,7 +589,7 @@ export const AdminModal: React.FC<{
         <div className="p-6">{children}</div>
 
         {footer && (
-          <div className="sticky bottom-0 p-6 border-t border-brand-gold/10 bg-brand-bg-alt">
+          <div className="sticky bottom-0 p-6 border-t border-brand-gold/10 bg-brand-bg-alt z-20">
             {footer}
           </div>
         )}

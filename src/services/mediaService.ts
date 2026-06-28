@@ -10,7 +10,8 @@ import type { ApiResponse } from '@/admin/types';
 export const BUCKETS = {
   PRODUCT_IMAGES: 'product-images',
   BRAND_ASSETS: 'brand-assets',
-  CONTENT_IMAGES: 'content-images'
+  CONTENT_IMAGES: 'content-images',
+  OUTFITS_COLLECTION: 'outfits-collection'
 } as const;
 
 function sanitizeFileName(fileName: string): string {
@@ -71,6 +72,17 @@ export async function uploadProductImage(
   const filePath = `${safeProductId}/${Date.now()}-${safeFileName}`;
 
   return await uploadImage(BUCKETS.PRODUCT_IMAGES, file, filePath);
+}
+
+export async function uploadOutfitImage(
+  file: File,
+  outfitId: string | number = 'draft'
+): Promise<ApiResponse<string>> {
+  const safeOutfitId = ensurePathSegment(String(outfitId));
+  const safeFileName = sanitizeFileName(file.name);
+  const filePath = `${safeOutfitId}/${Date.now()}-${safeFileName}`;
+
+  return await uploadImage(BUCKETS.OUTFITS_COLLECTION, file, filePath);
 }
 
 export async function uploadBrandAsset(

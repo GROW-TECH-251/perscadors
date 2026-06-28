@@ -18,7 +18,8 @@ export type AdminScreen =
   | 'editPost'
   | 'stockAlerts'
   | 'settings'
-  | 'qa';
+  | 'qa'
+  | 'hpb';
 
 export interface NavItem {
   id: AdminScreen;
@@ -231,3 +232,26 @@ export interface CheckoutFormData {
 export type CheckoutStep = 1 | 2 | 3;
 
 export type CreatedOrder = AdminOrder;
+
+// ============================================
+// OUTFITS & HP LOOKS (Pôle 5 & Module HPB)
+// ============================================
+
+export interface AdminOutfit {
+  id: number;
+  name: string;
+  image_url: string;
+  custom_price: number | null;
+  product_ids: number[];
+  visible: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OutfitFormData {
+  name: string;
+  image_url: string;
+  custom_price?: number | null;
+  product_ids: number[];
+  visible: boolean;
+}
