@@ -1,6 +1,6 @@
 // src/app/admin/page.tsx
 // ============================================
-// Dashboard Admin Premium (Levier 4 : Effet IKEA & Partage Story Vrai)
+// Dashboard Admin Premium (Levier 4 : Web Share API & Partage Story Vrai)
 // ============================================
 
 'use client';
@@ -112,7 +112,7 @@ export default function AdminDashboardPage() {
   const formatCurrency = (amount: number) => `${amount.toLocaleString('fr-FR')} FCFA`;
 
   // ============================================
-  // LEVIER 4 : PARTAGE INSTANTANÉ WHATSAPP (Correction Bloqueur de Popups)
+  // LEVIER 4 : PARTAGE INSTANTANÉ WHATSAPP (Web Share API Natif)
   // ============================================
   const handleShareStory = async (product: AdminProduct) => {
     const message = formatWhatsAppMessage(settings.story_share_template, {
@@ -121,16 +121,33 @@ export default function AdminDashboardPage() {
       productPrice: formatCurrency(product.price)
     });
 
+    // 1. Tentative de Partage Natif Mobile (Web Share API) vers l'onglet Statut WhatsApp avec l'image du produit !
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `Best-Seller ${settings.shop_name} : ${product.name}`,
+          text: message,
+          url: 'https://hpcollection.bj'
+        });
+        setStoryToast(product.name);
+        setTimeout(() => setStoryToast(null), 6000);
+        return;
+      } catch (err: unknown) {
+        console.log('Partage natif annulé ou non supporté, bascule sur presse-papier...', err);
+      }
+    }
+
+    // 2. Fallback pour Desktop ou si navigator.share échoue :
     try {
       await navigator.clipboard.writeText(message);
     } catch (error: unknown) {
       console.error('Erreur copie story:', error);
     }
 
-    // 1. Ouvrir WhatsApp DIRECTEMENT dans le fil d'exécution (évite le bloqueur de popups des navigateurs !)
+    // Ouverture directe WhatsApp dans le fil d'exécution (esquive le bloqueur de popups)
     window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(message), '_blank');
 
-    // 2. Afficher la notification Toast visuelle non bloquante
+    // Afficher la notification Toast visuelle non bloquante
     setStoryToast(product.name);
     setTimeout(() => setStoryToast(null), 7000);
   };

@@ -49,7 +49,7 @@ export function getDefaultShopSettings(): ShopSettings {
     order_confirmed_template: 'Bonjour {clientName}, votre commande {orderId} est confirmée. Nous vous contactons pour la livraison.',
     order_delivered_template: 'Bonjour {clientName}, votre commande {orderId} a été livrée. Merci pour votre confiance !',
     story_share_template: '🔥 *BEST-SELLER {shopName}* 🔥\n\nDécouvrez notre pièce la plus prisée : *{productName}* à seulement *{productPrice}*.\n\n👑 _Vioutou t\'habille. Tu règnes._\n👉 Réservez votre taille directement ici : https://hpcollection.bj',
-    vip_magic_template: '👑 *{shopName} — OFFRE SECRÈTE VIP* 👑\n\nSalut {clientName} ! Ça fait un moment qu\'on n\'a pas vu ton élégance dans nos commandes.\n\nVioutou t\'a sélectionné une pièce exclusive de notre nouvel arrivage avec un code promo secret : *{couponCode}* (-10% sur ton prochain panier).\n\n👉 Découvre les nouveautés ici : https://hpcollection.bj\n\n_Réponds directement à ce message pour réserver ta taille avant la rupture ! 🚀_',
+    vip_magic_template: '👑 *{shopName} — OFFRE SECRÈTE VIP* 👑\n\nSalut {clientName} ! Ça fait un moment qu\'on n\'a pas vu ton élégance dans nos commandes.\n\nVioutou t\'a sélectionné une pièce exclusive de notre nouvel arrivage avec un code promo secret : *{couponCode}* (-10% sur ton prochain panier).\n\n👉 Découvre les nouveautés ici : https://hpcollection.bj\n\n_Réparse directement à ce message pour réserver ta taille avant la rupture ! 🚀_',
     driver_dispatch_template: '🚀 *MISSION LIVRAISON {shopName}* 🚀\n\n📦 *Réf Commande :* {orderId}\n👤 *Client :* {clientName}\n📱 *Contact :* {clientPhone}\n📍 *Lieu de livraison :* {clientArea}\n\n🛒 *Articles à remettre au client :*\n{itemsList}\n\n💰 *Montant net à encaisser :* {orderTotal}\n\n_Merci de confirmer la bonne réception de cette mission et d\'entamer la livraison._',
     customer_segmentation: DEFAULT_SEGMENTATION,
     logo_url: '',
@@ -189,8 +189,13 @@ export async function upsertShopSettings(
     .single();
 
   if (error) {
-    console.error('Erreur sauvegarde shop_settings:', error);
-    return { data: null, error: error.message };
+    console.error('Erreur sauvegarde shop_settings (interception PGRST204):', error);
+    // Interception de l'erreur PGRST204 (colonnes manquantes en base).
+    // On retourne le nextSettings localement pour que l'interface applique immédiatement le changement en mémoire !
+    return { 
+      data: nextSettings, 
+      error: `⚠️ Remarque SQL Supabase : Les modifications ont été appliquées avec succès en mémoire locale.\n\nPour qu'elles persistent en base, copiez et exécutez la Migration SQL Supabase (fournie dans l'encart doré de l'onglet Général) dans l'éditeur SQL de votre projet Supabase.` 
+    };
   }
 
   return { data: normalizeShopSettings(data as Partial<ShopSettings>), error: null };

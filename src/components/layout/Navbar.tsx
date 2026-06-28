@@ -88,6 +88,7 @@ export const Navbar: React.FC = () => {
             src="/images/LOGOSITE/logo.png"
             alt="HP Collection Logo"
             fill
+            sizes="128px"
             priority
             className="object-contain"
           />

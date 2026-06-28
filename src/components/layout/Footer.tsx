@@ -27,6 +27,7 @@ export const Footer: React.FC = () => {
               src={settings.logo_url || "/images/LOGOSITE/logo.png"}
               alt={`${settings.shop_name} Logo`}
               fill
+              sizes="128px"
               className="object-contain filter brightness-110"
               unoptimized
             />

@@ -37,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={`${barlow.variable} ${bebasNeue.variable} h-full antialiased scroll-smooth`}>
+    <html lang="fr" data-scroll-behavior="smooth" className={`${barlow.variable} ${bebasNeue.variable} h-full antialiased scroll-smooth`}>
       <body className="min-h-full flex flex-col bg-brand-bg text-brand-text font-barlow selection:bg-brand-gold/30 selection:text-brand-text">
         <CatalogProvider>
           <CartProvider>

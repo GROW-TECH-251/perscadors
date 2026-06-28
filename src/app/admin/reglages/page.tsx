@@ -1,6 +1,6 @@
 // src/app/admin/reglages/page.tsx
 // ============================================
-// Réglages boutique opérationnels & Administration Vitrine (Priorité 2)
+// Réglages boutique opérationnels & Administration Vitrine (Priorité 2 + Fix PGRST204)
 // ============================================
 
 'use client';
@@ -9,7 +9,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea } from '@/admin/components';
-import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap, Share2, Monitor, Star } from 'lucide-react';
+import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap, Share2, Monitor, Star, Copy, Database } from 'lucide-react';
 import { clearAdminSession } from '@/admin/auth';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
 import { fetchShopSettings, upsertShopSettings, getDefaultShopSettings } from '@/services/settingsService';
@@ -23,6 +23,55 @@ function createDeliveryZone(): DeliveryZone {
     freeThreshold: 50000
   };
 }
+
+const SUPABASE_MIGRATION_SCRIPT = `-- ==============================================================================
+-- MIGRATION SUPABASE COMPLÈTE — PERSCADORS (EXTENSION PARAMÈTRES VITRINE)
+-- ==============================================================================
+DO $$ 
+BEGIN
+    -- Colonnes manquantes de Shop Settings (Fix PGRST204)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='driver_phone') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN driver_phone TEXT DEFAULT '';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='country') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN country TEXT NOT NULL DEFAULT 'Bénin';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='story_share_template') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN story_share_template TEXT NOT NULL DEFAULT '🔥 *BEST-SELLER {shopName}* 🔥...';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='vip_magic_template') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN vip_magic_template TEXT NOT NULL DEFAULT '👑 *{shopName} — OFFRE SECRÈTE VIP* 👑...';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='driver_dispatch_template') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN driver_dispatch_template TEXT NOT NULL DEFAULT '🚀 *MISSION LIVRAISON {shopName}* 🚀...';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='hero_title') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN hero_title TEXT NOT NULL DEFAULT 'Vioutou t''habille. Tu règnes.';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='hero_subtitle') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN hero_subtitle TEXT NOT NULL DEFAULT 'La marque de mode streetwear premium. Statut, style, modernité et une élégance sans compromis. Impose ta présence dans la rue.';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='hero_video_url') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN hero_video_url TEXT NOT NULL DEFAULT '/images/ARRIEREPLAN/7679830-uhd_4096_2160_25fps.mp4';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='footer_description') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN footer_description TEXT NOT NULL DEFAULT 'La marque de mode streetwear premium au Bénin. Statut, style, modernité et une élégance sans compromis.';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='floating_whatsapp_text') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN floating_whatsapp_text TEXT NOT NULL DEFAULT 'Bonjour Vioutou ! Je viens du site HP Collection et j''aimerais discuter de vos outfits.';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shop_settings' AND column_name='testimonials_json') THEN
+        ALTER TABLE public.shop_settings ADD COLUMN testimonials_json JSONB NOT NULL DEFAULT '{
+            "screenshot_url": "/images/Temoignages/photos/témoignageclient.jpeg",
+            "screenshot_quote": "Tu connais #HPcollection c''est la meilleure prêt à porter du Bénin 🇧🇯 actuellement chez Honoré Perscadors...",
+            "videos": [
+                { "src": "/images/Temoignages/video/client.mp4", "title": "Avis Client #1", "description": "Validation de l''outfit complet par un king local." },
+                { "src": "/images/Temoignages/video/client2.mp4", "title": "Avis Client #2", "description": "Review des baskets premium à la réception." },
+                { "src": "/images/Temoignages/video/client3.mp4", "title": "Avis Client #3", "description": "Un look validé à 100% sur Cotonou." }
+            ]
+        }'::jsonb;
+    END IF;
+END $$;`;
 
 export default function AdminSettingsPage() {
   const router = useRouter();
@@ -61,14 +110,12 @@ export default function AdminSettingsPage() {
       const result = await upsertShopSettings(settings);
       if (result.error) {
         alert(result.error);
-        return;
+        // On continue d'appliquer localement pour ne pas bloquer l'affichage vitrine
       }
 
       if (result.data) {
         setSettings(result.data);
       }
-
-      alert('Réglages enregistrés avec succès !');
     } catch (error: unknown) {
       console.error('Erreur sauvegarde réglages:', error);
       alert('Erreur lors de la sauvegarde des réglages');
@@ -158,7 +205,6 @@ export default function AdminSettingsPage() {
     setSettings((currentSettings) => ({ ...currentSettings, logo_url: '' }));
   };
 
-  // Upload image témoignage
   const handleScreenshotUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -206,6 +252,16 @@ export default function AdminSettingsPage() {
     });
   };
 
+  const handleCopySqlScript = async () => {
+    try {
+      await navigator.clipboard.writeText(SUPABASE_MIGRATION_SCRIPT);
+      alert('=== MIGRATION SQL SUPABASE ===\n\nLe script SQL a été copié avec succès !\n\nCollez-le directement dans l’éditeur SQL de votre tableau de bord Supabase pour ajouter les colonnes manquantes (Fix PGRST204) 🚀');
+    } catch (error: unknown) {
+      console.error('Erreur copie script SQL:', error);
+      alert('Erreur lors de la copie du script SQL');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -238,7 +294,7 @@ export default function AdminSettingsPage() {
 
       <div className="flex flex-wrap gap-2 border-b border-brand-gold/20 pb-3">
         {[
-          { id: 'general', label: 'Général' },
+          { id: 'general', label: 'Général & SQL Supabase' },
           { id: 'vitrine', label: 'Vitrine & Textes (Hero/Footer)' },
           { id: 'delivery', label: 'Livraison' },
           { id: 'whatsapp', label: 'WhatsApp & Templates' },
@@ -260,85 +316,107 @@ export default function AdminSettingsPage() {
       </div>
 
       {activeTab === 'general' && (
-        <AdminCard>
-          <div className="flex items-center gap-3 mb-6">
-            <Settings size={22} className="text-brand-gold" />
-            <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">Informations générales</h2>
-          </div>
+        <div className="space-y-6">
+          {/* Encart doré de Migration SQL (Fix PGRST204) */}
+          <AdminCard className="border-l-4 border-l-brand-gold bg-brand-gold/5 space-y-4">
+            <div className="flex items-center gap-3">
+              <Database size={24} className="text-brand-gold animate-bounce" />
+              <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">
+                Migration SQL Supabase Requise (Solution PGRST204)
+              </h2>
+            </div>
+            <p className="text-sm text-brand-text-muted leading-relaxed">
+              Si tu as rencontré une alerte lors de l&apos;enregistrement (ex: <strong className="text-red-400">PGRST204 Could not find the column...</strong>), c&apos;est que ta base Supabase n&apos;a pas encore les colonnes de personnalisation de la vitrine. 
+              Copie le script SQL complet ci-dessous et exécute-le dans l&apos;éditeur SQL de ton projet Supabase pour une persistance définitive !
+            </p>
+            <button
+              type="button"
+              onClick={handleCopySqlScript}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-gold hover:bg-brand-gold-light text-[#0A0A0A] font-bebas uppercase tracking-wider text-sm rounded-xl shadow-md cursor-pointer transition-all active:scale-95 font-bold"
+            >
+              <Copy size={16} /> Copier le Script SQL Supabase
+            </button>
+          </AdminCard>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <AdminInput
-              label="Nom de la boutique"
-              value={settings.shop_name}
-              onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, shop_name: value }))}
-            />
-            <AdminInput
-              label="Devise"
-              value={settings.currency}
-              onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, currency: value }))}
-            />
-            <AdminInput
-              label="Pays"
-              value={settings.country}
-              onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, country: value }))}
-            />
-            <AdminInput
-              label="Délai affiché"
-              value={settings.delivery_time}
-              onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, delivery_time: value }))}
-              placeholder="24h/48h"
-            />
-            <AdminInput
-              label="Seuil livraison gratuite (FCFA)"
-              value={settings.delivery_free_threshold}
-              onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, delivery_free_threshold: Number(value) || 0 }))}
-              type="number"
-            />
-          </div>
-
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center gap-4">
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleLogoUpload}
-                disabled={uploadingLogo}
-                className="hidden"
-                id="shop-logo-upload"
-              />
-              <label
-                htmlFor="shop-logo-upload"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-gold text-[#0A0A0A] rounded-lg cursor-pointer hover:bg-brand-gold-light transition-colors font-medium"
-              >
-                <Upload size={18} />
-                {uploadingLogo ? 'Upload du logo...' : 'Uploader le logo'}
-              </label>
-              {settings.logo_url && (
-                <AdminButton type="button" variant="danger" onClick={handleRemoveLogo}>
-                  <Trash2 size={16} />
-                  Supprimer le logo
-                </AdminButton>
-              )}
+          <AdminCard>
+            <div className="flex items-center gap-3 mb-6">
+              <Settings size={22} className="text-brand-gold" />
+              <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">Informations générales</h2>
             </div>
 
-            {settings.logo_url && (
-              <div className="relative w-full max-w-xs aspect-video overflow-hidden rounded-xl border border-brand-gold/20 bg-brand-bg">
-                <Image
-                  src={settings.logo_url}
-                  alt="Logo boutique"
-                  fill
-                  sizes="320px"
-                  className="object-contain p-2"
-                  unoptimized
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AdminInput
+                label="Nom de la boutique"
+                value={settings.shop_name}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, shop_name: value }))}
+              />
+              <AdminInput
+                label="Devise"
+                value={settings.currency}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, currency: value }))}
+              />
+              <AdminInput
+                label="Pays"
+                value={settings.country}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, country: value }))}
+              />
+              <AdminInput
+                label="Délai affiché"
+                value={settings.delivery_time}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, delivery_time: value }))}
+                placeholder="24h/48h"
+              />
+              <AdminInput
+                label="Seuil livraison gratuite (FCFA)"
+                value={settings.delivery_free_threshold}
+                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, delivery_free_threshold: Number(value) || 0 }))}
+                type="number"
+              />
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center gap-4">
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  disabled={uploadingLogo}
+                  className="hidden"
+                  id="shop-logo-upload"
                 />
+                <label
+                  htmlFor="shop-logo-upload"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-brand-gold text-[#0A0A0A] rounded-lg cursor-pointer hover:bg-brand-gold-light transition-colors font-medium"
+                >
+                  <Upload size={18} />
+                  {uploadingLogo ? 'Upload du logo...' : 'Uploader le logo'}
+                </label>
+                {settings.logo_url && (
+                  <AdminButton type="button" variant="danger" onClick={handleRemoveLogo}>
+                    <Trash2 size={16} />
+                    Supprimer le logo
+                  </AdminButton>
+                )}
               </div>
-            )}
-          </div>
-        </AdminCard>
+
+              {settings.logo_url && (
+                <div className="relative w-full max-w-xs aspect-video overflow-hidden rounded-xl border border-brand-gold/20 bg-brand-bg">
+                  <Image
+                    src={settings.logo_url}
+                    alt="Logo boutique"
+                    fill
+                    sizes="320px"
+                    className="object-contain p-2"
+                    unoptimized
+                  />
+                </div>
+              )}
+            </div>
+          </AdminCard>
+        </div>
       )}
 
-      {/* Priorité 2 : Gestion de la Vitrine Publique */}
       {activeTab === 'vitrine' && (
         <div className="space-y-6">
           <AdminCard className="space-y-6">
