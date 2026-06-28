@@ -1,16 +1,37 @@
 // src/services/outfitService.ts
 // ============================================
-// Service de gestion des HP Looks (Module HPB sans message technique)
+// Service de gestion des HP Looks (Cadre Final : Auto-seeding des 32 Outfits du Repo)
 // ============================================
 
 import { requireSupabase, supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { outfits as fallbackOutfits } from '@/data/outfits';
 import type { AdminOutfit, OutfitFormData, ApiResponse } from '@/admin/types';
 
 const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
+function getFallbackAdminOutfits(): AdminOutfit[] {
+  return fallbackOutfits.map((outfit, index) => {
+    const numericId = Number(outfit.id.replace(/\D/g, '')) || (index + 1);
+    const productIds = outfit.products.map((p) => Number(p.id.replace(/\D/g, '')) || 1);
+
+    return {
+      id: numericId,
+      name: outfit.name,
+      image_url: outfit.image,
+      custom_price: outfit.price,
+      product_ids: productIds,
+      visible: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  });
+}
+
 export async function fetchAdminOutfits(): Promise<AdminOutfit[]> {
+  const fallbackList = getFallbackAdminOutfits();
+
   if (!isSupabaseConfigured || !supabase) {
-    return [];
+    return fallbackList;
   }
 
   const { data, error } = await supabase
@@ -20,24 +41,50 @@ export async function fetchAdminOutfits(): Promise<AdminOutfit[]> {
 
   if (error) {
     console.error('Erreur fetch outfits:', error);
-    return [];
+    return fallbackList;
+  }
+
+  // CADRE FINAL : Si la table Supabase est vide, on peuple automatiquement avec les 32 HP Looks d'origine du repo !
+  if (!data || data.length === 0) {
+    console.log('Table outfits Supabase vide : Injection automatique des 32 HP Looks d’origine...');
+
+    const seedPayload = fallbackList.map((item) => ({
+      id: item.id,
+      name: item.name,
+      image_url: item.image_url,
+      custom_price: item.custom_price,
+      product_ids: item.product_ids,
+      visible: item.visible,
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    }));
+
+    supabase.from('outfits').upsert(seedPayload).then((res) => {
+      if (res.error) console.error('Erreur auto-seeding outfits:', res.error);
+    });
+
+    return fallbackList;
   }
 
   return (data || []) as AdminOutfit[];
 }
 
 export async function fetchOutfitById(id: number | string): Promise<AdminOutfit | null> {
-  if (!supabase) return null;
+  const fallbackList = getFallbackAdminOutfits();
+  const numericId = Number(id);
+
+  if (!supabase) {
+    return fallbackList.find((o) => o.id === numericId) || null;
+  }
 
   const { data, error } = await supabase
     .from('outfits')
     .select('*')
-    .eq('id', Number(id))
+    .eq('id', numericId)
     .single();
 
   if (error || !data) {
-    console.error('Erreur fetch outfit:', error);
-    return null;
+    return fallbackList.find((o) => o.id === numericId) || null;
   }
 
   return data as AdminOutfit;

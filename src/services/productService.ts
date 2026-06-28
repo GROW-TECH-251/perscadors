@@ -1,16 +1,49 @@
 // src/services/productService.ts
 // ============================================
-// Service de gestion des produits (Sans message technique)
+// Service de gestion des produits (Cadre Final : Synchronisation & Auto-Seeding du Repo)
 // ============================================
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { products as fallbackProducts } from '@/data/products';
 import type { AdminProduct, ProductFormData, ApiResponse } from '@/admin/types';
 
 const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
+function getFallbackAdminProducts(): AdminProduct[] {
+  return fallbackProducts.map((product, index) => {
+    // Conversion d'id textuel (ex: 'basket-1') en ID numérique strict pour Supabase
+    const numericId = Number(product.id.replace(/\D/g, '')) || (index + 1);
+    const primaryImage = (product as unknown as { image_url?: string }).image_url || product.images[0] || '/images/LOGOSITE/logo.png';
+
+    return {
+      id: numericId,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      image_url: primaryImage,
+      images: product.images?.length ? product.images : [primaryImage],
+      sizes: product.sizes || [],
+      colors: product.colors || [],
+      outOfStockSizes: product.outOfStockSizes || [],
+      outOfStockColors: product.outOfStockColors || [],
+      demand: product.isPopular ? 25 : 10,
+      stock: product.inStock ? 50 : 0,
+      badge: product.isPopular ? 'Populaire' : null,
+      description: product.description || 'Produit premium HP Collection.',
+      visible: true,
+      slug: product.slug || product.id,
+      isPopular: Boolean(product.isPopular),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  });
+}
+
 export async function fetchAdminProducts(): Promise<AdminProduct[]> {
+  const fallbackList = getFallbackAdminProducts();
+
   if (!isSupabaseConfigured || !supabase) {
-    return [];
+    return fallbackList;
   }
 
   const { data, error } = await supabase
@@ -20,23 +53,57 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
 
   if (error) {
     console.error('Erreur fetch produits:', error);
-    return [];
+    return fallbackList;
+  }
+
+  // CADRE FINAL : Si la table Supabase est vide (ex: base neuve), on peuple automatiquement et on retourne le catalogue d'origine !
+  if (!data || data.length === 0) {
+    console.log('Catalogue Supabase vide : Injection automatique des articles d’origine du repo...');
+    
+    // Auto-seeding asynchrone en arrière-plan sans bloquer l'affichage
+    const seedPayload = fallbackList.map((item) => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      price: item.price,
+      image_url: item.image_url,
+      sizes: item.sizes,
+      colors: item.colors,
+      demand: item.demand,
+      stock: item.stock,
+      badge: item.badge,
+      description: item.description,
+      visible: item.visible,
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    }));
+
+    supabase.from('products').upsert(seedPayload).then((res) => {
+      if (res.error) console.error('Erreur auto-seeding products:', res.error);
+    });
+
+    return fallbackList;
   }
 
   return (data || []) as AdminProduct[];
 }
 
 export async function fetchProductById(id: number | string): Promise<AdminProduct | null> {
-  if (!supabase) return null;
+  const fallbackList = getFallbackAdminProducts();
+  const numericId = Number(id);
+
+  if (!supabase) {
+    return fallbackList.find((p) => p.id === numericId) || null;
+  }
 
   const { data, error } = await supabase
     .from('products')
     .select('*')
-    .eq('id', Number(id))
+    .eq('id', numericId)
     .single();
 
   if (error || !data) {
-    return null;
+    return fallbackList.find((p) => p.id === numericId) || null;
   }
 
   return data as AdminProduct;
