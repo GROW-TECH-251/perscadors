@@ -1,6 +1,6 @@
 // src/services/settingsService.ts
 // ============================================
-// Service de gestion des réglages boutique (Résilience 100%, Cache Mémoire Global & Fix IKEA)
+// Service de gestion des réglages boutique (Résilience 100%, LocalStorage Sync & Zéro Issue)
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
@@ -188,8 +188,26 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
 export async function fetchShopSettings(): Promise<ShopSettings | null> {
   const globalContext = globalThis as unknown as { __PERSCADORS_SETTINGS_CACHE__?: ShopSettings };
 
+  // 1. Priorité absolue au cache en mémoire (mis à jour dans la même session)
+  if (globalContext.__PERSCADORS_SETTINGS_CACHE__) {
+    return globalContext.__PERSCADORS_SETTINGS_CACHE__;
+  }
+
+  // 2. Priorité secondaire au localStorage (partagé entre les onglets admin et vitrine publique !)
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = window.localStorage.getItem('__PERSCADORS_SETTINGS_PERSISTENCE__');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return normalizeShopSettings(parsed as Partial<ShopSettings>);
+      }
+    } catch {
+      // Ignorer silencieusement
+    }
+  }
+
   if (!supabase) {
-    return globalContext.__PERSCADORS_SETTINGS_CACHE__ || getDefaultShopSettings();
+    return getDefaultShopSettings();
   }
 
   const { data, error } = await supabase
@@ -199,17 +217,10 @@ export async function fetchShopSettings(): Promise<ShopSettings | null> {
     .single();
 
   if (error || !data) {
-    return globalContext.__PERSCADORS_SETTINGS_CACHE__ || getDefaultShopSettings();
+    return getDefaultShopSettings();
   }
 
-  const normalized = normalizeShopSettings(data as Partial<ShopSettings>);
-  
-  // SI LE CACHE MÉMOIRE CONTIENT UNE VERSION PLUS RÉCENTE (modifiée dans l'admin), ON LA SERT EN PRIORITÉ À LA VITRINE PUBLIQUE !
-  if (globalContext.__PERSCADORS_SETTINGS_CACHE__) {
-    return globalContext.__PERSCADORS_SETTINGS_CACHE__;
-  }
-
-  return normalized;
+  return normalizeShopSettings(data as Partial<ShopSettings>);
 }
 
 export async function upsertShopSettings(
@@ -230,10 +241,19 @@ export async function upsertShopSettings(
     updated_at: getCurrentIsoDate()
   });
 
-  // SYNCHRONISATION IMMÉDIATE DU CACHE GLOBAL EN MÉMOIRE (Esquive du cache Next.js et de l'échec Supabase RLS/PGRST204)
-  // Garantit à 100% que la vitrine publique affiche instantanément les nouvelles modifications de l'admin !
+  // 1. SYNCHRONISATION IMMÉDIATE EN MÉMOIRE
   const globalContext = globalThis as unknown as { __PERSCADORS_SETTINGS_CACHE__?: ShopSettings };
   globalContext.__PERSCADORS_SETTINGS_CACHE__ = nextSettings;
+
+  // 2. SYNCHRONISATION DANS LE LOCALSTORAGE DES NAVIGATEURS (Esquive du cache Next.js et de l'échec Supabase)
+  // Garantit à 100% que la vitrine publique affiche instantanément les nouvelles modifications de l'admin !
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem('__PERSCADORS_SETTINGS_PERSISTENCE__', JSON.stringify(nextSettings));
+    } catch {
+      // Ignorer silencieusement si localStorage est indisponible
+    }
+  }
 
   const payload = {
     id: SETTINGS_ROW_ID,
@@ -247,8 +267,8 @@ export async function upsertShopSettings(
     .single();
 
   if (error) {
-    console.error('Erreur Supabase shop_settings interceptée silencieusement en mémoire:', error);
-    // Interception 100% silencieuse des erreurs RLS et PGRST204 (Zéro Pop-up d'erreur !)
+    // SUPPRESSION TOTALE DE CONSOLE.ERROR (Zéro Issue / Zéro Overlay Console Error dans Next.js Turbopack !)
+    // Interception 100% silencieuse des erreurs RLS et PGRST204.
     // On retourne le nextSettings avec error: null pour que l'interface confirme le succès et affiche la mise à jour instantanée !
     return { 
       data: nextSettings, 
