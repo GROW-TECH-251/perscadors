@@ -1,10 +1,11 @@
 // src/services/customerService.ts
 // ============================================
-// Service de gestion des clients
+// Service de gestion des clients (Cadre Final : Raccordement au LocalStorage & Zéro Perte)
 // ============================================
-// CRUD et agrégation des données clients via Supabase
+// CRUD et agrégation des données clients via Supabase et LocalStorage
 
 import { requireSupabase, supabase } from '@/lib/supabase';
+import { fetchAdminOrders } from '@/services/orderService';
 import type { CustomerSummary, CustomerMeta, CustomerSegment, ApiResponse } from '@/admin/types';
 
 interface RawOrderCustomerRow {
@@ -21,20 +22,14 @@ interface RawOrderCustomerRow {
 }
 
 export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
-  if (!supabase) return [];
-
-  const [{ data: orders, error: ordersError }, { data: customerMetaRows, error: customerMetaError }] = await Promise.all([
-    supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('customer_meta')
-      .select('*')
+  // 1. CORRECTION CAPITALE : Utiliser fetchAdminOrders() au lieu de supabase.from('orders') !
+  // Ainsi, on récupère instantanément les commandes du localStorage et le nouveau client s'affiche immédiatement dans l'admin !
+  const [orders, { data: customerMetaRows, error: customerMetaError }] = await Promise.all([
+    fetchAdminOrders(),
+    supabase ? supabase.from('customer_meta').select('*') : Promise.resolve({ data: [], error: null })
   ]);
 
-  if (ordersError || !orders) {
-    console.error('Erreur fetch clients:', ordersError);
+  if (!orders) {
     return [];
   }
 
