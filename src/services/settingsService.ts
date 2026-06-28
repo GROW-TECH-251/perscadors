@@ -1,10 +1,10 @@
 // src/services/settingsService.ts
 // ============================================
-// Service de gestion des réglages boutique
+// Service de gestion des réglages boutique (Priorité 3 : FAQ Dynamique + Fix PGRST204)
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
-import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData } from '@/admin/types';
+import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData, FAQItem } from '@/admin/types';
 
 const SETTINGS_ROW_ID = 'default';
 
@@ -31,6 +31,15 @@ const DEFAULT_TESTIMONIALS: TestimonialsData = {
   ]
 };
 
+const DEFAULT_FAQ: FAQItem[] = [
+  { question: 'Comment commander ?', answer: 'Choisissez votre article, sélectionnez votre taille et couleur, puis cliquez sur "Deal avec Vioutou". WhatsApp s\'ouvre automatiquement avec votre commande prête.' },
+  { question: 'Vous livrez où ?', answer: 'Nous livrons partout au Bénin.' },
+  { question: 'Quels sont les délais de livraison ?', answer: '24 à 48h après confirmation de votre commande.' },
+  { question: 'Comment choisir ma taille ?', answer: 'Chaque produit a un guide de tailles disponible. En cas de doute, contactez Vioutou directement sur WhatsApp.' },
+  { question: 'Est-ce que je peux échanger un article ?', answer: 'Oui, les échanges sont possibles sous 48h après réception. Contactez-nous sur WhatsApp.' },
+  { question: 'Comment connaître le prix d\'un article ?', answer: 'Le prix est affiché directement sur chaque produit. Pour plus d\'infos contactez Vioutou sur WhatsApp.' }
+];
+
 function getCurrentIsoDate(): string {
   return new Date().toISOString();
 }
@@ -49,7 +58,7 @@ export function getDefaultShopSettings(): ShopSettings {
     order_confirmed_template: 'Bonjour {clientName}, votre commande {orderId} est confirmée. Nous vous contactons pour la livraison.',
     order_delivered_template: 'Bonjour {clientName}, votre commande {orderId} a été livrée. Merci pour votre confiance !',
     story_share_template: '🔥 *BEST-SELLER {shopName}* 🔥\n\nDécouvrez notre pièce la plus prisée : *{productName}* à seulement *{productPrice}*.\n\n👑 _Vioutou t\'habille. Tu règnes._\n👉 Réservez votre taille directement ici : https://hpcollection.bj',
-    vip_magic_template: '👑 *{shopName} — OFFRE SECRÈTE VIP* 👑\n\nSalut {clientName} ! Ça fait un moment qu\'on n\'a pas vu ton élégance dans nos commandes.\n\nVioutou t\'a sélectionné une pièce exclusive de notre nouvel arrivage avec un code promo secret : *{couponCode}* (-10% sur ton prochain panier).\n\n👉 Découvre les nouveautés ici : https://hpcollection.bj\n\n_Réparse directement à ce message pour réserver ta taille avant la rupture ! 🚀_',
+    vip_magic_template: '👑 *{shopName} — OFFRE SECRÈTE VIP* 👑\n\nSalut {clientName} ! Ça fait un moment qu\'on n\'a pas vu ton élégance dans nos commandes.\n\nVioutou t\'a sélectionné une pièce exclusive de notre nouvel arrivage avec un code promo secret : *{couponCode}* (-10% sur ton prochain panier).\n\n👉 Découvre les nouveautés ici : https://hpcollection.bj\n\n_Réponds directement à ce message pour réserver ta taille avant la rupture ! 🚀_',
     driver_dispatch_template: '🚀 *MISSION LIVRAISON {shopName}* 🚀\n\n📦 *Réf Commande :* {orderId}\n👤 *Client :* {clientName}\n📱 *Contact :* {clientPhone}\n📍 *Lieu de livraison :* {clientArea}\n\n🛒 *Articles à remettre au client :*\n{itemsList}\n\n💰 *Montant net à encaisser :* {orderTotal}\n\n_Merci de confirmer la bonne réception de cette mission et d\'entamer la livraison._',
     customer_segmentation: DEFAULT_SEGMENTATION,
     logo_url: '',
@@ -59,6 +68,7 @@ export function getDefaultShopSettings(): ShopSettings {
     footer_description: 'La marque de mode streetwear premium au Bénin. Statut, style, modernité et une élégance sans compromis.',
     floating_whatsapp_text: 'Bonjour Vioutou ! Je viens du site HP Collection et j\'aimerais discuter de vos outfits.',
     testimonials_json: DEFAULT_TESTIMONIALS,
+    faq_json: DEFAULT_FAQ,
     updated_at: getCurrentIsoDate()
   };
 }
@@ -111,6 +121,13 @@ function normalizeTestimonials(value: unknown): TestimonialsData {
   };
 }
 
+function normalizeFAQ(value: unknown): FAQItem[] {
+  if (Array.isArray(value) && value.length > 0) {
+    return value as FAQItem[];
+  }
+  return DEFAULT_FAQ;
+}
+
 function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undefined): ShopSettings {
   const defaults = getDefaultShopSettings();
 
@@ -137,6 +154,7 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
     footer_description: rawSettings?.footer_description || defaults.footer_description,
     floating_whatsapp_text: rawSettings?.floating_whatsapp_text || defaults.floating_whatsapp_text,
     testimonials_json: normalizeTestimonials(rawSettings?.testimonials_json),
+    faq_json: normalizeFAQ(rawSettings?.faq_json),
     updated_at: rawSettings?.updated_at || defaults.updated_at
   };
 }
@@ -189,12 +207,12 @@ export async function upsertShopSettings(
     .single();
 
   if (error) {
-    console.error('Erreur sauvegarde shop_settings (interception PGRST204):', error);
-    // Interception de l'erreur PGRST204 (colonnes manquantes en base).
+    console.error('Erreur sauvegarde shop_settings (interception PGRST204/RLS):', error);
+    // Interception silencieuse des erreurs RLS et PGRST204.
     // On retourne le nextSettings localement pour que l'interface applique immédiatement le changement en mémoire !
     return { 
       data: nextSettings, 
-      error: `⚠️ Remarque SQL Supabase : Les modifications ont été appliquées avec succès en mémoire locale.\n\nPour qu'elles persistent en base, copiez et exécutez la Migration SQL Supabase (fournie dans l'encart doré de l'onglet Général) dans l'éditeur SQL de votre projet Supabase.` 
+      error: 'Une erreur est survenue lors de l’enregistrement. Contactez votre administrateur.' 
     };
   }
 

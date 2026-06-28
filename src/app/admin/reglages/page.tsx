@@ -1,6 +1,6 @@
 // src/app/admin/reglages/page.tsx
 // ============================================
-// Réglages boutique opérationnels & Administration Vitrine (Sans aucun script SQL ni erreur technique)
+// Réglages boutique opérationnels, Vitrine & FAQ (Priorité 3 + Suppression totale SQL)
 // ============================================
 
 'use client';
@@ -9,11 +9,11 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea } from '@/admin/components';
-import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap, Share2, Monitor, Star } from 'lucide-react';
+import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap, Share2, Monitor, Star, HelpCircle } from 'lucide-react';
 import { clearAdminSession } from '@/admin/auth';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
 import { fetchShopSettings, upsertShopSettings, getDefaultShopSettings } from '@/services/settingsService';
-import type { DeliveryZone, ShopSettings, TestimonialVideo } from '@/admin/types';
+import type { DeliveryZone, ShopSettings, TestimonialVideo, FAQItem } from '@/admin/types';
 
 function createDeliveryZone(): DeliveryZone {
   return {
@@ -24,6 +24,15 @@ function createDeliveryZone(): DeliveryZone {
   };
 }
 
+function createFAQItem(): FAQItem {
+  return {
+    question: 'Nouvelle question ?',
+    answer: 'Réponse à personnaliser...'
+  };
+}
+
+const USER_ERROR_MSG = 'Une erreur est survenue lors de l’enregistrement. Contactez votre administrateur.';
+
 export default function AdminSettingsPage() {
   const router = useRouter();
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -33,7 +42,7 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'vitrine' | 'delivery' | 'whatsapp' | 'segmentation'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'vitrine' | 'faq' | 'delivery' | 'whatsapp' | 'segmentation'>('general');
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -61,7 +70,9 @@ export default function AdminSettingsPage() {
       const result = await upsertShopSettings(settings);
       if (result.error) {
         // Message propre utilisateur, aucune trace de Supabase ou de SQL
-        alert('Une erreur est survenue lors de l’enregistrement. Contactez votre administrateur.');
+        alert(USER_ERROR_MSG);
+      } else {
+        alert('Réglages enregistrés avec succès !');
       }
 
       if (result.data) {
@@ -69,7 +80,7 @@ export default function AdminSettingsPage() {
       }
     } catch (error: unknown) {
       console.error('Erreur sauvegarde réglages:', error);
-      alert('Une erreur est survenue. Contactez votre administrateur.');
+      alert(USER_ERROR_MSG);
     } finally {
       setSaving(false);
     }
@@ -109,6 +120,34 @@ export default function AdminSettingsPage() {
     }));
   };
 
+  const handleFAQChange = (index: number, field: keyof FAQItem, value: string) => {
+    setSettings((currentSettings) => {
+      const nextFAQ = [...currentSettings.faq_json];
+      nextFAQ[index] = {
+        ...nextFAQ[index],
+        [field]: value
+      };
+      return {
+        ...currentSettings,
+        faq_json: nextFAQ
+      };
+    });
+  };
+
+  const handleAddFAQ = () => {
+    setSettings((currentSettings) => ({
+      ...currentSettings,
+      faq_json: [...currentSettings.faq_json, createFAQItem()]
+    }));
+  };
+
+  const handleRemoveFAQ = (index: number) => {
+    setSettings((currentSettings) => ({
+      ...currentSettings,
+      faq_json: currentSettings.faq_json.filter((_, currentIndex) => currentIndex !== index)
+    }));
+  };
+
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -124,7 +163,7 @@ export default function AdminSettingsPage() {
       const result = await uploadBrandAsset(compressedLogo, 'logos/shop-logo');
 
       if (result.error || !result.data) {
-        alert('Une erreur est survenue lors du téléchargement. Contactez votre administrateur.');
+        alert(USER_ERROR_MSG);
         return;
       }
 
@@ -134,7 +173,7 @@ export default function AdminSettingsPage() {
       }));
     } catch (error: unknown) {
       console.error('Erreur upload logo:', error);
-      alert('Une erreur est survenue. Contactez votre administrateur.');
+      alert(USER_ERROR_MSG);
     } finally {
       setUploadingLogo(false);
       if (logoInputRef.current) logoInputRef.current.value = '';
@@ -148,7 +187,7 @@ export default function AdminSettingsPage() {
     if (shouldDelete) {
       const result = await deleteImageByUrl(BUCKETS.BRAND_ASSETS, settings.logo_url);
       if (result.error) {
-        alert('Une erreur est survenue. Contactez votre administrateur.');
+        alert(USER_ERROR_MSG);
         return;
       }
     }
@@ -166,7 +205,7 @@ export default function AdminSettingsPage() {
       const result = await uploadBrandAsset(compressed, 'testimonials/screenshot');
 
       if (result.error || !result.data) {
-        alert('Une erreur est survenue lors du téléchargement. Contactez votre administrateur.');
+        alert(USER_ERROR_MSG);
         return;
       }
 
@@ -179,7 +218,7 @@ export default function AdminSettingsPage() {
       }));
     } catch (error: unknown) {
       console.error('Erreur upload screenshot:', error);
-      alert('Une erreur est survenue. Contactez votre administrateur.');
+      alert(USER_ERROR_MSG);
     } finally {
       setUploadingScreenshot(false);
       if (screenshotInputRef.current) screenshotInputRef.current.value = '';
@@ -236,7 +275,8 @@ export default function AdminSettingsPage() {
       <div className="flex flex-wrap gap-2 border-b border-brand-gold/20 pb-3">
         {[
           { id: 'general', label: 'Général' },
-          { id: 'vitrine', label: 'Vitrine & Textes (Hero/Footer)' },
+          { id: 'vitrine', label: 'Vitrine & Textes' },
+          { id: 'faq', label: 'Foire Aux Questions (FAQ)' },
           { id: 'delivery', label: 'Livraison' },
           { id: 'whatsapp', label: 'WhatsApp & Templates' },
           { id: 'segmentation', label: 'Segmentation' }
@@ -486,6 +526,61 @@ export default function AdminSettingsPage() {
             </div>
           </AdminCard>
         </div>
+      )}
+
+      {/* Priorité 3 : FAQ Dynamique */}
+      {activeTab === 'faq' && (
+        <AdminCard className="space-y-6">
+          <div className="flex items-center justify-between border-b border-brand-gold/15 pb-4">
+            <div className="flex items-center gap-3">
+              <HelpCircle size={24} className="text-brand-gold" />
+              <div>
+                <h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase">
+                  Foire Aux Questions (FAQ Dynamique)
+                </h2>
+                <p className="text-sm text-brand-text-muted mt-1">
+                  Ajoute ou modifie les questions fréquentes affichées sur ta page d&apos;accueil en temps réel.
+                </p>
+              </div>
+            </div>
+            <AdminButton variant="primary" size="sm" onClick={handleAddFAQ}>
+              <Plus size={16} />
+              Ajouter une question
+            </AdminButton>
+          </div>
+
+          <div className="space-y-6">
+            {settings.faq_json.map((item, index) => (
+              <div key={index} className="p-4 bg-brand-bg rounded-xl border border-brand-gold/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bebas text-lg text-brand-text uppercase">Question #{index + 1}</h3>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveFAQ(index)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                    aria-label="Supprimer question"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <AdminInput
+                    label="Question"
+                    value={item.question}
+                    onChange={(value) => handleFAQChange(index, 'question', value)}
+                  />
+                  <AdminTextarea
+                    label="Réponse"
+                    value={item.answer}
+                    onChange={(value) => handleFAQChange(index, 'answer', value)}
+                    rows={3}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </AdminCard>
       )}
 
       {activeTab === 'delivery' && (

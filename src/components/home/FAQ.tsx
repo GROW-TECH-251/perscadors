@@ -1,46 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Minus } from 'lucide-react';
-
-interface FAQItem {
-  question: string;
-  answer: string;
-}
+import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import type { ShopSettings } from '@/admin/types';
 
 export const FAQ: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
 
-  const faqData: FAQItem[] = [
-    {
-      question: 'Comment commander ?',
-      answer: 'Choisissez votre article, sélectionnez votre taille et couleur, puis cliquez sur "Deal avec Vioutou". WhatsApp s\'ouvre automatiquement avec votre commande prête.',
-    },
-    {
-      question: 'Vous livrez où ?',
-      answer: 'Nous livrons partout au Bénin.',
-    },
-    {
-      question: 'Quels sont les délais de livraison ?',
-      answer: '24 à 48h après confirmation de votre commande.',
-    },
-    {
-      question: 'Comment choisir ma taille ?',
-      answer: 'Chaque produit a un guide de tailles disponible. En cas de doute, contactez Vioutou directement sur WhatsApp.',
-    },
-    {
-      question: 'Est-ce que je peux échanger un article ?',
-      answer: 'Oui, les échanges sont possibles sous 48h après réception. Contactez-nous sur WhatsApp.',
-    },
-    {
-      question: 'Comment connaître le prix d\'un article ?',
-      answer: 'Le prix est affiché directement sur chaque produit. Pour plus d\'infos contactez Vioutou sur WhatsApp.',
-    },
-  ];
+  useEffect(() => {
+    async function loadFAQ() {
+      const data = await fetchShopSettings();
+      if (data && data.faq_json) {
+        setSettings(data);
+      }
+    }
+    loadFAQ();
+  }, []);
 
   const toggleFAQ = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
   };
+
+  const faqList = settings.faq_json || getDefaultShopSettings().faq_json;
 
   return (
     <section id="faq" className="py-24 bg-brand-bg">
@@ -58,7 +41,7 @@ export const FAQ: React.FC = () => {
 
         {/* Accordions */}
         <div className="space-y-4">
-          {faqData.map((item, index) => {
+          {faqList.map((item, index) => {
             const isOpen = openIndex === index;
             return (
               <div

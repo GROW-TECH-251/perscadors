@@ -201,6 +201,11 @@ export interface TestimonialsData {
   videos: TestimonialVideo[];
 }
 
+export interface FAQItem {
+  question: string;
+  answer: string;
+}
+
 export interface ShopSettings {
   shop_name: string;
   whatsapp_phone: string;
@@ -218,13 +223,14 @@ export interface ShopSettings {
   driver_dispatch_template: string;
   customer_segmentation: CustomerSegmentationSettings;
   logo_url: string | null;
-  // Priorité 2 : Administration de la Vitrine Publique
   hero_title: string;
   hero_subtitle: string;
   hero_video_url: string;
   footer_description: string;
   floating_whatsapp_text: string;
   testimonials_json: TestimonialsData;
+  // Priorité 3 : FAQ Dynamique
+  faq_json: FAQItem[];
   updated_at: string;
 }
 
