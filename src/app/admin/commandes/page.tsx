@@ -1,6 +1,6 @@
 // src/app/admin/commandes/page.tsx
 // ============================================
-// Gestion des Commandes (Levier 4 : Effet IKEA, Expédition Personnalisée & Purge Annulation)
+// Gestion des Commandes (Levier 4 : Effet IKEA, Expédition Personnalisée, Purge Annulation & RECOVERY MATRIX)
 // ============================================
 
 'use client';
@@ -8,8 +8,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea } from '@/admin/components';
-import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo, FileText, Send } from 'lucide-react';
-import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus, deleteOrder } from '@/services/orderService';
+import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo, FileText, Send, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
+import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus, deleteOrder, createOrderFromCart } from '@/services/orderService';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
 import { exportOrdersToCsv } from '@/utils/exportCsv';
 import type { AdminOrder, OrderStatus, ShopSettings } from '@/admin/types';
@@ -26,6 +26,15 @@ export default function AdminOrdersPage() {
   const [statusNote, setStatusNote] = useState('');
   const [isSavingStatus, setIsSavingStatus] = useState(false);
   const [savingOrderId, setSavingOrderId] = useState<number | null>(null);
+
+  // ============================================
+  // PRIORITÉ 2 : RECOVERY MATRIX (Rattrapage WhatsApp)
+  // ============================================
+  const [isRecoveryModalOpen, setIsRecoveryModalOpen] = useState(false);
+  const [recoveryText, setRecoveryText] = useState('');
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [recoveryError, setRecoveryError] = useState('');
+  const [recoverySuccess, setRecoverySuccess] = useState('');
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -199,6 +208,95 @@ export default function AdminOrdersPage() {
     }
   };
 
+  // ============================================
+  // PRIORITÉ 2 : SOUMISSION RECOVERY MATRIX
+  // ============================================
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recoveryText.trim()) {
+      setRecoveryError('Veuillez coller le texte brut du message WhatsApp de la commande.');
+      return;
+    }
+
+    setIsRecovering(true);
+    setRecoveryError('');
+    setRecoverySuccess('');
+
+    try {
+      const text = recoveryText;
+
+      // Extraction intelligente (RegEx robustes tolérant le formatage WhatsApp *, _, etc.)
+      const orderMatch = text.match(/COMMANDE\s*#?([A-Z0-9-]+)/i) || text.match(/R[ée]f[ée]rence\s*[\u003a\u002d]?\s*\*?([A-Z0-9-]+)/i);
+      const clientMatch = text.match(/Client\s*[\u003a\u002d]?\s*\*?([^\n]+)/i);
+      const phoneMatch = text.match(/T[ée]l[ée]phone\s*[\u003a\u002d]?\s*\*?([^\n]+)/i) || text.match(/WhatsApp\s*[\u003a\u002d]?\s*\*?([^\n]+)/i);
+      const areaMatch = text.match(/Zone\s*[\u003a\u002d]?\s*\*?([^\n]+)/i);
+      const totalMatch = text.match(/TOTAL\s*[\u003a\u002d]?\s*\*?([0-9.,\s]+)/i);
+
+      const order_number = orderMatch ? orderMatch[1].replace(/\*/g, '').trim() : `HP-REC-${Date.now().toString().slice(-4)}`;
+      const client_name = clientMatch ? clientMatch[1].replace(/\*/g, '').trim() : 'Client WhatsApp Inconnu';
+      const client_phone = phoneMatch ? phoneMatch[1].replace(/\*/g, '').replace(/\D/g, '').trim() : '22900000000';
+      const client_area = areaMatch ? areaMatch[1].replace(/\*/g, '').trim() : 'Cotonou (Par Défaut)';
+      
+      const rawTotal = totalMatch ? Number(totalMatch[1].replace(/[^0-9]/g, '')) : 25000;
+
+      // Extraction des articles
+      const items: { name: string; price: number; quantity: number; size: string; color: string; image: string }[] = [];
+      const itemRegex = /(?:\u2022|\*?\d+\.)\s*\*?([^\n*]+)\*?\s*\n\s*(?:Taille\s*:\s*([^|]+?)\s*\|\s*Couleur\s*:\s*([^\n]+)|Taille\s*:\s*([^\n]+)\s*\n\s*Couleur\s*:\s*([^\n]+))/gi;
+      
+      let match;
+      while ((match = itemRegex.exec(text)) !== null) {
+        const name = match[1]?.trim() || 'Article HP Collection';
+        const size = (match[2] || match[4] || 'M').trim();
+        const color = (match[3] || match[5] || 'Standard').trim();
+        items.push({
+          name,
+          price: Math.round(rawTotal / (items.length + 1)),
+          quantity: 1,
+          size,
+          color,
+          image: '/images/LOGOSITE/logo.png'
+        });
+      }
+
+      if (items.length === 0) {
+        items.push({
+          name: 'Commande Spéciale WhatsApp',
+          price: rawTotal,
+          quantity: 1,
+          size: 'Standard',
+          color: 'Standard',
+          image: '/images/LOGOSITE/logo.png'
+        });
+      }
+
+      const payload = {
+        order_number,
+        client_name,
+        client_phone,
+        client_area,
+        items,
+        subtotal: rawTotal,
+        delivery_fee: 0,
+        total: rawTotal
+      };
+
+      await createOrderFromCart(payload);
+      await loadOrders();
+
+      setRecoverySuccess(`🎉 Commande #${order_number} (${client_name}) re-créée et synchronisée avec succès en base de données et dans la liste des clients !`);
+      setRecoveryText('');
+      setTimeout(() => {
+        setIsRecoveryModalOpen(false);
+        setRecoverySuccess('');
+      }, 3000);
+    } catch (err: unknown) {
+      console.error('Erreur Recovery Matrix:', err);
+      setRecoveryError('Une erreur est survenue lors de la synchronisation. Contactez votre administrateur.');
+    } finally {
+      setIsRecovering(false);
+    }
+  };
+
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -254,152 +352,176 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between border-b border-brand-gold/10 pb-6">
         <div>
-          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
-            Gestion Logistique Éclair • Effet IKEA
+          <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20 shadow-sm">
+            Pilotage Logistique • Vitesse WhatsApp
           </span>
-          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Commandes</h1>
+          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Gestion des Commandes</h1>
           <p className="text-brand-text-muted mt-1">{orders.length} commandes enregistrées</p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <AdminButton variant="secondary" onClick={() => window.history.back()}>Retour</AdminButton>
+        <div className="flex gap-3 flex-wrap">
+          <AdminButton
+            variant="primary"
+            onClick={() => setIsRecoveryModalOpen(true)}
+            className="bg-amber-500 text-[#0A0A0A] hover:bg-amber-400 font-bebas uppercase tracking-wider shadow-lg flex items-center gap-2 border border-amber-300/30"
+          >
+            <Zap size={18} className="fill-current animate-pulse" />
+            ⚡ Recovery Matrix (Rattrapage WhatsApp)
+          </AdminButton>
           <AdminButton variant="secondary" onClick={() => exportOrdersToCsv(orders)}>
-            <Download size={18} />
-            Export CSV
+            <Download size={16} />
+            Exporter CSV
           </AdminButton>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col lg:flex-row gap-4">
         <AdminSearch
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Rechercher (réf, client, téléphone)..."
+          placeholder="Rechercher par référence, client ou téléphone..."
           className="flex-1"
         />
-        <AdminSelect
-          value={statusFilter}
-          onChange={(value) => setStatusFilter(value as OrderStatus | 'all')}
-          options={[
-            { value: 'all', label: 'Tous les statuts' },
-            { value: 'EN ATTENTE', label: 'En attente' },
-            { value: 'CONFIRMÉE', label: 'Confirmée' },
-            { value: 'EN LIVRAISON', label: 'En livraison' },
-            { value: 'LIVRÉE', label: 'Livrée' },
-            { value: 'ANNULÉE', label: 'Annulée' }
-          ]}
-          className="sm:w-48"
-        />
+        <div className="flex gap-2 flex-wrap">
+          {[
+            { id: 'all', label: 'Toutes' },
+            { id: 'EN ATTENTE', label: 'En attente' },
+            { id: 'CONFIRMÉE', label: 'Confirmées' },
+            { id: 'EN LIVRAISON', label: 'En livraison' },
+            { id: 'LIVRÉE', label: 'Livrées' },
+            { id: 'ANNULÉE', label: 'Annulées' }
+          ].map((status) => (
+            <button
+              key={status.id}
+              type="button"
+              onClick={() => setStatusFilter(status.id as typeof statusFilter)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                statusFilter === status.id
+                  ? 'bg-brand-gold text-[#0A0A0A]'
+                  : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'
+              }`}
+            >
+              {status.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filteredOrders.length === 0 ? (
-        <AdminEmptyState icon={<ShoppingCart size={48} />} title="Aucune commande" />
+        <AdminEmptyState
+          icon={<ShoppingCart size={48} />}
+          title="Aucune commande trouvée"
+          description="Il n'y a aucune commande correspondant à tes critères de recherche."
+        />
       ) : (
-        <AdminCard className="p-0 overflow-hidden shadow-xl border-brand-gold/15">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-brand-bg-alt border-b border-brand-gold/20">
-                <tr>
-                  <th className="py-4 px-4 text-sm font-bebas uppercase tracking-wider text-brand-text-muted">Référence</th>
-                  <th className="py-4 px-4 text-sm font-bebas uppercase tracking-wider text-brand-text-muted">Client</th>
-                  <th className="py-4 px-4 text-sm font-bebas uppercase tracking-wider text-brand-text-muted">Zone</th>
-                  <th className="py-4 px-4 text-sm font-bebas uppercase tracking-wider text-brand-text-muted">Total</th>
-                  <th className="py-4 px-4 text-sm font-bebas uppercase tracking-wider text-brand-text-muted">Statut (Clic pour changer)</th>
-                  <th className="py-4 px-4 text-sm font-bebas uppercase tracking-wider text-brand-text-muted">Logistique Éclair</th>
-                  <th className="py-4 px-4 text-sm font-bebas uppercase tracking-wider text-brand-text-muted">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-brand-gold/10">
-                {filteredOrders.map((order) => {
-                  const isSaving = savingOrderId === order.id;
-                  return (
-                    <tr key={order.id} className="hover:bg-brand-gold/5 transition-colors">
-                      <td className="py-4 px-4 text-sm font-mono font-semibold text-brand-text">{order.order_number}</td>
-                      <td className="py-4 px-4 text-sm">
-                        <p className="font-medium text-brand-text">{order.client_name}</p>
-                        <p className="text-xs text-brand-text-muted font-mono mt-0.5">{order.client_phone}</p>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-brand-text-muted">{order.client_area}</td>
-                      <td className="py-4 px-4 text-sm font-bold text-brand-gold">{order.total.toLocaleString()} FCFA</td>
-                      
-                      {/* Levier 2 : Pilules de Statut en 1 Clic (Quick Status Toggles) */}
-                      <td className="py-4 px-4">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {(['EN ATTENTE', 'CONFIRMÉE', 'EN LIVRAISON', 'LIVRÉE', 'ANNULÉE'] as OrderStatus[]).map((st) => {
-                            const isActive = order.status === st;
-                            return (
-                              <button
-                                key={st}
-                                type="button"
-                                onClick={() => handleQuickStatusChange(order.id, st)}
-                                disabled={isSaving}
-                                className={`px-2.5 py-1 text-[11px] font-bebas uppercase tracking-wider rounded-lg border transition-all duration-200 active:scale-95 cursor-pointer ${
-                                  isActive
-                                    ? st === 'LIVRÉE' ? 'bg-emerald-500 text-[#0A0A0A] border-emerald-400 font-bold shadow' :
-                                      st === 'EN ATTENTE' ? 'bg-amber-500 text-[#0A0A0A] border-amber-400 font-bold shadow' :
-                                      st === 'ANNULÉE' ? 'bg-red-600 text-white border-red-500 font-bold shadow' :
-                                      'bg-blue-500 text-[#0A0A0A] border-blue-400 font-bold shadow'
-                                    : 'bg-brand-bg text-brand-text-muted border-brand-gold/10 hover:border-brand-gold/40 hover:text-brand-text'
-                                }`}
-                                title={`Basculer en ${st}`}
-                              >
-                                {st}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </td>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredOrders.map((order, index) => {
+            const isSavingOrderStatus = savingOrderId === order.id;
+            const itemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
-                      {/* Levier 2 : Actions Logistiques Instantanées */}
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleDispatchToDriver(order)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bebas uppercase tracking-wider rounded-xl shadow-md active:scale-95 transition-all cursor-pointer"
-                            title="Expédier l'ordre au livreur via WhatsApp"
-                          >
-                            <Truck size={14} /> Expédier
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyDeliverySlip(order)}
-                            className="p-1.5 bg-brand-bg-alt border border-brand-gold/20 hover:border-brand-gold text-brand-text-muted hover:text-brand-gold rounded-xl transition-all active:scale-95 cursor-pointer"
-                            title="Copier le bordereau livreur"
-                            aria-label="Copier bordereau"
-                          >
-                            <FileText size={16} />
-                          </button>
-                        </div>
-                      </td>
+            return (
+              <AdminCard key={`order-${order.id}-${index}`} className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bebas text-lg tracking-wider text-brand-text uppercase">
+                        {order.order_number}
+                      </h3>
+                    </div>
+                    <p className="text-sm font-medium text-brand-text mt-1">{order.client_name}</p>
+                    <p className="text-xs text-brand-text-muted mt-0.5">
+                      {order.client_phone} • {order.client_area}
+                    </p>
+                  </div>
+                  <AdminBadge
+                    variant={
+                      order.status === 'LIVRÉE' ? 'success' :
+                      order.status === 'EN ATTENTE' ? 'warning' :
+                      order.status === 'ANNULÉE' ? 'danger' : 'info'
+                    }
+                  >
+                    {order.status}
+                  </AdminBadge>
+                </div>
 
-                      {/* Actions Vue Complète */}
-                      <td className="py-4 px-4">
-                        <AdminButton
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setStatusDraft(order.status);
-                            setStatusNote('');
-                            setIsModalOpen(true);
-                          }}
-                        >
-                          <Eye size={14} />
-                          Voir
-                        </AdminButton>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </AdminCard>
+                <div className="grid grid-cols-2 gap-3 py-2 border-y border-brand-gold/10">
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-brand-text-muted mb-1">Articles</p>
+                    <p className="font-bebas text-2xl text-brand-text">{itemsCount} pièce(s)</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-brand-text-muted mb-1">Total</p>
+                    <p className="font-bebas text-2xl text-brand-gold font-bold">
+                      {order.total.toLocaleString()} FCFA
+                    </p>
+                  </div>
+                </div>
+
+                {/* Levier 2 & 4 : Gestion Logistique Éclair en 1 clic */}
+                <div className="space-y-2.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-text-muted block">
+                    Action Rapide : Changer Statut
+                  </span>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {(['EN ATTENTE', 'CONFIRMÉE', 'EN LIVRAISON', 'LIVRÉE', 'ANNULÉE'] as OrderStatus[]).map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => handleQuickStatusChange(order.id, st)}
+                        disabled={isSavingOrderStatus || order.status === st}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bebas tracking-wider uppercase transition-all cursor-pointer disabled:cursor-default ${
+                          order.status === st
+                            ? 'bg-brand-gold text-[#0A0A0A] shadow-md font-bold'
+                            : 'bg-brand-bg border border-brand-gold/20 hover:border-brand-gold/50 text-brand-text-muted hover:text-brand-text'
+                        }`}
+                      >
+                        {st === 'EN ATTENTE' ? 'Attente' : st === 'EN LIVRAISON' ? 'Livraison' : st}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Expédition Livreur & Copie Bordereau */}
+                <div className="pt-2 border-t border-brand-gold/10 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap">
+                    <AdminButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setStatusDraft(order.status);
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      <Eye size={14} />
+                      Détails
+                    </AdminButton>
+                    <AdminButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleCopyDeliverySlip(order)}
+                    >
+                      <Copy size={14} />
+                      Bordereau
+                    </AdminButton>
+                  </div>
+                  <AdminButton
+                    variant="success"
+                    size="sm"
+                    onClick={() => handleDispatchToDriver(order)}
+                  >
+                    <Truck size={14} />
+                    Mission Livreur
+                  </AdminButton>
+                </div>
+              </AdminCard>
+            );
+          })}
+        </div>
       )}
 
-      {/* Order Detail Modal */}
+      {/* MODALE D'APERÇU & STATUTS DETAILED */}
       {selectedOrder && (
         <AdminModal
           isOpen={isModalOpen}
@@ -410,29 +532,13 @@ export default function AdminOrdersPage() {
           title={`Commande ${selectedOrder.order_number}`}
         >
           <div className="space-y-6">
-            {/* Infos rapides */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Header info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-brand-bg rounded-xl border border-brand-gold/10">
               <div>
                 <p className="text-sm text-brand-text-muted mb-1">Client</p>
                 <p className="font-medium text-brand-text">{selectedOrder.client_name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-brand-text-muted mb-1">Téléphone</p>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-brand-text">{selectedOrder.client_phone}</p>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(selectedOrder.client_phone)}
-                    className="p-1 hover:bg-brand-gold/10 rounded cursor-pointer"
-                    aria-label="Copier le numéro"
-                  >
-                    <Copy size={14} className="text-brand-gold" />
-                  </button>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-brand-text-muted mb-1">Zone de livraison</p>
-                <p className="font-medium text-brand-text">{selectedOrder.client_area}</p>
+                <p className="text-sm text-brand-text-muted mt-0.5">WhatsApp: {selectedOrder.client_phone}</p>
+                <p className="text-sm text-brand-text-muted">Zone: {selectedOrder.client_area}</p>
               </div>
               <div>
                 <p className="text-sm text-brand-text-muted mb-1">Date</p>
@@ -644,6 +750,60 @@ export default function AdminOrdersPage() {
           </div>
         </AdminModal>
       )}
+
+      {/* PRIORITÉ 2 : MODALE RECOVERY MATRIX (Rattrapage WhatsApp) */}
+      <AdminModal
+        isOpen={isRecoveryModalOpen}
+        onClose={() => setIsRecoveryModalOpen(false)}
+        title="⚡ Recovery Matrix — Re-synchronisation Express WhatsApp"
+      >
+        <form onSubmit={handleRecoverySubmit} className="space-y-6">
+          {recoverySuccess && (
+            <div className="p-4 bg-emerald-950/90 border border-emerald-500/30 rounded-2xl text-emerald-400 text-sm font-medium flex items-center gap-3 backdrop-blur-sm animate-slide-up-fade">
+              <CheckCircle2 size={24} className="flex-shrink-0" />
+              <p>{recoverySuccess}</p>
+            </div>
+          )}
+          {recoveryError && (
+            <div className="p-4 bg-red-950/90 border border-red-500/30 rounded-2xl text-red-400 text-sm font-medium flex items-center gap-3 backdrop-blur-sm animate-slide-up-fade">
+              <AlertCircle size={24} className="flex-shrink-0" />
+              <p>{recoveryError}</p>
+            </div>
+          )}
+
+          <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl text-sm text-brand-text-muted space-y-1">
+            <p className="font-bebas text-lg text-amber-500 uppercase tracking-wider">Objectif Métier : Zéro Perte de Données</p>
+            <p>Si une commande passée par un client sur la vitrine n&apos;est pas apparue ici (coupure réseau, erreur Supabase), copiez simplement le message reçu sur votre WhatsApp et collez-le ci-dessous. Le système recréera et synchronisera la commande instantanément !</p>
+          </div>
+
+          <AdminTextarea
+            label="Texte Brut du Message WhatsApp"
+            value={recoveryText}
+            onChange={setRecoveryText}
+            rows={10}
+            placeholder={`Collez le message ici. Exemple :
+👑 *HP COLLECTION — COMMANDE #HP-20260629-ABCD*
+👤 *Client :* Poyor Poyor
+📍 *Zone :* Cotonou VIP
+...
+*1. Basket Streetwear Classic Black & White*
+   📏 Taille : 42 | 🎨 Couleur : Noir | 🔢 Qté : 1
+   💰 22,000 FCFA
+...
+✅ *TOTAL : 22,000 FCFA*`}
+            required
+          />
+
+          <div className="flex gap-3 pt-4 border-t border-brand-gold/15">
+            <AdminButton type="submit" variant="primary" loading={isRecovering} className="flex-1 shadow-lg bg-amber-500 text-[#0A0A0A] hover:bg-amber-400">
+              {isRecovering ? 'Analyse et Synchronisation...' : 'Générer et Synchroniser la Commande'}
+            </AdminButton>
+            <AdminButton type="button" variant="secondary" onClick={() => setIsRecoveryModalOpen(false)} disabled={isRecovering}>
+              Fermer
+            </AdminButton>
+          </div>
+        </form>
+      </AdminModal>
     </div>
   );
 }
