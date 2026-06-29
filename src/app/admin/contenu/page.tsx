@@ -391,11 +391,14 @@ export default function AdminContentPage() {
               />
               {formData.status === 'scheduled' && (
                 <div className="space-y-1">
-                  <label className="block text-sm font-medium text-brand-text">Date et heure de publication</label>
+                  <label htmlFor="scheduled-at-input" className="block text-sm font-medium text-brand-text">Date et heure de publication</label>
                   <input
+                    id="scheduled-at-input"
                     type="datetime-local"
                     value={formData.scheduled_at}
                     onChange={(e) => setFormData((currentData) => ({ ...currentData, scheduled_at: e.target.value }))}
+                    aria-label="Date et heure de publication"
+                    title="Date et heure de publication"
                     className="w-full px-4 py-2.5 bg-brand-bg border border-brand-gold/20 rounded-xl focus:outline-none focus:border-brand-gold text-brand-text"
                   />
                 </div>
@@ -420,6 +423,8 @@ export default function AdminContentPage() {
                   disabled={uploading}
                   className="hidden"
                   id="content-image-upload"
+                  aria-label="Uploader une image pour l'article"
+                  title="Uploader une image pour l'article"
                 />
                 <label
                   htmlFor="content-image-upload"

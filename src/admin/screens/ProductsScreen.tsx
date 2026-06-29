@@ -334,6 +334,8 @@ export const ProductsScreen: React.FC<ProductsScreenProps> = ({ onEdit, onBack }
                             value={tempPrice}
                             onChange={(e) => setTempPrice(Number(e.target.value) || 0)}
                             className="w-28 px-2 py-1 bg-brand-bg border border-brand-gold rounded text-brand-gold font-bold text-lg focus:outline-none"
+                            aria-label={`Modifier le prix de ${product.name}`}
+                            title={`Prix pour ${product.name}`}
                             autoFocus
                           />
                           <button

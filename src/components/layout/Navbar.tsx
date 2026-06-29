@@ -138,7 +138,7 @@ export const Navbar: React.FC = () => {
               onChange={(event) => setSearchQuery(event.target.value)}
               className="bg-transparent border-none text-brand-text text-sm focus:outline-none w-full"
             />
-            <button type="submit" className="text-brand-gold hover:text-brand-gold-light cursor-pointer">
+            <button type="submit" className="text-brand-gold hover:text-brand-gold-light cursor-pointer" aria-label="Valider la recherche" title="Valider la recherche">
               <Search size={18} />
             </button>
           </form>
@@ -146,6 +146,8 @@ export const Navbar: React.FC = () => {
           <button
             onClick={() => setIsSearchOpen(!isSearchOpen)}
             className="p-1 text-brand-text hover:text-brand-gold transition-colors md:hidden"
+            aria-label="Ouvrir la barre de recherche"
+            title="Ouvrir la barre de recherche"
           >
             <Search size={22} />
           </button>
@@ -154,6 +156,7 @@ export const Navbar: React.FC = () => {
             onClick={() => setCartOpen(true)}
             className="relative p-1 text-brand-text hover:text-brand-gold transition-all duration-300 hover:scale-105"
             aria-label="Panier d'achat"
+            title="Panier d'achat"
           >
             <ShoppingBag size={24} />
             {isMounted && cartCount > 0 && (
@@ -166,6 +169,8 @@ export const Navbar: React.FC = () => {
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-1 text-brand-text hover:text-brand-gold transition-colors md:hidden"
+            aria-label="Menu principal de navigation"
+            title="Menu principal de navigation"
           >
             {isMobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
           </button>

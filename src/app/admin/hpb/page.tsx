@@ -461,6 +461,8 @@ export default function AdminHpbPage() {
                 disabled={uploadingImage}
                 className="hidden"
                 id="outfit-image-upload"
+                aria-label="Uploader une photo pour l'outfit"
+                title="Uploader une photo pour l'outfit"
               />
               <label
                 htmlFor="outfit-image-upload"

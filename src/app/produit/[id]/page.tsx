@@ -120,6 +120,8 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
                 <button
                   key={image}
                   onClick={() => setSelectedImage(image)}
+                  aria-label={`Sélectionner l'angle ${index + 1} pour ${product.name}`}
+                  title={`Angle ${index + 1}`}
                   className={`relative w-20 sm:w-24 aspect-[3/4] flex-shrink-0 overflow-hidden rounded-2xl border-2 cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-95 ${
                     isSelected 
                       ? 'border-brand-gold shadow-[0_0_15px_rgba(184,149,42,0.35)] scale-[1.02]' 

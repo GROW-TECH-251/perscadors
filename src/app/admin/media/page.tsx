@@ -510,7 +510,7 @@ export default function AdminMediaPage() {
             </div>
           ) : (
             <div className="space-y-4 animate-slide-up-fade">
-              <label className="block text-sm font-medium text-brand-text mb-1">Fichier Local (Glisser-déposer ou Parcourir)</label>
+              <label htmlFor="media-file-upload" className="block text-sm font-medium text-brand-text mb-1">Fichier Local (Glisser-déposer ou Parcourir)</label>
               <div className="relative border-2 border-dashed border-brand-gold/30 hover:border-brand-gold rounded-3xl p-8 text-center bg-brand-bg transition-all group cursor-pointer overflow-hidden shadow-sm">
                 <input
                   type="file"
@@ -519,6 +519,8 @@ export default function AdminMediaPage() {
                   disabled={uploading}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                   id="media-file-upload"
+                  aria-label="Fichier local à uploader"
+                  title="Fichier local à uploader"
                 />
                 
                 {filePreview ? (
