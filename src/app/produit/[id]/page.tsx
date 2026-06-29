@@ -74,8 +74,49 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
     window.open(whatsappUrl, '_blank');
   };
 
+  // Données structurées JSON-LD E-commerce (schema.org)
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": product.name,
+    "image": product.images,
+    "description": product.description || `Produit premium ${product.name} par HP Collection.`,
+    "sku": product.id,
+    "category": product.category.replace(/-/g, ' '),
+    "brand": {
+      "@type": "Brand",
+      "name": "HP Collection"
+    },
+    "offers": {
+      "@type": "Offer",
+      "url": `https://perscadors.vercel.app/produit/${product.id}`,
+      "priceCurrency": "XOF",
+      "price": product.price,
+      "priceValidUntil": "2027-12-31",
+      "itemCondition": "https://schema.org/NewCondition",
+      "availability": product.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      "seller": {
+        "@type": "Organization",
+        "name": "HP Collection",
+        "url": "https://perscadors.vercel.app/"
+      }
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12">
+      <title>{`${product.name} | HP Collection Cotonou`}</title>
+      <meta name="description" content={product.description || `Achetez ${product.name} sur HP Collection. Livraison express au Bénin.`} />
+      <meta property="og:title" content={`${product.name} | HP Collection Cotonou`} />
+      <meta property="og:description" content={product.description || `Achetez ${product.name} sur HP Collection. Livraison express au Bénin.`} />
+      <meta property="og:image" content={product.image_url || product.images[0]} />
+      <meta property="og:url" content={`https://perscadors.vercel.app/produit/${product.id}`} />
+      <meta property="og:type" content="product" />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
+
       <div className="mb-8">
         <Link
           href={`/categorie/${product.category}`}

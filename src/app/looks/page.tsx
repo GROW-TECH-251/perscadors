@@ -12,8 +12,64 @@ export default function HPLooksPage() {
   const { outfits } = useCatalog();
   const { addMultipleToCart } = useCart();
 
+  // Données structurées JSON-LD E-commerce (schema.org) pour le module HPB (Looks de Vioutou)
+  const looksSchema = {
+    "@context": "https://schema.org",
+    "@type": ["ItemList", "CollectionPage"],
+    "name": "HP Collection — Les Looks de Vioutou (Module HPB)",
+    "description": "Découvrez les 32 tenues streetwear exclusives créées et assemblées par l'influenceur Vioutou à Cotonou. Ajoutez un look complet à votre panier en un clic.",
+    "url": "https://perscadors.vercel.app/looks",
+    "image": "https://perscadors.vercel.app/images/OUTFITCOLLECTION/outfit1.jpeg",
+    "numberOfItems": outfits.length,
+    "itemListElement": outfits.map((o, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "item": {
+        "@type": "CreativeWork",
+        "name": o.name,
+        "image": o.image,
+        "url": `https://perscadors.vercel.app/looks#${o.id}`,
+        "creator": {
+          "@type": "Person",
+          "name": "Vioutou"
+        },
+        "mainEntity": {
+          "@type": "ItemList",
+          "name": `Pièces de l'outfit ${o.name}`,
+          "itemListElement": o.products.map((prod, pIndex) => ({
+            "@type": "ListItem",
+            "position": pIndex + 1,
+            "item": {
+              "@type": "Product",
+              "name": prod.name,
+              "image": prod.images[0],
+              "url": `https://perscadors.vercel.app/produit/${prod.id}`,
+              "offers": {
+                "@type": "Offer",
+                "priceCurrency": "XOF",
+                "price": prod.price
+              }
+            }
+          }))
+        }
+      }
+    }))
+  };
+
   return (
     <PublicLayout>
+      <title>HP Looks | Inspirations Streetwear de Vioutou à Cotonou</title>
+      <meta name="description" content="Découvrez les 32 tenues streetwear exclusives créées par l'influenceur Vioutou à Cotonou. Ajoutez un look complet à votre panier en un clic." />
+      <meta property="og:title" content="HP Looks | Inspirations Streetwear de Vioutou à Cotonou" />
+      <meta property="og:description" content="Découvrez les 32 tenues streetwear exclusives créées par l'influenceur Vioutou à Cotonou. Ajoutez un look complet à votre panier en un clic." />
+      <meta property="og:image" content="/images/OUTFITCOLLECTION/outfit1.jpeg" />
+      <meta property="og:url" content="https://perscadors.vercel.app/looks" />
+      <meta property="og:type" content="website" />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(looksSchema) }}
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12">
         <div className="mb-8 flex items-center justify-between">
           <Link
