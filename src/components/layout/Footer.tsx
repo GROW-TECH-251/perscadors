@@ -4,15 +4,25 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { fetchActiveAssetBySection } from '@/services/mediaService';
 import type { ShopSettings } from '@/admin/types';
 
 export const Footer: React.FC = () => {
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
+  const [logoUrl, setLogoUrl] = useState('/images/LOGOSITE/logo.png');
 
   useEffect(() => {
     async function loadFooter() {
-      const data = await fetchShopSettings();
+      const [data, activeLogo] = await Promise.all([
+        fetchShopSettings(),
+        fetchActiveAssetBySection('logo')
+      ]);
       if (data) setSettings(data);
+      if (activeLogo && activeLogo.url) {
+        setLogoUrl(activeLogo.url);
+      } else if (data?.logo_url) {
+        setLogoUrl(data.logo_url);
+      }
     }
     loadFooter();
   }, []);
@@ -24,7 +34,7 @@ export const Footer: React.FC = () => {
         <div className="space-y-4">
           <Link href="/" className="relative w-36 h-16 block">
             <Image
-              src={settings.logo_url || "/images/LOGOSITE/logo.png"}
+              src={logoUrl}
               alt={`${settings.shop_name} Logo`}
               fill
               sizes="128px"

@@ -24,7 +24,8 @@ import {
   Search,
   Loader2,
   MoreHorizontal,
-  Sparkles
+  Sparkles,
+  Film
 } from 'lucide-react';
 import type { AdminScreen, NavItem, OrderStatus } from './types';
 
@@ -34,6 +35,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'orders', label: 'Commandes', icon: 'cart' },
   { id: 'customers', label: 'Clients', icon: 'users' },
   { id: 'hpb', label: 'HP Looks', icon: 'hpb' },
+  { id: 'media', label: 'Gestion Médias', icon: 'media' },
   { id: 'analytics', label: 'Analytics', icon: 'analytics' },
   { id: 'content', label: 'Contenu', icon: 'content' },
   { id: 'stockAlerts', label: 'Alertes Stock', icon: 'alerts' },
@@ -46,6 +48,7 @@ const iconMap: Record<string, React.ReactNode> = {
   cart: <ShoppingCart size={20} />,
   users: <Users size={20} />,
   hpb: <Sparkles size={20} className="text-brand-gold fill-current animate-pulse" />,
+  media: <Film size={20} className="text-brand-gold" />,
   analytics: <BarChart3 size={20} />,
   settings: <Settings size={20} />,
   content: <FileText size={20} />,

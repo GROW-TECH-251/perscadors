@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
+import { fetchActiveAssetBySection } from '@/services/mediaService';
 import { Search, ShoppingBag, Menu, X } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -16,12 +17,17 @@ export const Navbar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('/images/LOGOSITE/logo.png');
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    const mountedTimer = setTimeout(() => {
+    const mountedTimer = setTimeout(async () => {
       setIsMounted(true);
+      const activeLogo = await fetchActiveAssetBySection('logo');
+      if (activeLogo && activeLogo.url) {
+        setLogoUrl(activeLogo.url);
+      }
     }, 0);
 
     const handleScroll = () => {
@@ -91,12 +97,13 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         <Link href="/" className="relative w-28 h-12 flex-shrink-0">
           <Image
-            src="/images/LOGOSITE/logo.png"
+            src={logoUrl}
             alt="HP Collection Logo"
             fill
             sizes="128px"
             priority
             className="object-contain"
+            unoptimized
           />
         </Link>
 

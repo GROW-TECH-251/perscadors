@@ -2,47 +2,72 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { fetchActiveAssetBySection } from '@/services/mediaService';
 import type { ShopSettings } from '@/admin/types';
 
 export const Hero: React.FC = () => {
-  const [videoSrc, setVideoSrc] = useState<string>('');
+  const [mediaUrl, setMediaUrl] = useState<string>('');
+  const [mediaType, setMediaType] = useState<'video' | 'image'>('video');
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
 
   useEffect(() => {
-    async function loadHeroSettings() {
-      const data = await fetchShopSettings();
-      if (data) {
-        setSettings(data);
-        const timer = setTimeout(() => {
-          setVideoSrc(data.hero_video_url || '/images/ARRIEREPLAN/7679830-uhd_4096_2160_25fps.mp4');
-        }, 800);
-        return () => clearTimeout(timer);
+    async function loadHero() {
+      const [settingsData, assetData] = await Promise.all([
+        fetchShopSettings(),
+        fetchActiveAssetBySection('hero')
+      ]);
+
+      if (settingsData) {
+        setSettings(settingsData);
       }
+
+      const timer = setTimeout(() => {
+        if (assetData) {
+          setMediaUrl(assetData.url);
+          setMediaType(assetData.type);
+        } else if (settingsData?.hero_video_url) {
+          setMediaUrl(settingsData.hero_video_url);
+          setMediaType('video');
+        } else {
+          setMediaUrl('/images/ARRIEREPLAN/7679830-uhd_4096_2160_25fps.mp4');
+          setMediaType('video');
+        }
+      }, 600);
+
+      return () => clearTimeout(timer);
     }
-    loadHeroSettings();
+    loadHero();
   }, []);
 
   return (
     <section
       className="relative w-full h-[calc(100vh-80px)] min-h-[700px] flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]"
     >
-      {/* Video Background */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover opacity-65"
-      >
-        {videoSrc && (
-          <source
-            src={videoSrc}
-            type="video/mp4"
-          />
-        )}
-        Your browser does not support the video tag.
-      </video>
+      {/* Background Flexible (Vidéo ou Image selon le choix du client en admin) */}
+      {mediaUrl && mediaType === 'video' ? (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-65"
+        >
+          <source src={mediaUrl} type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      ) : mediaUrl && mediaType === 'image' ? (
+        <Image
+          src={mediaUrl}
+          alt={settings.hero_title}
+          fill
+          sizes="100vw"
+          className="absolute inset-0 object-cover opacity-65"
+          priority
+          unoptimized
+        />
+      ) : null}
 
       {/* Luxury Golden Overlay - Enhanced premium depth */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-black/42 to-black/65 z-10" />

@@ -19,7 +19,8 @@ export type AdminScreen =
   | 'stockAlerts'
   | 'settings'
   | 'qa'
-  | 'hpb';
+  | 'hpb'
+  | 'media';
 
 export interface NavItem {
   id: AdminScreen;
@@ -229,7 +230,6 @@ export interface ShopSettings {
   footer_description: string;
   floating_whatsapp_text: string;
   testimonials_json: TestimonialsData;
-  // Priorité 3 : FAQ Dynamique
   faq_json: FAQItem[];
   updated_at: string;
 }
@@ -279,4 +279,27 @@ export interface OutfitFormData {
   custom_price?: number | null;
   product_ids: number[];
   visible: boolean;
+}
+
+// ============================================
+// UNIVERSAL ADMIN MEDIA SYSTEM (site_assets)
+// ============================================
+
+export type SiteAssetType = 'image' | 'video';
+export type SiteAssetSection = 'hero' | 'logo' | 'testimonials' | 'ambience' | 'reels' | 'tiktok' | 'sections' | 'thumbnails' | 'backgrounds' | 'covers' | 'galleries' | string;
+
+export interface SiteAsset {
+  id: string;
+  type: SiteAssetType;
+  section: SiteAssetSection;
+  url: string;
+  storage_path: string;
+  alt: string;
+  title: string;
+  description?: string;
+  active: boolean;
+  order_index: number;
+  is_social_url?: boolean;
+  created_at: string;
+  updated_at: string;
 }
