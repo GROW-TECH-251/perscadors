@@ -1,6 +1,6 @@
 // src/components/checkout/StepConfirm.tsx
 // ============================================
-// Étape 3 — Confirmation finale et envoi WhatsApp (Zéro Écran Blanc & 100% Résilience)
+// Étape 3 — Confirmation finale et envoi WhatsApp (Contournement absolu du Bloqueur iOS Safari)
 // ============================================
 
 'use client';
@@ -64,7 +64,18 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
     };
 
     try {
-      // 1. Enregistrement asynchrone Supabase (avec résilience totale)
+      // 1. OUVERTURE SYNCHRONE DU POPUP (Contournement absolu du bloqueur iOS Safari)
+      // Si on attend l'exécution de Supabase avant window.open, WebKit révoque le jeton d'activation !
+      let targetWindow: Window | null = null;
+      if (typeof window !== 'undefined') {
+        try {
+          targetWindow = window.open('', '_blank');
+        } catch {
+          // Ignorer si bloqué en amont
+        }
+      }
+
+      // 2. Enregistrement asynchrone Supabase (avec résilience totale)
       if (isSupabaseConfigured) {
         try {
           await createOrderFromCart(orderPayload);
@@ -74,14 +85,16 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
         }
       }
 
-      // 2. Formatage du message WhatsApp
+      // 3. Formatage du message WhatsApp
       const message = buildWhatsAppOrderMessage(orderPayload);
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/${WHATSAPP_DIGITS}?text=${encodedMessage}`;
 
-      // 3. Redirection propre et instantanée (Zéro écran blanc about:blank)
-      if (typeof window !== 'undefined') {
-        window.open(whatsappUrl, '_blank');
+      // 4. Redirection propre et instantanée sur l'onglet déjà ouvert ou via location.href
+      if (targetWindow) {
+        targetWindow.location.href = whatsappUrl;
+      } else if (typeof window !== 'undefined') {
+        window.location.href = whatsappUrl; // Repli ultime 100% infaillible sur Safari iOS
       }
 
       clearCart();
@@ -95,8 +108,8 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+    <div className="flex h-full flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 min-h-0">
         <div className="rounded-2xl border border-brand-gold/10 bg-brand-bg-alt p-4 space-y-3 shadow-sm">
           <div className="flex items-center gap-2 text-brand-gold">
             <ShieldCheck size={18} />
@@ -148,12 +161,12 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
         </div>
       </div>
 
-      <div className="border-t border-brand-gold/10 bg-brand-bg-alt/80 px-6 py-5 flex gap-3 backdrop-blur-sm">
+      <div className="border-t border-brand-gold/10 bg-brand-bg-alt/80 px-6 py-5 flex gap-3 backdrop-blur-sm flex-shrink-0">
         <button
           type="button"
           onClick={onBack}
           disabled={isSubmitting}
-          className="flex-1 py-4 rounded-2xl border border-brand-gold/20 text-brand-text font-bebas uppercase tracking-widest hover:border-brand-gold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98]"
+          className="flex-1 py-4 rounded-2xl border border-brand-gold/20 text-brand-text font-bebas uppercase tracking-widest hover:border-brand-gold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] text-sm sm:text-base"
         >
           <ArrowLeft size={18} />
           Retour
@@ -162,12 +175,12 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
           type="button"
           onClick={handleConfirm}
           disabled={isSubmitting}
-          className="flex-[1.25] py-4 rounded-2xl bg-[#25D366] text-white font-bebas text-lg uppercase tracking-widest hover:bg-[#20BA5A] transition-all flex items-center justify-center gap-2 shadow-[0_10px_24px_rgba(37,211,102,0.25)] disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98]"
+          className="flex-[1.25] py-4 rounded-2xl bg-[#25D366] text-white font-bebas text-base sm:text-lg uppercase tracking-widest hover:bg-[#20BA5A] transition-all flex items-center justify-center gap-2 shadow-[0_10px_24px_rgba(37,211,102,0.25)] disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98]"
         >
           {isSubmitting ? (
             <>
               <Loader2 size={18} className="animate-spin" />
-              Préparation...
+              Envoi...
             </>
           ) : (
             <>

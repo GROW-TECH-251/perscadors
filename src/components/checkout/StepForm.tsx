@@ -110,8 +110,8 @@ export function StepForm({ defaultValues, onNext, onBack }: StepFormProps) {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+    <div className="flex h-full flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 min-h-0">
         <div className="rounded-2xl bg-brand-bg-alt border border-brand-gold/10 p-4 shadow-sm">
           <p className="text-sm text-brand-text-muted leading-relaxed font-light">
             Renseigne tes informations pour permettre à l’équipe de préparer la commande et de finaliser le contact sur WhatsApp dans de bonnes conditions.

@@ -19,8 +19,8 @@ export function StepRecap({ onNext, onClose }: StepRecapProps) {
   const { cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+    <div className="flex h-full flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 min-h-0">
         {cartItems.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center py-16 space-y-4">
             <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-brand-gold/10 text-brand-gold">
