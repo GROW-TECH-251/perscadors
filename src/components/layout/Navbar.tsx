@@ -15,10 +15,15 @@ export const Navbar: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
+    const mountedTimer = setTimeout(() => {
+      setIsMounted(true);
+    }, 0);
+
     const handleScroll = () => {
       if (window.scrollY > 20) {
         setIsScrolled(true);
@@ -28,7 +33,10 @@ export const Navbar: React.FC = () => {
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      clearTimeout(mountedTimer);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const navLinks = useMemo(() => {
@@ -138,9 +146,10 @@ export const Navbar: React.FC = () => {
           <button
             onClick={() => setCartOpen(true)}
             className="relative p-1 text-brand-text hover:text-brand-gold transition-all duration-300 hover:scale-105"
+            aria-label="Panier d'achat"
           >
             <ShoppingBag size={24} />
-            {cartCount > 0 && (
+            {isMounted && cartCount > 0 && (
               <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-gold text-[10px] font-bold text-brand-bg animate-pulse">
                 {cartCount}
               </span>
