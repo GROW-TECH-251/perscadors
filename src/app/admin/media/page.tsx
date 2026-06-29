@@ -343,7 +343,7 @@ export default function AdminMediaPage() {
             </AdminButton>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
             {filteredAssets.map((asset) => {
               const isProcessing = processingId === asset.id;
 

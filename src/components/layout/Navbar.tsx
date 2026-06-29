@@ -124,11 +124,11 @@ export const Navbar: React.FC = () => {
           })}
         </div>
 
-        <div className="flex items-center space-x-5">
+        <div className="flex items-center space-x-2 sm:space-x-5">
           <form
             onSubmit={handleSearchSubmit}
-            className={`flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/50 transition-all duration-300 ${
-              isSearchOpen ? 'w-48 sm:w-64 opacity-100' : 'w-0 opacity-0 pointer-events-none md:opacity-100 md:w-48 md:pointer-events-auto'
+            className={`flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/95 transition-all duration-300 ${
+              isSearchOpen ? 'absolute right-14 top-4 w-56 sm:relative sm:right-0 sm:top-0 sm:w-64 opacity-100 z-50 shadow-lg backdrop-blur-sm' : 'w-0 opacity-0 pointer-events-none md:opacity-100 md:w-48 md:pointer-events-auto'
             }`}
           >
             <input

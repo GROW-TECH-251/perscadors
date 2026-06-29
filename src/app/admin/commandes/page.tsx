@@ -415,7 +415,7 @@ export default function AdminOrdersPage() {
           description="Il n'y a aucune commande correspondant à tes critères de recherche."
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {filteredOrders.map((order, index) => {
             const isSavingOrderStatus = savingOrderId === order.id;
             const itemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);

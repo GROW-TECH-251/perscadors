@@ -297,7 +297,7 @@ export default function AdminCustomersPage() {
       {filteredCustomers.length === 0 ? (
         <AdminEmptyState icon={<Users size={48} />} title="Aucun client" />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
           {filteredCustomers.map((customer) => {
             // CORRECTION CADRE FINAL : Si le client a dépensé >= 50 000 FCFA, on active le bouton VIP Magique !
             const isVIP = customer.segments.includes('VIP') || customer.totalSpent >= 50000;
