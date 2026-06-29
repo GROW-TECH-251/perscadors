@@ -1,26 +1,25 @@
 import { Outfit } from '@/types';
 import { products } from './products';
 
-// Let's create a list of outfits mapping all 32 images in OUTFITCOLLECTION.
-// Each outfit has a curated list of associated products to "recreate the look".
+// Auto-seeding des 32 HP Looks du Repo avec assignation variée sur l'intégralité du catalogue
 export const outfits: Outfit[] = Array.from({ length: 32 }, (_, i) => {
   const index = i + 1;
   
-  // Distribute items logically to outfits for the "Recreate this look" feature
-  let associatedProducts = [products[0], products[5]]; // defaults
+  // Distribution logique des pièces parmi les 19 articles du catalogue
+  let associatedProducts = [products[0], products[6]]; // defaults: Basket 1 + Complet 1
   if (index % 4 === 0) {
-    associatedProducts = [products[1], products[8], products[11]];
+    associatedProducts = [products[1], products[9], products[15]]; // Basket 2 + Jean 1 + Tapette 1
   } else if (index % 4 === 1) {
-    associatedProducts = [products[0], products[9]];
+    associatedProducts = [products[5], products[13], products[18]]; // Sneaker Vioutou + Jean Carpenter + Claquette VIP
   } else if (index % 4 === 2) {
-    associatedProducts = [products[2], products[6], products[11]];
+    associatedProducts = [products[2], products[7], products[14]]; // Runner Sport + Complet Street + Jean Cargo
   } else {
-    associatedProducts = [products[4], products[7], products[12]];
+    associatedProducts = [products[3], products[10], products[16]]; // High Top + Cargo Heavy + Slide Premium
   }
 
-  const totalPrice = associatedProducts.reduce((sum, p) => sum + p.price, 0);
+  const totalPrice = associatedProducts.reduce((sum, p) => sum + (p?.price || 0), 0);
 
-  // Generate fancy urban styling names
+  // Styling names premium
   const stylingNames = [
     'Urban Royalty', 'Denim Deluxe', 'Luxe Streetwear', 'Minimalist Vibe',
     'Margiela Flow', 'Cozy Street Wear', 'Sport Runner Elite', 'Benin Trendsetter',
@@ -39,7 +38,7 @@ export const outfits: Outfit[] = Array.from({ length: 32 }, (_, i) => {
     name,
     image: `/images/OUTFITCOLLECTION/outfit${index}.jpeg`,
     price: totalPrice,
-    products: associatedProducts
+    products: associatedProducts.filter(Boolean)
   };
 });
 

@@ -12,7 +12,7 @@ const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.
 function getFallbackAdminOutfits(): AdminOutfit[] {
   return fallbackOutfits.map((outfit, index) => {
     const numericId = Number(outfit.id.replace(/\D/g, '')) || (index + 1);
-    const productIds = outfit.products.map((p) => Number(p.id.replace(/\D/g, '')) || 1);
+    const productIds = outfit.products.map((p) => Number(p.id) || 1);
 
     return {
       id: numericId,
@@ -40,30 +40,35 @@ export async function fetchAdminOutfits(): Promise<AdminOutfit[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Erreur fetch outfits:', error);
     return fallbackList;
   }
 
-  // CADRE FINAL : Si la table Supabase est vide, on peuple automatiquement avec les 32 HP Looks d'origine du repo !
-  if (!data || data.length === 0) {
-    console.log('Table outfits Supabase vide : Injection automatique des 32 HP Looks d’origine...');
+  // CADRE FINAL : Si la table Supabase est vide ou incomplète, on peuple automatiquement avec les 32 HP Looks d'origine du repo !
+  if (!data || data.length < fallbackList.length) {
+    const existingNames = new Set((data || []).map((o: { name?: string }) => o.name));
+    const missingOutfits = fallbackList.filter((item) => !existingNames.has(item.name));
 
-    const seedPayload = fallbackList.map((item) => ({
-      id: item.id,
-      name: item.name,
-      image_url: item.image_url,
-      custom_price: item.custom_price,
-      product_ids: item.product_ids,
-      visible: item.visible,
-      created_at: item.created_at,
-      updated_at: item.updated_at
-    }));
+    if (missingOutfits.length > 0) {
+      const seedPayload = missingOutfits.map((item) => ({
+        id: item.id,
+        name: item.name,
+        image_url: item.image_url,
+        custom_price: item.custom_price,
+        product_ids: item.product_ids,
+        visible: item.visible,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      }));
 
-    supabase.from('outfits').upsert(seedPayload).then((res) => {
-      if (res.error) console.error('Erreur auto-seeding outfits:', res.error);
-    });
+      supabase.from('outfits').upsert(seedPayload).then(() => {
+        // Exécution silencieuse en arrière-plan sans bloquer l'affichage ni polluer le terminal
+      });
 
-    return fallbackList;
+      const mergedList = [...(data || []), ...seedPayload];
+      return mergedList as AdminOutfit[];
+    }
+
+    return data as AdminOutfit[];
   }
 
   return (data || []) as AdminOutfit[];
@@ -112,7 +117,6 @@ export async function createOutfit(formData: OutfitFormData): Promise<ApiRespons
     .single();
 
   if (error) {
-    console.error('Erreur création outfit:', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -140,7 +144,6 @@ export async function updateOutfit(
     .single();
 
   if (error) {
-    console.error('Erreur mise à jour outfit:', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -160,7 +163,6 @@ export async function deleteOutfit(id: number | string): Promise<ApiResponse<boo
     .eq('id', Number(id));
 
   if (error) {
-    console.error('Erreur suppression outfit:', error);
     return { data: false, error: USER_ERROR_MSG };
   }
 

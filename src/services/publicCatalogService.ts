@@ -1,5 +1,6 @@
 import type { AdminCategory, AdminProduct, AdminOutfit } from '@/admin/types';
 import { products as fallbackProducts } from '@/data/products';
+import { outfits as fallbackOutfits } from '@/data/outfits';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { CatalogCategory, Outfit, Product, Size } from '@/types';
 
@@ -42,17 +43,6 @@ const CATEGORY_META_MAP: Record<string, CategoryMeta> = {
     fallbackImage: '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0026.jpg'
   }
 };
-
-const OUTFIT_STYLING_NAMES = [
-  'Urban Royalty', 'Denim Deluxe', 'Luxe Streetwear', 'Minimalist Vibe',
-  'Margiela Flow', 'Cozy Street Wear', 'Sport Runner Elite', 'Benin Trendsetter',
-  'Gold Accented King', 'Classic HP Drip', 'Casual Linen Breeze', 'Oversized Monogram',
-  'Shadow Black Street', 'Retro Hype Style', 'Modern Safari', 'Dapper Street Boy',
-  'Golden Hour Glow', 'VIP Influencer Look', 'Clean Slate White', 'Heavy Cotton Comfort',
-  'Dripping In Gold', 'Sunset Vibe Outfit', 'Summer Suede Vibe', 'Street Silhouette',
-  'High Top Classic', 'Cargo Explorer', 'Monochrome Hype', 'Luxe Cozy Day',
-  'Signature HP Drip', 'Elegance & Flow', 'Streetwear Heritage', 'Urban Legend'
-];
 
 function slugify(value: string): string {
   return value
@@ -178,42 +168,10 @@ function mergeCategoriesWithProducts(
   return [...mappedCategories, ...missingCategories];
 }
 
-function buildOutfitsFromProducts(products: Product[]): Outfit[] {
-  const catalogProducts = products.length > 0 ? products : normalizeFallbackProducts();
-
-  const pickProducts = (indexes: number[]): Product[] =>
-    indexes.map((index) => catalogProducts[index % catalogProducts.length]);
-
-  return Array.from({ length: 32 }, (_, arrayIndex) => {
-    const visualIndex = arrayIndex + 1;
-
-    let associatedProducts = pickProducts([0, 5]);
-    if (visualIndex % 4 === 0) {
-      associatedProducts = pickProducts([1, 8, 11]);
-    } else if (visualIndex % 4 === 1) {
-      associatedProducts = pickProducts([0, 9]);
-    } else if (visualIndex % 4 === 2) {
-      associatedProducts = pickProducts([2, 6, 11]);
-    } else {
-      associatedProducts = pickProducts([4, 7, 12]);
-    }
-
-    const totalPrice = associatedProducts.reduce((sum, product) => sum + product.price, 0);
-
-    return {
-      id: `outfit-${visualIndex}`,
-      name: `${OUTFIT_STYLING_NAMES[arrayIndex % OUTFIT_STYLING_NAMES.length]} (Look #${visualIndex})`,
-      image: `/images/OUTFITCOLLECTION/outfit${visualIndex}.jpeg`,
-      price: totalPrice,
-      products: associatedProducts
-    };
-  });
-}
-
 export function getFallbackCatalogSnapshot(): PublicCatalogSnapshot {
   const products = normalizeFallbackProducts();
   const categories = buildCategoriesFromProducts(products);
-  const outfits = buildOutfitsFromProducts(products);
+  const outfits = fallbackOutfits;
 
   return {
     products,
@@ -247,16 +205,24 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
   ]);
 
   if (productsResponse.error) {
-    console.error('Erreur chargement catalogue public:', productsResponse.error);
     return getFallbackCatalogSnapshot();
   }
 
-  const normalizedProducts = ((productsResponse.data || []) as AdminProduct[]).map(normalizeAdminProduct);
+  let normalizedProducts = ((productsResponse.data || []) as AdminProduct[]).map(normalizeAdminProduct);
+  const fallbackProductsList = normalizeFallbackProducts();
+
+  // CADRE FINAL : Fusion parfaite du catalogue du repo si Supabase est incomplet
+  if (normalizedProducts.length < fallbackProductsList.length) {
+    const existingNames = new Set(normalizedProducts.map((p) => p.name));
+    const missingProducts = fallbackProductsList.filter((p) => !existingNames.has(p.name));
+    normalizedProducts = [...normalizedProducts, ...missingProducts];
+  }
+
   const normalizedCategories = categoriesResponse.error
     ? buildCategoriesFromProducts(normalizedProducts)
     : mergeCategoriesWithProducts(normalizedProducts, (categoriesResponse.data || []) as AdminCategory[]);
 
-  // Pôle 5 / Module HPB : Résolution dynamique des outfits Supabase avec fallback statique
+  // Pôle 5 / Module HPB : Résolution dynamique des outfits Supabase avec fusion statique
   let normalizedOutfits: Outfit[] = [];
   if (!outfitsResponse.error && outfitsResponse.data && outfitsResponse.data.length > 0) {
     normalizedOutfits = (outfitsResponse.data as AdminOutfit[]).map((outfitRow) => {
@@ -276,8 +242,15 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
         products: outfitProducts
       };
     });
+
+    // Fusion des outfits manquants du repo
+    if (normalizedOutfits.length < fallbackOutfits.length) {
+      const existingOutfitNames = new Set(normalizedOutfits.map((o) => o.name));
+      const missingOutfits = fallbackOutfits.filter((o) => !existingOutfitNames.has(o.name));
+      normalizedOutfits = [...normalizedOutfits, ...missingOutfits];
+    }
   } else {
-    normalizedOutfits = buildOutfitsFromProducts(normalizedProducts);
+    normalizedOutfits = fallbackOutfits;
   }
 
   return {

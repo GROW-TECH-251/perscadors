@@ -1,6 +1,6 @@
 // src/components/layout/PublicLayout.tsx
 // ============================================
-// Layout pour les pages PUBLIQUES uniquement
+// Layout pour les pages PUBLIQUES uniquement (Zéro Erreur DOM Nesting)
 // ============================================
 
 'use client';
@@ -19,9 +19,9 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   return (
     <>
       <Navbar />
-      <main>
+      <div className="w-full">
         {children}
-      </main>
+      </div>
       <Footer />
       <WhatsAppFloat />
       <CartDrawer />

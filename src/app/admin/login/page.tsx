@@ -1,6 +1,6 @@
 // src/app/admin/login/page.tsx
 // ============================================
-// Login Admin Next.js
+// Login Admin Next.js (Zéro Hydration Mismatch)
 // ============================================
 
 'use client';
@@ -13,27 +13,20 @@ import { getAdminSession, signInAdmin } from '@/admin/auth';
 import { AdminInput, AdminButton } from '@/admin/components';
 import { Lock, AlertCircle, Loader2 } from 'lucide-react';
 
-function getSafeRedirectPath(): string {
-  if (typeof window === 'undefined') {
-    return '/admin';
-  }
-
-  const searchParams = new URLSearchParams(window.location.search);
-  const rawRedirect = searchParams.get('redirect');
-
-  if (!rawRedirect || !rawRedirect.startsWith('/admin')) {
-    return '/admin';
-  }
-
-  return rawRedirect;
-}
-
-function LoginRedirect({ to }: { to: string }) {
+function LoginRedirect() {
   const router = useRouter();
 
   useEffect(() => {
+    let to = '/admin';
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const rawRedirect = searchParams.get('redirect');
+      if (rawRedirect && rawRedirect.startsWith('/admin')) {
+        to = rawRedirect;
+      }
+    }
     router.replace(to);
-  }, [router, to]);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-brand-bg flex items-center justify-center p-4">
@@ -57,8 +50,6 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const redirectPath = getSafeRedirectPath();
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
@@ -68,7 +59,15 @@ export default function AdminLoginPage() {
       const result = await signInAdmin(identifier, password);
 
       if (result.ok) {
-        router.replace(redirectPath);
+        let to = '/admin';
+        if (typeof window !== 'undefined') {
+          const searchParams = new URLSearchParams(window.location.search);
+          const rawRedirect = searchParams.get('redirect');
+          if (rawRedirect && rawRedirect.startsWith('/admin')) {
+            to = rawRedirect;
+          }
+        }
+        router.replace(to);
       } else {
         setError(result.message);
       }
@@ -81,7 +80,7 @@ export default function AdminLoginPage() {
   };
 
   if (isAuthenticated) {
-    return <LoginRedirect to={redirectPath} />;
+    return <LoginRedirect />;
   }
 
   return (

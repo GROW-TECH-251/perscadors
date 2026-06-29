@@ -25,7 +25,7 @@ export const Hero: React.FC = () => {
 
   return (
     <section
-      className="relative w-full h-screen min-h-[700px] pt-20 flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]"
+      className="relative w-full h-[calc(100vh-80px)] min-h-[700px] flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]"
     >
       {/* Video Background */}
       <video

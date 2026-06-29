@@ -11,8 +11,8 @@ const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.
 
 function getFallbackAdminProducts(): AdminProduct[] {
   return fallbackProducts.map((product, index) => {
-    // Conversion d'id textuel (ex: 'basket-1') en ID numérique strict pour Supabase
-    const numericId = Number(product.id.replace(/\D/g, '')) || (index + 1);
+    // Exact matching with numeric string id (ex: '1' -> 1)
+    const numericId = Number(product.id) || (index + 1);
     const primaryImage = (product as unknown as { image_url?: string }).image_url || product.images[0] || '/images/LOGOSITE/logo.png';
 
     return {
@@ -52,16 +52,13 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Erreur fetch produits:', error);
     return fallbackList;
   }
 
   // CADRE FINAL : Synchronisation Intelligente & Élimination des 18 Issues de Clés en Double
   // Si la table Supabase contient moins de produits que le catalogue d'origine (ex: juste 1 produit de test),
-  // on peuple automatiquement les articles manquants avec des ID garantis uniques !
+  // on peuple automatiquement les articles manquants en préservant scrupuleusement les ID pour le Product Picker !
   if (!data || data.length < fallbackList.length) {
-    console.log('Catalogue Supabase incomplet ou vide : Injection automatique des articles d’origine du repo...');
-    
     const existingIds = new Set((data || []).map((p: { id?: number }) => Number(p.id)));
     const existingNames = new Set((data || []).map((p: { name?: string }) => p.name));
     const missingProducts = fallbackList.filter((item) => !existingNames.has(item.name));
@@ -70,6 +67,7 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
       let nextUniqueId = Math.max(1000, ...Array.from(existingIds), 1000) + 1;
       
       const seedPayload = missingProducts.map((item) => {
+        // Pour préserver la correspondance avec les outfits, on garde l'ID d'origine s'il est libre
         const uniqueId = existingIds.has(item.id) ? nextUniqueId++ : item.id;
         existingIds.add(uniqueId);
         return {
@@ -94,7 +92,6 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
         // Exécution silencieuse en arrière-plan sans bloquer l'affichage ni polluer le terminal
       });
 
-      // On retourne la liste fusionnée avec les ID garantis uniques (Zéro Issue de clé dupliquée !)
       const mergedList = [...(data || []), ...seedPayload];
       return mergedList as AdminProduct[];
     }
@@ -143,7 +140,6 @@ export async function createProduct(formData: ProductFormData): Promise<ApiRespo
     .single();
 
   if (error) {
-    console.error('Erreur création produit:', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -169,7 +165,6 @@ export async function updateProduct(
     .single();
 
   if (error) {
-    console.error('Erreur update produit:', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -187,7 +182,6 @@ export async function deleteProduct(id: number | string): Promise<ApiResponse<bo
     .eq('id', Number(id));
 
   if (error) {
-    console.error('Erreur suppression produit:', error);
     return { data: false, error: USER_ERROR_MSG };
   }
 
