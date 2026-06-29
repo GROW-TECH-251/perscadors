@@ -1,19 +1,29 @@
-export type Size = 'S' | 'M' | 'L' | 'XL' | 'XXL' | '39' | '40' | '41' | '42' | '43' | '44';
+export type Size = 'S' | 'M' | 'L' | 'XL' | 'XXL' | '39' | '40' | '41' | '42' | '43' | '44' | '45';
 
 export interface Product {
   id: string;
   name: string;
   slug: string;
   category: string;
-  price: number; // en FCFA
-  images: string[]; // images angles
+  price: number;
+  image_url?: string;
+  images: string[];
   sizes: Size[];
-  outOfStockSizes?: Size[]; // tailles épuisées (grisées)
-  colors: string[]; // couleurs
-  outOfStockColors?: string[]; // couleurs épuisées (grisées)
+  outOfStockSizes?: Size[];
+  colors: string[];
+  outOfStockColors?: string[];
   inStock: boolean;
   description: string;
   isPopular?: boolean;
+}
+
+export interface CatalogCategory {
+  name: string;
+  slug: string;
+  image: string;
+  count: number;
+  countLabel: string;
+  tagline: string;
 }
 
 export interface Outfit {
@@ -30,3 +40,11 @@ export interface CartItem {
   selectedColor: string;
   quantity: number;
 }
+
+export interface CheckoutFormData {
+  client_name: string;
+  client_phone: string;
+  client_area: string;
+}
+
+export type CheckoutStep = 1 | 2 | 3;

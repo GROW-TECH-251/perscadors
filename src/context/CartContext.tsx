@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { CartItem, Product, Size } from '@/types';
 
 interface CartContextType {
@@ -18,26 +18,34 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+function readInitialCart(): CartItem[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const savedCart = window.localStorage.getItem('hp_cart');
+  if (!savedCart) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(savedCart) as CartItem[];
+  } catch (error) {
+    console.error('Erreur de lecture du panier localStorage', error);
+    return [];
+  }
+}
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(readInitialCart);
   const [isCartOpen, setCartOpen] = useState(false);
 
-  // Load cart from localStorage
-  useEffect(() => {
-    const savedCart = localStorage.getItem('hp_cart');
-    if (savedCart) {
-      try {
-        setCartItems(JSON.parse(savedCart));
-      } catch (e) {
-        console.error('Error parsing cart from localStorage', e);
-      }
-    }
-  }, []);
-
-  // Save cart to localStorage
   const saveCart = (items: CartItem[]) => {
     setCartItems(items);
-    localStorage.setItem('hp_cart', JSON.stringify(items));
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('hp_cart', JSON.stringify(items));
+    }
   };
 
   const addToCart = (product: Product, size: Size, color: string, quantity = 1) => {
@@ -55,7 +63,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       saveCart([...cartItems, { product, selectedSize: size, selectedColor: color, quantity }]);
     }
-    setCartOpen(true); // Open drawer on add
+
+    setCartOpen(true);
   };
 
   const removeFromCart = (productId: string, size: Size, color: string) => {
@@ -75,6 +84,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       removeFromCart(productId, size, color);
       return;
     }
+
     const updated = cartItems.map((item) =>
       item.product.id === productId &&
       item.selectedSize === size &&
@@ -82,16 +92,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? { ...item, quantity }
         : item
     );
+
     saveCart(updated);
   };
 
   const addMultipleToCart = (productsList: Product[]) => {
     const updated = [...cartItems];
+
     productsList.forEach((product) => {
-      // Find a default available size and color
-      const size = product.sizes.find(s => !product.outOfStockSizes?.includes(s)) || product.sizes[0];
-      const color = product.colors.find(c => !product.outOfStockColors?.includes(c)) || product.colors[0];
-      
+      const size = product.sizes.find((value) => !product.outOfStockSizes?.includes(value)) || product.sizes[0];
+      const color = product.colors.find((value) => !product.outOfStockColors?.includes(value)) || product.colors[0];
+
       const existingIndex = updated.findIndex(
         (item) =>
           item.product.id === product.id &&
@@ -105,6 +116,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updated.push({ product, selectedSize: size, selectedColor: color, quantity: 1 });
       }
     });
+
     saveCart(updated);
     setCartOpen(true);
   };

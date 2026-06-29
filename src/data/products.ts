@@ -3,7 +3,7 @@ import { Product } from '@/types';
 export const products: Product[] = [
   // === CATEGORY: BASKET POUR HOMME ===
   {
-    id: 'basket-1',
+    id: '1',
     name: 'Basket Streetwear Classic Black & White',
     slug: 'basket-streetwear-classic-black-white',
     category: 'basket-pour-homme',
@@ -22,7 +22,7 @@ export const products: Product[] = [
     isPopular: true
   },
   {
-    id: 'basket-2',
+    id: '2',
     name: 'Basket Urban Luxe Gold',
     slug: 'basket-urban-luxe-gold',
     category: 'basket-pour-homme',
@@ -41,7 +41,7 @@ export const products: Product[] = [
     isPopular: true
   },
   {
-    id: 'basket-3',
+    id: '3',
     name: 'Runner Sport Premium White',
     slug: 'runner-sport-premium-white',
     category: 'basket-pour-homme',
@@ -59,7 +59,7 @@ export const products: Product[] = [
     description: 'Une légèreté inégalée alliée à un design futuriste et épuré. Idéale pour les looks urbains décontractés de Vioutou.'
   },
   {
-    id: 'basket-4',
+    id: '4',
     name: 'Sneaker High Top Noir Intense',
     slug: 'sneaker-high-top-noir-intense',
     category: 'basket-pour-homme',
@@ -73,11 +73,11 @@ export const products: Product[] = [
     outOfStockSizes: ['41', '42'],
     colors: ['Noir', 'Rouge'],
     outOfStockColors: ['Rouge'],
-    inStock: false, // Rupture de stock test
+    inStock: false,
     description: 'Le modèle High Top emblématique. Confectionné dans un cuir premium ultra résistant pour braver la rue avec élégance. Épuisé pour le moment !'
   },
   {
-    id: 'basket-5',
+    id: '5',
     name: 'Retro Trainer Multi-Color',
     slug: 'retro-trainer-multi-color',
     category: 'basket-pour-homme',
@@ -94,10 +94,29 @@ export const products: Product[] = [
     inStock: true,
     description: 'Inspirée des archives des années 90, cette sneaker rétro apporte une touche de couleur audacieuse à vos tenues les plus simples.'
   },
+  {
+    id: '6',
+    name: 'Sneaker Premium Vioutou Edition',
+    slug: 'sneaker-premium-vioutou-edition',
+    category: 'basket-pour-homme',
+    price: 28000,
+    images: [
+      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0117.jpg',
+      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0118.jpg',
+      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0119.jpg'
+    ],
+    sizes: ['40', '41', '42', '43', '44', '45'],
+    outOfStockSizes: [],
+    colors: ['Noir', 'Blanc', 'Gold'],
+    outOfStockColors: [],
+    inStock: true,
+    description: 'L\'édition limitée signée Vioutou. Matériaux nobles, amorti exceptionnel et design profilé pour les VIP de la capitale.',
+    isPopular: true
+  },
 
   // === CATEGORY: COMPLET POUR HOMME ===
   {
-    id: 'complet-1',
+    id: '7',
     name: 'Ensemble Denim Louis Luxury Blue',
     slug: 'ensemble-denim-louis-luxury-blue',
     category: 'complet-pour-homme',
@@ -115,7 +134,7 @@ export const products: Product[] = [
     isPopular: true
   },
   {
-    id: 'complet-2',
+    id: '8',
     name: 'Complet Street Over-Size Black & White',
     slug: 'complet-street-over-size-black-white',
     category: 'complet-pour-homme',
@@ -132,7 +151,7 @@ export const products: Product[] = [
     description: 'Le confort absolu d\'une coupe oversize alliée au prestige streetwear de HP Collection. Tissu lourd et ultra-doux.'
   },
   {
-    id: 'complet-3',
+    id: '9',
     name: 'Complet Casual Summer Creme',
     slug: 'complet-casual-summer-creme',
     category: 'complet-pour-homme',
@@ -151,7 +170,7 @@ export const products: Product[] = [
 
   // === CATEGORY: JEAN OVERSIDE POUR HOMME ===
   {
-    id: 'jean-1',
+    id: '10',
     name: 'Jean Oversize Margiela Blue & Black Combo',
     slug: 'jean-oversize-margiela-blue-black-combo',
     category: 'jean-overside-pour-homme',
@@ -170,7 +189,7 @@ export const products: Product[] = [
     isPopular: true
   },
   {
-    id: 'jean-2',
+    id: '11',
     name: 'Cargo Denim Oversize Heavy Grey',
     slug: 'cargo-denim-oversize-heavy-grey',
     category: 'jean-overside-pour-homme',
@@ -188,7 +207,7 @@ export const products: Product[] = [
     description: 'Coupe cargo moderne avec poches latérales volumineuses. Denim lourd 14oz résistant et ultra-stylé.'
   },
   {
-    id: 'jean-3',
+    id: '12',
     name: 'Jean Baggy Destroyed Vintage',
     slug: 'jean-baggy-destroyed-vintage',
     category: 'jean-overside-pour-homme',
@@ -206,7 +225,7 @@ export const products: Product[] = [
     description: 'Déchirures et délavage rétro travaillés à la main. Une pièce maîtresse pour un style grunge haut de gamme.'
   },
   {
-    id: 'jean-4',
+    id: '13',
     name: 'Jean Wide-Leg Classic Raw',
     slug: 'jean-wide-leg-classic-raw',
     category: 'jean-overside-pour-homme',
@@ -223,10 +242,47 @@ export const products: Product[] = [
     inStock: true,
     description: 'La simplicité et le raffinement d\'une coupe droite extra-large. Une polyvalence totale pour tous vos outfits.'
   },
+  {
+    id: '14',
+    name: 'Jean Carpenter Premium Black',
+    slug: 'jean-carpenter-premium-black',
+    category: 'jean-overside-pour-homme',
+    price: 19500,
+    images: [
+      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0021.jpg',
+      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0022.jpg',
+      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0023.jpg'
+    ],
+    sizes: ['S', 'M', 'L', 'XL'],
+    outOfStockSizes: [],
+    colors: ['Noir Cuir', 'Gris Foncé'],
+    outOfStockColors: [],
+    inStock: true,
+    description: 'Inspiré des tenues de travail urbaines, ce jean carpenter offre des empiècements renforcés et une silhouette ultra-tendance.',
+    isPopular: true
+  },
+  {
+    id: '15',
+    name: 'Jean Cargo Multi-Pockets Khaki',
+    slug: 'jean-cargo-multi-pockets-khaki',
+    category: 'jean-overside-pour-homme',
+    price: 20500,
+    images: [
+      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0049.jpg',
+      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0050.jpg',
+      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0051.jpg'
+    ],
+    sizes: ['M', 'L', 'XL', 'XXL'],
+    outOfStockSizes: [],
+    colors: ['Khaki', 'Beige'],
+    outOfStockColors: [],
+    inStock: true,
+    description: 'Fonctionnalité maximale avec ses multiples poches tactiques. Tissu robuste et coupe droite ajustable aux chevilles.'
+  },
 
   // === CATEGORY: TAPETTES POUR HOMME ===
   {
-    id: 'tapette-1',
+    id: '16',
     name: 'Sandale Suede Cozy UGG Style',
     slug: 'sandale-suede-cozy-ugg-style',
     category: 'tapettes-pour-homme',
@@ -245,7 +301,7 @@ export const products: Product[] = [
     isPopular: true
   },
   {
-    id: 'tapette-2',
+    id: '17',
     name: 'Slide Premium Logo Black',
     slug: 'slide-premium-logo-black',
     category: 'tapettes-pour-homme',
@@ -262,7 +318,7 @@ export const products: Product[] = [
     description: 'Une claquette haut de gamme légère, avec semelle anatomique moulée et bride embossée du logo HP Collection. L\'indispensable détente.'
   },
   {
-    id: 'tapette-3',
+    id: '18',
     name: 'Mule Urban Outdoor Leather',
     slug: 'mule-urban-outdoor-leather',
     category: 'tapettes-pour-homme',
@@ -277,6 +333,25 @@ export const products: Product[] = [
     outOfStockColors: [],
     inStock: true,
     description: 'Un design audacieux fermé sur le devant. Fabriquée dans un cuir épais patiné pour un look urbain ultra-tendance.'
+  },
+  {
+    id: '19',
+    name: 'Claquette VIP Summer Leather',
+    slug: 'claquette-vip-summer-leather',
+    category: 'tapettes-pour-homme',
+    price: 13500,
+    images: [
+      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0064.jpg',
+      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0065.jpg',
+      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0074.jpg'
+    ],
+    sizes: ['40', '41', '42', '43', '44', '45'],
+    outOfStockSizes: [],
+    colors: ['Noir', 'Bleu', 'Blanc'],
+    outOfStockColors: [],
+    inStock: true,
+    description: 'Conçue pour les journées ensoleillées et les soirées chill. Semelle antidérapante et finitions soignées pour un look estival irréprochable.',
+    isPopular: true
   }
 ];
 

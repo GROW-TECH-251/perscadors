@@ -1,24 +1,35 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
+import { useCatalog } from '@/context/CatalogContext';
+import { fetchActiveAssetBySection } from '@/services/mediaService';
 import { Search, ShoppingBag, Menu, X } from 'lucide-react';
-import { products } from '@/data/products';
 
 export const Navbar: React.FC = () => {
   const { cartCount, setCartOpen } = useCart();
+  const { categories, searchProducts } = useCatalog();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('/images/LOGOSITE/logo.png');
   const pathname = usePathname();
   const router = useRouter();
 
-  // Scroll effect
   useEffect(() => {
+    const mountedTimer = setTimeout(async () => {
+      setIsMounted(true);
+      const activeLogo = await fetchActiveAssetBySection('logo');
+      if (activeLogo && activeLogo.url) {
+        setLogoUrl(activeLogo.url);
+      }
+    }, 0);
+
     const handleScroll = () => {
       if (window.scrollY > 20) {
         setIsScrolled(true);
@@ -26,62 +37,76 @@ export const Navbar: React.FC = () => {
         setIsScrolled(false);
       }
     };
+
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      clearTimeout(mountedTimer);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // Find matches across products
-      const query = searchQuery.toLowerCase().trim();
-      const matchedProduct = products.find(
-        (p) => p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query)
-      );
+  const navLinks = useMemo(() => {
+    const categoryLinks = categories.slice(0, 4).map((category) => ({
+      name: category.name,
+      href: `/categorie/${category.slug}`
+    }));
 
-      if (matchedProduct) {
-        router.push(`/produit/${matchedProduct.id}`);
-        setIsSearchOpen(false);
-        setSearchQuery('');
-      } else {
-        // Redirect to first category matching
-        router.push(`/categorie/basket-pour-homme?search=${encodeURIComponent(searchQuery)}`);
-        setIsSearchOpen(false);
-        setSearchQuery('');
-      }
+    return [
+      { name: 'Accueil', href: '/' },
+      ...categoryLinks,
+      { name: 'HP Looks', href: '/looks' }
+    ];
+  }, [categories]);
+
+  const handleSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!searchQuery.trim()) {
+      return;
     }
-  };
 
-  const navLinks = [
-    { name: 'Accueil', href: '/' },
-    { name: 'Baskets', href: '/categorie/basket-pour-homme' },
-    { name: 'Complets', href: '/categorie/complet-pour-homme' },
-    { name: 'Jeans Oversize', href: '/categorie/jean-overside-pour-homme' },
-    { name: 'Tapettes', href: '/categorie/tapettes-pour-homme' },
-    { name: 'HP Looks', href: '/looks' },
-  ];
+    const normalizedQuery = searchQuery.toLowerCase().trim();
+    const matchedProduct = searchProducts(normalizedQuery)[0];
+    const matchedCategory = categories.find((category) => {
+      return (
+        category.name.toLowerCase().includes(normalizedQuery) ||
+        category.slug.toLowerCase().includes(normalizedQuery)
+      );
+    });
+
+    if (matchedProduct) {
+      router.push(`/produit/${matchedProduct.id}`);
+    } else if (matchedCategory) {
+      router.push(`/categorie/${matchedCategory.slug}`);
+    } else {
+      const fallbackCategorySlug = categories[0]?.slug || 'basket-pour-homme';
+      router.push(`/categorie/${fallbackCategorySlug}?search=${encodeURIComponent(searchQuery)}`);
+    }
+
+    setIsSearchOpen(false);
+    setIsMobileMenuOpen(false);
+    setSearchQuery('');
+  };
 
   return (
     <nav
-      className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 ${
-        isScrolled
-          ? 'bg-brand-bg/95 border-b border-brand-gold/15 shadow-lg backdrop-blur-md py-3'
-          : 'bg-transparent py-5'
+      className={`sticky top-0 left-0 w-full z-50 transition-all duration-500 bg-brand-bg border-b border-brand-gold/20 shadow-md ${
+        isScrolled ? 'py-3 bg-brand-bg/95 backdrop-blur-md shadow-lg' : 'py-5'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        {/* Logo */}
         <Link href="/" className="relative w-28 h-12 flex-shrink-0">
           <Image
-            src="/images/LOGOSITE/logo.png"
+            src={logoUrl}
             alt="HP Collection Logo"
             fill
+            sizes="128px"
             priority
             className="object-contain"
+            unoptimized
           />
         </Link>
 
-        {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center space-x-8">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
@@ -99,59 +124,59 @@ export const Navbar: React.FC = () => {
           })}
         </div>
 
-        {/* Search, Cart & Mobile Menu Toggle */}
-        <div className="flex items-center space-x-5">
-          {/* Expanding Search Bar */}
+        <div className="flex items-center space-x-2 sm:space-x-5">
           <form
             onSubmit={handleSearchSubmit}
-            className={`flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/50 transition-all duration-300 ${
-              isSearchOpen ? 'w-48 sm:w-64 opacity-100' : 'w-0 opacity-0 pointer-events-none md:opacity-100 md:w-48 md:pointer-events-auto'
+            className={`flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/95 transition-all duration-300 ${
+              isSearchOpen ? 'absolute right-14 top-4 w-56 sm:relative sm:right-0 sm:top-0 sm:w-64 opacity-100 z-50 shadow-lg backdrop-blur-sm' : 'w-0 opacity-0 pointer-events-none md:opacity-100 md:w-48 md:pointer-events-auto'
             }`}
           >
             <input
               type="text"
               placeholder="Rechercher..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(event) => setSearchQuery(event.target.value)}
               className="bg-transparent border-none text-brand-text text-sm focus:outline-none w-full"
             />
-            <button type="submit" className="text-brand-gold hover:text-brand-gold-light cursor-pointer">
+            <button type="submit" className="text-brand-gold hover:text-brand-gold-light cursor-pointer" aria-label="Valider la recherche" title="Valider la recherche">
               <Search size={18} />
             </button>
           </form>
 
-          {/* Search Toggle for Mobile */}
           <button
             onClick={() => setIsSearchOpen(!isSearchOpen)}
             className="p-1 text-brand-text hover:text-brand-gold transition-colors md:hidden"
+            aria-label="Ouvrir la barre de recherche"
+            title="Ouvrir la barre de recherche"
           >
             <Search size={22} />
           </button>
 
-          {/* Cart Icon */}
           <button
             onClick={() => setCartOpen(true)}
             className="relative p-1 text-brand-text hover:text-brand-gold transition-all duration-300 hover:scale-105"
+            aria-label="Panier d'achat"
+            title="Panier d'achat"
           >
             <ShoppingBag size={24} />
-            {cartCount > 0 && (
+            {isMounted && cartCount > 0 && (
               <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-gold text-[10px] font-bold text-brand-bg animate-pulse">
                 {cartCount}
               </span>
             )}
           </button>
 
-          {/* Mobile Menu Toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-1 text-brand-text hover:text-brand-gold transition-colors md:hidden"
+            aria-label="Menu principal de navigation"
+            title="Menu principal de navigation"
           >
             {isMobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-brand-bg-alt border-t border-brand-gold/10 px-4 py-6 space-y-4 shadow-xl">
           {navLinks.map((link) => {
