@@ -18,13 +18,18 @@ export function middleware(request: NextRequest) {
   const isLoginPath = pathname === '/admin/login';
 
   if (!sessionCookie && !isLoginPath) {
-    const loginUrl = new URL('/admin/login', request.url);
+    // CORRECTION CRITIQUE VERCEL EDGE : Utiliser request.nextUrl.clone() pour préserver l'origine publique
+    // Évite l'erreur 404 causée par les proxys internes d'Edge Gateway sur Vercel
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/admin/login';
     loginUrl.searchParams.set('redirect', `${pathname}${search}`);
     return NextResponse.redirect(loginUrl);
   }
 
   if (sessionCookie && isLoginPath) {
-    const dashboardUrl = new URL('/admin', request.url);
+    const dashboardUrl = request.nextUrl.clone();
+    dashboardUrl.pathname = '/admin';
+    dashboardUrl.searchParams.delete('redirect');
     return NextResponse.redirect(dashboardUrl);
   }
 

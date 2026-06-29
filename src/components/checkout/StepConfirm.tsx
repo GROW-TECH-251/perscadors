@@ -92,7 +92,14 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
 
       // 4. Redirection propre et instantanée sur l'onglet déjà ouvert ou via location.href
       if (targetWindow) {
-        targetWindow.location.href = whatsappUrl;
+        try {
+          targetWindow.location.href = whatsappUrl;
+          targetWindow.focus();
+        } catch {
+          if (typeof window !== 'undefined') {
+            window.location.href = whatsappUrl;
+          }
+        }
       } else if (typeof window !== 'undefined') {
         window.location.href = whatsappUrl; // Repli ultime 100% infaillible sur Safari iOS
       }
