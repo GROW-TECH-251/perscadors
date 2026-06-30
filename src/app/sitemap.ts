@@ -1,3 +1,11 @@
+// src/app/sitemap.ts
+// ============================================
+// Générateur de Sitemap Dynamique (Forcé Dynamique pour esquiver le cache CDN Vercel)
+// ============================================
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import type { MetadataRoute } from 'next';
 import { fetchPublicCatalogSnapshot } from '@/services/publicCatalogService';
 
