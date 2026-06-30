@@ -77,16 +77,17 @@ export default function AdminLayout({
     () => false
   );
 
-  const isLoginPage = pathname === '/admin/login';
+  const cleanPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
+  const isLoginPage = cleanPathname === '/admin/login';
   const lowStockCount = 0;
 
   const currentScreen = useMemo<AdminScreen>(() => {
-    if (pathname.startsWith('/admin/produits/')) {
+    if (cleanPathname.startsWith('/admin/produits/')) {
       return 'products';
     }
 
-    return SCREEN_MAP[pathname] || 'home';
-  }, [pathname]);
+    return SCREEN_MAP[cleanPathname] || 'home';
+  }, [cleanPathname]);
 
   const handleNavigate = (screen: AdminScreen) => {
     router.push(PATH_MAP[screen] || '/admin');
