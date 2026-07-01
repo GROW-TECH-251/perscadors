@@ -69,20 +69,6 @@ const nextConfig: NextConfig = {
       },
     ])),
   },
-  // CORRECTION CRITIQUE VERCEL CDN : Forçage explicite des réécritures d'URL
-  // Garantit à 100% que Vercel Edge Gateway route /admin vers la fonction Serverless Next.js
-  async rewrites() {
-    return [
-      {
-        source: '/admin',
-        destination: '/admin',
-      },
-      {
-        source: '/admin/:path*',
-        destination: '/admin/:path*',
-      },
-    ];
-  },
   async headers() {
     return [
       {
