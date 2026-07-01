@@ -20,18 +20,15 @@ export function middleware(request: NextRequest) {
   const isLoginPath = cleanPathname === '/admin/login';
 
   if (!sessionCookie && !isLoginPath) {
-    // CORRECTION CRITIQUE VERCEL EDGE : Utiliser request.nextUrl.clone() et ignorer les trailing slashes
-    // Évite l'erreur 404 et les boucles de redirection infinies (ERR_TOO_MANY_REDIRECTS) sur Vercel
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = '/admin/login';
-    loginUrl.searchParams.set('redirect', `${cleanPathname}${search}`);
+    // CORRECTION CRITIQUE VERCEL EDGE (ULTIMATE VERSION) :
+    // Construction explicite de l'URL absolue via request.nextUrl.origin pour forcer le pare-feu Vercel
+    // Évite la corruption du routing manifest et esquive le cache CDN 404
+    const loginUrl = new URL(`/admin/login?redirect=${encodeURIComponent(cleanPathname + search)}`, request.nextUrl.origin);
     return NextResponse.redirect(loginUrl);
   }
 
   if (sessionCookie && isLoginPath) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = '/admin';
-    dashboardUrl.searchParams.delete('redirect');
+    const dashboardUrl = new URL('/admin', request.nextUrl.origin);
     return NextResponse.redirect(dashboardUrl);
   }
 
