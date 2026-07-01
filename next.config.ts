@@ -55,6 +55,8 @@ const remoteHostnames = Array.from(new Set([
 ].filter(Boolean))) as string[];
 
 const nextConfig: NextConfig = {
+  trailingSlash: false,
+  cleanDistDir: true,
   images: {
     remotePatterns: remoteHostnames.flatMap((hostname) => ([
       {

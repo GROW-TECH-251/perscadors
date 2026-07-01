@@ -4,25 +4,27 @@ import type { NextRequest } from 'next/server';
 const ADMIN_SESSION_COOKIE = 'perscadors_admin_session';
 
 function isAdminPath(pathname: string): boolean {
-  return pathname === '/admin' || pathname.startsWith('/admin/');
+  const clean = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
+  return clean === '/admin' || clean.startsWith('/admin/');
 }
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const cleanPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
 
-  if (!isAdminPath(pathname)) {
+  if (!isAdminPath(cleanPathname)) {
     return NextResponse.next();
   }
 
   const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-  const isLoginPath = pathname === '/admin/login';
+  const isLoginPath = cleanPathname === '/admin/login';
 
   if (!sessionCookie && !isLoginPath) {
-    // CORRECTION CRITIQUE VERCEL EDGE : Utiliser request.nextUrl.clone() pour préserver l'origine publique
-    // Évite l'erreur 404 causée par les proxys internes d'Edge Gateway sur Vercel
+    // CORRECTION CRITIQUE VERCEL EDGE : Utiliser request.nextUrl.clone() et ignorer les trailing slashes
+    // Évite l'erreur 404 et les boucles de redirection infinies (ERR_TOO_MANY_REDIRECTS) sur Vercel
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/admin/login';
-    loginUrl.searchParams.set('redirect', `${pathname}${search}`);
+    loginUrl.searchParams.set('redirect', `${cleanPathname}${search}`);
     return NextResponse.redirect(loginUrl);
   }
 
