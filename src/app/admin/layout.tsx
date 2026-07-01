@@ -51,7 +51,13 @@ function AuthRedirect({ to, message }: { to: string; message: string }) {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace(to);
+    const timer = setTimeout(() => {
+      router.replace(to);
+      if (typeof window !== 'undefined') {
+        window.location.href = to; // Repli ultime infaillible sur Vercel Serverless
+      }
+    }, 50);
+    return () => clearTimeout(timer);
   }, [router, to]);
 
   return (
