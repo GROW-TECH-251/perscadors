@@ -4,26 +4,30 @@ import type { NextRequest } from 'next/server';
 const ADMIN_SESSION_COOKIE = 'perscadors_admin_session';
 
 function isAdminPath(pathname: string): boolean {
-  const clean = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
-  return clean === '/admin' || clean.startsWith('/admin/');
+  return pathname === '/admin' || pathname.startsWith('/admin/');
 }
 
+/**
+ * Middleware de protection des routes admin.
+ * - Redirige vers /admin/login si non authentifié
+ * - Redirige vers /admin si déjà authentifié sur /admin/login
+ * - Ajoute en-têtes de sécurité pour les routes admin
+ */
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const cleanPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
 
-  if (!isAdminPath(cleanPathname)) {
+  if (!isAdminPath(pathname)) {
     return NextResponse.next();
   }
 
   const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-  const isLoginPath = cleanPathname === '/admin/login';
+  const isLoginPath = pathname === '/admin/login';
 
   if (!sessionCookie && !isLoginPath) {
-    // CORRECTION CRITIQUE VERCEL EDGE (ULTIMATE VERSION) :
-    // Construction explicite de l'URL absolue via request.nextUrl.origin pour forcer le pare-feu Vercel
-    // Évite la corruption du routing manifest et esquive le cache CDN 404
-    const loginUrl = new URL(`/admin/login?redirect=${encodeURIComponent(cleanPathname + search)}`, request.nextUrl.origin);
+    const loginUrl = new URL(
+      `/admin/login?redirect=${encodeURIComponent(pathname + search)}`,
+      request.nextUrl.origin
+    );
     return NextResponse.redirect(loginUrl);
   }
 

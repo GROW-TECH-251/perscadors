@@ -57,6 +57,9 @@ const remoteHostnames = Array.from(new Set([
 const nextConfig: NextConfig = {
   trailingSlash: false,
   cleanDistDir: true,
+  // CORRECTION VERCEL : désactive la normalisation d'URL par le proxy
+  // pour que les routes admin soient correctement routées par Vercel Edge
+  skipProxyUrlNormalize: true,
   images: {
     remotePatterns: remoteHostnames.flatMap((hostname) => ([
       {
