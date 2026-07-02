@@ -1,6 +1,6 @@
 {
-  "name": "hp-temp",
-  "version": "0.1.0",
+  "name": "perscadors",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -17,7 +17,6 @@
     "postcss": "^8.5.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-router-dom": "^7.15.1",
     "recharts": "^3.8.1"
   },
   "devDependencies": {
