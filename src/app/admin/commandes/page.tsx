@@ -425,12 +425,12 @@ export default function AdminOrdersPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bebas text-lg tracking-wider text-brand-text uppercase">
+                      <h3 className="font-bebas text-lg tracking-wider text-brand-text uppercase truncate max-w-full">
                         {order.order_number}
                       </h3>
                     </div>
-                    <p className="text-sm font-medium text-brand-text mt-1">{order.client_name}</p>
-                    <p className="text-xs text-brand-text-muted mt-0.5">
+                    <p className="text-sm font-medium text-brand-text mt-1 truncate">{order.client_name}</p>
+                    <p className="text-xs text-brand-text-muted mt-0.5 truncate">
                       {order.client_phone} • {order.client_area}
                     </p>
                   </div>

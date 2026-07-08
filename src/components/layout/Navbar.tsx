@@ -95,7 +95,7 @@ export const Navbar: React.FC = () => {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        <Link href="/" className="relative w-28 h-12 flex-shrink-0">
+        <Link href="/" className="relative w-32 h-14 sm:w-28 sm:h-12 flex-shrink-0">
           <Image
             src={logoUrl}
             alt="HP Collection Logo"
@@ -186,7 +186,7 @@ export const Navbar: React.FC = () => {
                 key={link.name}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`block font-bebas text-xl tracking-wider py-2 border-b border-brand-gold/5 ${
+                className={`block font-bebas text-xl tracking-wider py-2 border-b border-brand-gold/5 truncate ${
                   isActive ? 'text-brand-gold pl-2 border-l-2 border-brand-gold' : 'text-brand-text'
                 }`}
               >

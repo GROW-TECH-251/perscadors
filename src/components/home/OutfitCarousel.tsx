@@ -76,7 +76,9 @@ export const OutfitCarousel: React.FC = () => {
 
               <div className="relative w-full max-w-3xl bg-brand-bg text-brand-text rounded-2xl overflow-hidden border border-brand-gold/30 shadow-2xl flex flex-col md:flex-row z-10 max-h-[90vh] md:max-h-none overflow-y-auto md:overflow-visible">
                 <button
+                  type="button"
                   onClick={() => setSelectedOutfit(null)}
+                  aria-label="Fermer la fenêtre de l'outfit"
                   className="absolute top-4 right-4 z-20 p-2 bg-[#0A0A0A]/60 hover:bg-brand-gold hover:text-brand-bg text-white rounded-full transition-colors cursor-pointer"
                 >
                   <X size={20} />
