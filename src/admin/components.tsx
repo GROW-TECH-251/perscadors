@@ -346,7 +346,7 @@ export const AdminButton: React.FC<{
   
   const variantClasses = {
     primary: 'bg-brand-gold hover:bg-brand-gold-light text-[#0A0A0A] shadow-[0_10px_20px_rgba(184,149,42,0.18)] hover:-translate-y-0.5',
-    secondary: 'bg-white/10 hover:bg-white/20 text-white border border-brand-gold/30 hover:border-brand-gold/60',
+    secondary: 'bg-brand-bg-alt hover:bg-brand-gold/15 text-brand-text border border-brand-gold/30 hover:border-brand-gold/60',
     danger: 'bg-red-500 hover:bg-red-600 text-white shadow-[0_10px_20px_rgba(239,68,68,0.18)] hover:-translate-y-0.5',
     success: 'bg-green-500 hover:bg-green-600 text-white shadow-[0_10px_20px_rgba(34,197,94,0.18)] hover:-translate-y-0.5'
   };

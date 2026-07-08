@@ -258,8 +258,10 @@ export default function CategoryPage() {
                 <div className="flex items-center justify-between border-b border-brand-gold/15 pb-4">
                   <h2 className="font-bebas text-2xl tracking-wider text-brand-text">Filtres</h2>
                   <button
+                    type="button"
                     onClick={() => setIsFilterDrawerOpen(false)}
                     className="p-1 hover:bg-brand-bg-alt rounded-full text-brand-text-muted"
+                    aria-label="Fermer les filtres"
                   >
                     <ArrowLeft size={20} />
                   </button>

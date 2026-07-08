@@ -317,7 +317,7 @@ export default function AdminCustomersPage() {
 
                 <div className="flex items-start justify-between mb-4 pr-10">
                   <div>
-                    <h3 className="font-bebas text-xl text-brand-text uppercase">{customer.name}</h3>
+                    <h3 className="font-bebas text-xl text-brand-text uppercase truncate max-w-full">{customer.name}</h3>
                     <p className="text-sm text-brand-text-muted font-mono mt-0.5">{customer.phone}</p>
                   </div>
                   <div className="flex flex-wrap gap-1 justify-end">

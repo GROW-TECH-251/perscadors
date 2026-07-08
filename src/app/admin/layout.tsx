@@ -11,6 +11,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { DesktopSidebar, BottomTabs } from '@/admin/components';
 import { clearAdminSession, getAdminSession } from '@/admin/auth';
 import type { AdminScreen } from '@/admin/types';
+import { LogOut } from 'lucide-react';
 
 const SCREEN_MAP: Record<string, AdminScreen> = {
   '/admin': 'home',
@@ -129,12 +130,12 @@ export default function AdminLayout({
       <main className="lg:ml-64 min-h-screen">
         <div className="lg:hidden sticky top-0 z-30 bg-[#0A0A0A]/95 backdrop-blur-md border-b border-brand-gold/20 px-4 py-3 shadow-lg">
           <div className="flex items-center justify-between">
-            <div className="relative h-8 w-28">
+            <div className="relative h-10 w-32">
               <Image
                 src="/images/LOGOSITE/logo.png"
                 alt="HP Collection"
                 fill
-                sizes="112px"
+                sizes="128px"
                 className="object-contain"
                 priority
               />
@@ -143,9 +144,10 @@ export default function AdminLayout({
               onClick={handleLogout}
               type="button"
               aria-label="Se déconnecter"
-              className="p-2 text-red-400 hover:text-red-300 cursor-pointer"
+              className="flex items-center gap-1.5 p-2 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
             >
-              Déconnexion
+              <LogOut size={18} />
+              <span className="text-sm font-medium">Déconnexion</span>
             </button>
           </div>
         </div>
