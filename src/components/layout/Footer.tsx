@@ -87,14 +87,16 @@ export const Footer: React.FC = () => {
               </Link>
             </li>
             <li>
-              <Link href="/" className="hover:text-brand-gold transition-colors">
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- anchor scroll */}
+              <a href="/#temoinages" className="hover:text-brand-gold transition-colors cursor-pointer">
                 Avis Clients
-              </Link>
+              </a>
             </li>
             <li>
-              <Link href="/" className="hover:text-brand-gold transition-colors">
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- anchor scroll */}
+              <a href="/#faq" className="hover:text-brand-gold transition-colors cursor-pointer">
                 Foire Aux Questions
-              </Link>
+              </a>
             </li>
           </ul>
         </div>

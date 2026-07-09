@@ -106,7 +106,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer ${
                 isActive
                   ? 'bg-brand-gold text-[#0A0A0A] shadow-[0_12px_24px_rgba(184,149,42,0.22)]'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1'
+                  : 'text-gray-300 hover:text-white hover:bg-white/5 hover:translate-x-1'
               }`}
             >
               <div className="flex items-center gap-3">
