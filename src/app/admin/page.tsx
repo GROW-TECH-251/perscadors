@@ -454,7 +454,7 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
                     <div>
-                      <p className="font-bebas text-xl text-brand-text uppercase tracking-wide truncate max-w-[200px]">{product.name}</p>
+                      <p className="font-bebas text-xl text-brand-text uppercase tracking-wide truncate max-w-full">{product.name}</p>
                       <p className="text-sm font-bold text-brand-gold">{formatCurrency(product.price)}</p>
                       <p className="text-xs text-brand-text-muted mt-0.5">Stock dispo: {product.stock ?? '∞'}</p>
                     </div>

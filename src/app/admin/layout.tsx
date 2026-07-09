@@ -141,7 +141,7 @@ export default function AdminLayout({
                   priority
                 />
               </div>
-              <span className="font-bebas text-lg tracking-wider text-brand-gold/90">
+              <span className="font-bebas text-lg tracking-wider text-brand-gold/90 whitespace-nowrap">
                 HP Collection
               </span>
             </div>

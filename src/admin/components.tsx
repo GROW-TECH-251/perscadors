@@ -177,7 +177,7 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
       {isMoreOpen && (
         <div className="fixed inset-x-0 bottom-16 bg-[#0A0A0A]/95 backdrop-blur-2xl border-t border-brand-gold/25 rounded-t-3xl p-6 shadow-[0_-20px_70px_rgba(10,10,10,0.85)] z-50 lg:hidden animate-slide-up-fade space-y-4">
           <div className="flex items-center justify-between border-b border-brand-gold/15 pb-3">
-            <span className="font-bebas text-xl text-brand-gold/80 uppercase tracking-wider">
+            <span className="font-bebas text-xl text-brand-gold uppercase tracking-wider">
               Menu & Pilotes Avancés
             </span>
             <button
