@@ -95,7 +95,7 @@ export const Navbar: React.FC = () => {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        <Link href="/" className="relative w-32 h-14 sm:w-28 sm:h-12 flex-shrink-0">
+        <Link href="/" className="relative w-36 h-16 sm:w-28 sm:h-12 flex-shrink-0">
           <Image
             src={logoUrl}
             alt="HP Collection Logo"

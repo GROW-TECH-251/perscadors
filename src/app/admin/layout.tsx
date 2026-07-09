@@ -130,15 +130,20 @@ export default function AdminLayout({
       <main className="lg:ml-64 min-h-screen">
         <div className="lg:hidden sticky top-0 z-30 bg-[#0A0A0A]/95 backdrop-blur-md border-b border-brand-gold/20 px-4 py-3 shadow-lg">
           <div className="flex items-center justify-between">
-            <div className="relative h-10 w-32">
-              <Image
-                src="/images/LOGOSITE/logo.png"
-                alt="HP Collection"
-                fill
-                sizes="128px"
-                className="object-contain"
-                priority
-              />
+            <div className="flex items-center gap-3">
+              <div className="relative h-12 w-36">
+                <Image
+                  src="/images/LOGOSITE/logo.png"
+                  alt="HP Collection"
+                  fill
+                  sizes="144px"
+                  className="object-contain brightness-110"
+                  priority
+                />
+              </div>
+              <span className="font-bebas text-lg tracking-wider text-brand-gold/90">
+                HP Collection
+              </span>
             </div>
             <button
               onClick={handleLogout}

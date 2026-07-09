@@ -156,6 +156,7 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
   const primaryItems = ADMIN_NAV_ITEMS.slice(0, 4);
   // Les autres items vont dans le tiroir "Plus"
   const moreItems = ADMIN_NAV_ITEMS.slice(4);
+  const isInMoreSection = moreItems.some(item => item.id === currentScreen);
 
   const handleTabClick = (screen: AdminScreen) => {
     setIsMoreOpen(false);
@@ -176,7 +177,7 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
       {isMoreOpen && (
         <div className="fixed inset-x-0 bottom-16 bg-[#0A0A0A]/95 backdrop-blur-2xl border-t border-brand-gold/25 rounded-t-3xl p-6 shadow-[0_-20px_70px_rgba(10,10,10,0.85)] z-50 lg:hidden animate-slide-up-fade space-y-4">
           <div className="flex items-center justify-between border-b border-brand-gold/15 pb-3">
-            <span className="font-bebas text-xl text-brand-text uppercase tracking-wider">
+            <span className="font-bebas text-xl text-brand-gold/80 uppercase tracking-wider">
               Menu & Pilotes Avancés
             </span>
             <button
@@ -202,7 +203,7 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
                   className={`flex items-center gap-3 p-4 rounded-2xl border transition-all duration-200 active:scale-95 cursor-pointer ${
                     isActive
                       ? 'bg-brand-gold text-[#0A0A0A] border-brand-gold font-bold shadow-[0_4px_15px_rgba(184,149,42,0.25)]'
-                      : 'bg-brand-bg-alt text-gray-300 border-brand-gold/15 hover:border-brand-gold/40 hover:text-white'
+                      : 'bg-brand-bg-alt text-brand-text border-brand-gold/15 hover:border-brand-gold/40 hover:text-brand-gold'
                   }`}
                 >
                   <div className="relative flex-shrink-0">
@@ -258,14 +259,14 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
             type="button"
             aria-label="Ouvrir le menu avancé"
             className={`flex flex-col items-center justify-center py-2 px-1 cursor-pointer transition-all duration-200 ${
-              isMoreOpen ? 'text-brand-gold scale-105' : 'text-gray-400 hover:text-gray-200'
+              isMoreOpen || isInMoreSection ? 'text-brand-gold scale-105' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
             <div className={`relative transition-transform duration-200 ${isMoreOpen ? 'scale-110 rotate-90' : ''}`}>
               <MoreHorizontal size={20} />
             </div>
             <span className="text-[10px] mt-1 font-medium tracking-wide">Menu</span>
-            {isMoreOpen && (
+            {(isMoreOpen || isInMoreSection) && (
               <div className="w-1.5 h-1.5 bg-brand-gold rounded-full mt-0.5 animate-scale-in shadow-[0_0_8px_rgba(184,149,42,0.8)]" />
             )}
           </button>

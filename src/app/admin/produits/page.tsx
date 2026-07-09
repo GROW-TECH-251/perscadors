@@ -311,7 +311,7 @@ export default function AdminProductsPage() {
                 {/* Product Info */}
                 <div className="p-5 space-y-4 bg-brand-bg-alt relative z-20">
                   <div>
-                    <h3 className="font-bebas text-xl sm:text-2xl text-brand-text uppercase leading-tight truncate break-words max-w-full">
+                    <h3 className="font-bebas text-xl sm:text-2xl text-brand-text uppercase leading-tight line-clamp-2 min-h-0">
                       {product.name}
                     </h3>
                     <p className="text-xs text-brand-text-muted uppercase tracking-widest mt-0.5 truncate">
