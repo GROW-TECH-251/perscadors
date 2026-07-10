@@ -318,7 +318,7 @@ export default function AdminHpbPage() {
                         className={`p-2.5 rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm ${
                           outfit.visible
                             ? 'bg-emerald-500 text-[#0A0A0A] hover:bg-emerald-400'
-                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                            : 'bg-brand-bg text-brand-text-muted border border-brand-gold/20 hover:bg-brand-gold/10 hover:text-brand-text'
                         }`}
                         title={outfit.visible ? 'Masquer le Look' : 'Rendre visible'}
                       >
@@ -527,7 +527,7 @@ export default function AdminHpbPage() {
                     className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all duration-200 active:scale-95 cursor-pointer select-none ${
                       isSelected
                         ? 'bg-brand-gold/15 border-brand-gold text-brand-text shadow-[0_2px_10px_rgba(184,149,42,0.15)]'
-                        : 'bg-brand-bg-alt border-brand-gold/5 text-gray-300 hover:border-brand-gold/30'
+                        : 'bg-brand-bg-alt border-brand-gold/5 text-brand-text hover:border-brand-gold/30'
                     }`}
                   >
                     <div className="relative w-12 h-12 bg-brand-bg rounded-lg overflow-hidden flex-shrink-0 border border-brand-gold/10">

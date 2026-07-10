@@ -287,7 +287,7 @@ export default function AdminProductsPage() {
                       className={`p-2.5 rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm ${
                         product.visible
                           ? 'bg-emerald-500 text-[#0A0A0A] hover:bg-emerald-400'
-                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                          : 'bg-brand-bg text-brand-text-muted border border-brand-gold/20 hover:bg-brand-gold/10 hover:text-brand-text'
                       }`}
                       title={product.visible ? 'Masquer le produit' : 'Rendre visible'}
                       aria-label="Bascule visibilité"
@@ -346,7 +346,7 @@ export default function AdminProductsPage() {
                           </button>
                           <button
                             onClick={() => setEditingPriceId(null)}
-                            className="p-1.5 bg-gray-800 text-gray-400 rounded hover:bg-gray-700 hover:text-white transition-colors cursor-pointer"
+                            className="p-1.5 bg-brand-bg text-brand-text-muted border border-brand-gold/20 rounded hover:bg-brand-gold/10 hover:text-brand-text transition-colors cursor-pointer"
                             type="button"
                             aria-label="Annuler prix"
                           >

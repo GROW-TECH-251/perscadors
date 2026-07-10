@@ -407,7 +407,7 @@ export default function AdminMediaPage() {
                           className={`p-2.5 rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm ${
                             asset.active
                               ? 'bg-emerald-500 text-[#0A0A0A] hover:bg-emerald-400'
-                              : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                              : 'bg-brand-bg text-brand-text-muted border border-brand-gold/20 hover:bg-brand-gold/10 hover:text-brand-text'
                           }`}
                           title={asset.active ? 'Désactiver du site' : 'Mettre en ligne'}
                         >

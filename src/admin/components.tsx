@@ -106,7 +106,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer ${
                 isActive
                   ? 'bg-brand-gold text-[#0A0A0A] shadow-[0_12px_24px_rgba(184,149,42,0.22)]'
-                  : 'text-gray-300 hover:text-white hover:bg-white/5 hover:translate-x-1'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -157,6 +157,16 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
   // Les autres items vont dans le tiroir "Plus"
   const moreItems = ADMIN_NAV_ITEMS.slice(4);
   const isInMoreSection = moreItems.some(item => item.id === currentScreen);
+
+    const getActiveMoreLabel = (): string => {
+    const activeItem = moreItems.find(item => item.id === currentScreen);
+    return activeItem ? activeItem.label : 'Menu';
+  };
+
+  const getActiveMoreIcon = (): React.ReactNode => {
+    const activeItem = moreItems.find(item => item.id === currentScreen);
+    return activeItem ? getIcon(activeItem.icon) : <MoreHorizontal size={20} />;
+  };
 
   const handleTabClick = (screen: AdminScreen) => {
     setIsMoreOpen(false);
@@ -253,19 +263,21 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
             );
           })}
 
-          {/* Bouton "Plus / Menu" */}
+          {/* Bouton "Plus / Menu" — affiche section active si secondaire */}
           <button
             onClick={() => setIsMoreOpen(!isMoreOpen)}
             type="button"
-            aria-label="Ouvrir le menu avancé"
+            aria-label={isInMoreSection ? `Section active: ${getActiveMoreLabel()}` : "Ouvrir le menu avancé"}
             className={`flex flex-col items-center justify-center py-2 px-1 cursor-pointer transition-all duration-200 ${
               isMoreOpen || isInMoreSection ? 'text-brand-gold scale-105' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
             <div className={`relative transition-transform duration-200 ${isMoreOpen ? 'scale-110 rotate-90' : ''}`}>
-              <MoreHorizontal size={20} />
+              {isInMoreSection && !isMoreOpen ? getActiveMoreIcon() : <MoreHorizontal size={20} />}
             </div>
-            <span className="text-[10px] mt-1 font-medium tracking-wide">Menu</span>
+            <span className="text-[10px] mt-1 font-medium tracking-wide truncate max-w-full">
+              {isInMoreSection && !isMoreOpen ? getActiveMoreLabel() : 'Menu'}
+            </span>
             {(isMoreOpen || isInMoreSection) && (
               <div className="w-1.5 h-1.5 bg-brand-gold rounded-full mt-0.5 animate-scale-in shadow-[0_0_8px_rgba(184,149,42,0.8)]" />
             )}
