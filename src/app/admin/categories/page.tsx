@@ -407,7 +407,7 @@ export default function AdminCategoriesPage() {
                 )}
 
                 {!category.visible && (
-                  <div className="absolute top-2 right-2 px-2 py-1 bg-gray-800 text-white text-xs rounded">
+                  <div className="absolute top-2 right-2 px-2 py-1 bg-gray-900/90 text-gray-400 text-xs rounded">
                     Caché
                   </div>
                 )}

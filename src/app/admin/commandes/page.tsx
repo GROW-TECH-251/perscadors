@@ -600,7 +600,7 @@ export default function AdminOrdersPage() {
                 <button
                   type="button"
                   onClick={() => handleDispatchToDriver(selectedOrder)}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-50 text-white text-xs font-bebas uppercase tracking-wider rounded-xl shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bebas uppercase tracking-wider rounded-xl shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <Send size={14} /> Expédier via WhatsApp
                 </button>
