@@ -61,6 +61,7 @@ const nextConfig: NextConfig = {
   // pour que les routes admin soient correctement routées par Vercel Edge
   skipProxyUrlNormalize: true,
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: remoteHostnames.flatMap((hostname) => ([
       {
         protocol: 'https' as const,
@@ -84,6 +85,19 @@ const nextConfig: NextConfig = {
           {
             key: 'Cache-Control',
             value: 'public, max-age=31536000, must-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/:path*.mp4',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, must-revalidate',
+          },
+          {
+            key: 'Accept-Ranges',
+            value: 'bytes',
           },
         ],
       },

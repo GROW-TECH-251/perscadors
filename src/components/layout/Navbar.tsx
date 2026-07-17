@@ -103,7 +103,6 @@ export const Navbar: React.FC = () => {
             sizes="128px"
             priority
             className="object-contain"
-            unoptimized
           />
         </Link>
 

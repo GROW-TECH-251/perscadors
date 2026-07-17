@@ -56,7 +56,6 @@ export function StepRecap({ onNext, onClose }: StepRecapProps) {
                     fill
                     sizes="80px"
                     className="object-cover"
-                    unoptimized
                   />
                 </div>
 

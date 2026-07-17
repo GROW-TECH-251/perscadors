@@ -39,7 +39,6 @@ export const Footer: React.FC = () => {
               fill
               sizes="128px"
               className="object-contain filter brightness-110"
-              unoptimized
             />
           </Link>
           <p className="font-bebas text-2xl tracking-widest text-[#EDEAE3] pt-2">
