@@ -124,11 +124,30 @@ export default function AdminDashboardPage() {
     // 1. Tentative de Partage Natif Mobile (Web Share API) vers l'onglet Statut WhatsApp avec l'image du produit !
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        await navigator.share({
+                // Telecharger l'image du produit pour l'inclure dans le partage
+        let shareData = {
           title: `Best-Seller ${settings.shop_name} : ${product.name}`,
           text: message,
           url: 'https://hpcollection.bj'
-        });
+        };
+
+        // Tenter d'ajouter l'image comme fichier joint (Web Share API Level 2)
+        if (product.image_url && typeof navigator.canShare === 'function') {
+          try {
+            const response = await fetch(product.image_url);
+            const blob = await response.blob();
+            const fileName = product.name.replace(/[^a-z0-9]/gi, '_') + '.jpg';
+            const file = new File([blob], fileName, { type: blob.type });
+            const filesShare = { files: [file] };
+            if (navigator.canShare(filesShare)) {
+              shareData = { ...shareData, ...filesShare };
+            }
+          } catch {
+            // Echec silencieux - partage sans image
+          }
+        }
+
+        await navigator.share(shareData)
         setStoryToast(product.name);
         setTimeout(() => setStoryToast(null), 6000);
         return;
@@ -392,7 +411,7 @@ export default function AdminDashboardPage() {
               <span className="text-xs font-bebas text-brand-gold uppercase tracking-widest flex items-center gap-1.5">
                 <Award size={14} className="text-brand-gold" /> Pilote Best-Sellers
               </span>
-              <h2 className="font-bebas text-2xl tracking-wider text-white uppercase mt-1">
+              <h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase mt-1">
                 Top 3 Produits Populaires
               </h2>
             </div>
@@ -453,7 +472,7 @@ export default function AdminDashboardPage() {
                         #{index + 1}
                       </div>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-bebas text-xl text-brand-text uppercase tracking-wide truncate max-w-full">{product.name}</p>
                       <p className="text-sm font-bold text-brand-gold">{formatCurrency(product.price)}</p>
                       <p className="text-xs text-brand-text-muted mt-0.5">Stock dispo: {product.stock ?? '∞'}</p>
@@ -465,7 +484,7 @@ export default function AdminDashboardPage() {
                     <button
                       type="button"
                       onClick={() => handleShareStory(product)}
-                      className="flex items-center justify-center gap-1.5 py-2 px-3 bg-brand-bg-alt border border-brand-gold/20 hover:border-brand-gold text-white hover:text-brand-gold text-xs font-bebas uppercase tracking-wider rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm"
+                      className="flex items-center justify-center gap-1.5 py-2 px-3 bg-brand-bg-alt border border-brand-gold/20 hover:border-brand-gold text-brand-text hover:text-brand-gold text-xs font-bebas uppercase tracking-wider rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm"
                     >
                       <Share2 size={13} /> Partager Story WA
                     </button>

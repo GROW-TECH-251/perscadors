@@ -71,6 +71,58 @@ function AuthRedirect({ to, message }: { to: string; message: string }) {
   );
 }
 
+function HeaderMobileScrolled() {
+  const router = useRouter();
+  const [scrolled, setScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 30);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleLogoutClick = async () => {
+    await clearAdminSession();
+    router.replace('/admin/login');
+  };
+
+  return (
+    <div className={`lg:hidden sticky top-0 z-30 border-b border-brand-gold/20 px-4 py-3 shadow-lg transition-all duration-500 ${
+      scrolled
+        ? 'bg-[#0A0A0A]/70 backdrop-blur-2xl'
+        : 'bg-[#0A0A0A]/95 backdrop-blur-md'
+    }`}>
+      <div className="flex items-center justify-between">
+        <div className="relative h-12 w-36">
+          <Image
+            src="/images/LOGOSITE/logo.png"
+            alt="HP Collection"
+            fill
+            sizes="144px"
+            className={`object-contain transition-all duration-500 ${
+              scrolled ? 'brightness-125 drop-shadow-[0_0_12px_rgba(184,149,42,0.3)]' : 'brightness-110'
+            }`}
+            priority
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLogoutClick}
+            type="button"
+            aria-label="Se déconnecter"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
+          >
+            <LogOut size={16} />
+            <span className="text-xs font-medium hidden xs:inline">Déconnexion</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminLayout({
   children
 }: {
@@ -128,34 +180,7 @@ export default function AdminLayout({
       />
 
       <main className="lg:ml-64 min-h-screen">
-        <div className="lg:hidden sticky top-0 z-30 bg-[#0A0A0A]/95 backdrop-blur-md border-b border-brand-gold/20 px-4 py-3 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative h-12 w-36">
-                <Image
-                  src="/images/LOGOSITE/logo.png"
-                  alt="HP Collection"
-                  fill
-                  sizes="144px"
-                  className="object-contain brightness-110"
-                  priority
-                />
-              </div>
-              <span className="font-bebas text-lg tracking-wider text-brand-gold/90 whitespace-nowrap">
-                HP Collection
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              type="button"
-              aria-label="Se déconnecter"
-              className="flex items-center gap-1.5 p-2 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
-            >
-              <LogOut size={18} />
-              <span className="text-sm font-medium">Déconnexion</span>
-            </button>
-          </div>
-        </div>
+        <HeaderMobileScrolled />
 
         <div className="p-6 lg:p-8 pb-24 lg:pb-8">
           {children}
