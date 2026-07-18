@@ -183,9 +183,9 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     .single();
 
   if (error) {
-    console.error('Erreur Supabase orders interceptée silencieusement en mémoire:', error);
-    // Interception silencieuse de l'erreur RLS. La commande est déjà en mémoire et dans le localStorage !
-    return { data: newOrder, error: null };
+    console.error('Erreur Supabase orders (données sauvegardées localement):', error.message);
+    // La commande est sauvegardee localement mais PAS dans Supabase (RLS ou connexion)
+    return { data: newOrder, error: error.message };
   }
 
   return { data: data as AdminOrder, error: null };

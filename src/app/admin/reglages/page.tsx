@@ -69,8 +69,7 @@ export default function AdminSettingsPage() {
     try {
       const result = await upsertShopSettings(settings);
       if (result.error) {
-        // Message propre utilisateur, aucune trace de Supabase ou de SQL
-        alert(USER_ERROR_MSG);
+        alert('Erreur Supabase : ' + result.error + '\n\nVérifiez les permissions RLS sur la table shop_settings.');
       } else {
         alert('Réglages enregistrés avec succès !');
       }

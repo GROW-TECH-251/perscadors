@@ -88,6 +88,20 @@ export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
     });
   });
 
+  // 3. Fusion avec les clients du cache localStorage (commandes non encore synchronisees Supabase)
+  if (typeof window !== 'undefined') {
+    try {
+      const cachedCustomers: CustomerSummary[] = JSON.parse(window.localStorage.getItem('__PERSCADORS_CUSTOMERS_CACHE__') || '[]');
+      cachedCustomers.forEach((cached) => {
+        if (!customerMap.has(cached.phone)) {
+          customerMap.set(cached.phone, cached);
+        }
+      });
+    } catch {
+      // Silencieux
+    }
+  }
+
   return Array.from(customerMap.values())
     .map((customer) => {
       const customerMeta = customerMetaMap.get(customer.phone);
