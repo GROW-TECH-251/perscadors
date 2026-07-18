@@ -31,7 +31,7 @@ function createFAQItem(): FAQItem {
   };
 }
 
-const USER_ERROR_MSG = 'Une erreur est survenue lors de l’enregistrement. Contactez votre administrateur.';
+const USER_ERROR_MSG = 'Erreur de sauvegarde. Verifiez la connexion a Supabase et les permissions RLS.';
 
 export default function AdminSettingsPage() {
   const router = useRouter();
