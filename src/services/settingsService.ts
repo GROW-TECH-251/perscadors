@@ -267,12 +267,10 @@ export async function upsertShopSettings(
     .single();
 
   if (error) {
-    // SUPPRESSION TOTALE DE CONSOLE.ERROR (Zéro Issue / Zéro Overlay Console Error dans Next.js Turbopack !)
-    // Interception 100% silencieuse des erreurs RLS et PGRST204.
-    // On retourne le nextSettings avec error: null pour que l'interface confirme le succès et affiche la mise à jour instantanée !
+    console.error('Erreur Supabase upsert shop_settings:', error.message);
     return { 
       data: nextSettings, 
-      error: null 
+      error: error.message
     };
   }
 
