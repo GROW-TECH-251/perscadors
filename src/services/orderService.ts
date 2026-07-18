@@ -4,7 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
-import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse, OrderItem } from '@/admin/types';
+import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse, OrderItem, CustomerSummary } from '@/admin/types';
 
 export interface PublicCheckoutOrderItem {
   name: string;
@@ -157,6 +157,9 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     }
   }
 
+  // Synchronisation immediate du client dans le cache admin
+  await syncCustomerFromOrder(newOrder);
+
   const globalContext = globalThis as unknown as { __PERSCADORS_ORDERS_CACHE__?: AdminOrder[] };
   globalContext.__PERSCADORS_ORDERS_CACHE__ = [newOrder, ...(globalContext.__PERSCADORS_ORDERS_CACHE__ || [])];
 
@@ -186,6 +189,33 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
   }
 
   return { data: data as AdminOrder, error: null };
+}
+
+/** Synchronise le client dans le cache localStorage pour affichage immediat */
+async function syncCustomerFromOrder(order: AdminOrder): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    const key = "__PERSCADORS_CUSTOMERS_CACHE__";
+    const saved: CustomerSummary[] = JSON.parse(window.localStorage.getItem(key) || "[]");
+    const idx = saved.findIndex((c: CustomerSummary) => c.phone === order.client_phone);
+    const summary: CustomerSummary = {
+      phone: order.client_phone,
+      name: order.client_name,
+      area: order.client_area,
+      orderCount: idx >= 0 ? saved[idx].orderCount + 1 : 1,
+      totalSpent: idx >= 0 ? saved[idx].totalSpent + (order.total || 0) : (order.total || 0),
+      lastOrderDate: order.created_at,
+      lastOrderStatus: "EN ATTENTE" as CustomerSummary["lastOrderStatus"],
+      preferredSizes: [],
+      preferredColors: [],
+      segments: [],
+      notes: "",
+      tags: []
+    };
+    if (idx >= 0) { saved[idx] = summary; }
+    else { saved.push(summary); }
+    window.localStorage.setItem(key, JSON.stringify(saved));
+  } catch { /* silencieux */ }
 }
 
 export async function updateOrderStatus(
