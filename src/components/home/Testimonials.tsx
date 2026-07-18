@@ -72,7 +72,6 @@ export const Testimonials: React.FC = () => {
                   alt="Témoignage Poyor Poyor"
                   fill
                   className="object-contain"
-                  unoptimized
                 />
               </div>
             </div>
@@ -94,7 +93,7 @@ export const Testimonials: React.FC = () => {
                   <video
                     src={vid.src}
                     controls
-                    preload="metadata"
+                    preload="none"
                     playsInline
                     className="w-full h-full object-cover"
                   />

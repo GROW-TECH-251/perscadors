@@ -52,6 +52,7 @@ export const Hero: React.FC = () => {
           loop
           muted
           playsInline
+          preload="metadata"
           className="absolute inset-0 w-full h-full object-cover opacity-65"
         >
           <source src={mediaUrl} type="video/mp4" />
@@ -65,7 +66,6 @@ export const Hero: React.FC = () => {
           sizes="100vw"
           className="absolute inset-0 object-cover opacity-65"
           priority
-          unoptimized
         />
       ) : null}
 
