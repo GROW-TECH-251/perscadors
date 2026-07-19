@@ -4,7 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
-import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse, OrderItem, CustomerSummary, OrderCreationResult } from '@/admin/types';
+import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse, OrderItem, OrderCreationResult } from '@/admin/types';
 
 export interface PublicCheckoutOrderItem {
   name: string;
@@ -43,8 +43,15 @@ export function generateOrderNumber(date: Date = new Date()): string {
   return `HP-${datePart}-${randomPart}`;
 }
 
+export function normalizeCustomerPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '').replace(/^00/, '');
+
+  // Perscadors opère au Bénin : un numéro local à huit chiffres devient E.164 sans '+'.
+  return /^\d{8}$/.test(digits) ? `229${digits}` : digits;
+}
+
 export function normalizePhoneForWhatsApp(phone: string): string {
-  return phone.replace(/\D/g, '');
+  return normalizeCustomerPhone(phone);
 }
 
 /**
@@ -280,10 +287,12 @@ export async function fetchOrdersByStatus(status: OrderStatus): Promise<AdminOrd
 
 export async function fetchOrdersByPhone(phone: string): Promise<AdminOrder[]> {
   const allOrders = await fetchAdminOrders();
-  return allOrders.filter((o) => o.client_phone === phone);
+  const normalizedPhone = normalizeCustomerPhone(phone);
+  return allOrders.filter((order) => normalizeCustomerPhone(order.client_phone) === normalizedPhone);
 }
 
 export async function createOrderFromCart(orderData: PublicCheckoutPayload): Promise<OrderCreationResult> {
+  const normalizedOrderData = { ...orderData, client_phone: normalizeCustomerPhone(orderData.client_phone) };
   const idempotencyKey = orderData.idempotency_key || generateIdempotencyKey();
   const history: OrderHistoryEntry[] = [
     {
@@ -299,10 +308,10 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     idempotency_key: idempotencyKey,
     sync_status: 'pending_sync',
     status: 'EN ATTENTE',
-    client_name: orderData.client_name,
-    client_phone: orderData.client_phone,
-    client_area: orderData.client_area,
-    items: orderData.items as unknown as OrderItem[],
+    client_name: normalizedOrderData.client_name,
+    client_phone: normalizedOrderData.client_phone,
+    client_area: normalizedOrderData.client_area,
+    items: normalizedOrderData.items as unknown as OrderItem[],
     history,
     subtotal: orderData.subtotal,
     delivery_fee: orderData.delivery_fee,
@@ -326,8 +335,6 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     }
   }
 
-  // Synchronisation immediate du client dans le cache admin
-  await syncCustomerFromOrder(newOrder);
 
   const globalContext = globalThis as unknown as { __PERSCADORS_ORDERS_CACHE__?: AdminOrder[] };
   const memoryOrders = globalContext.__PERSCADORS_ORDERS_CACHE__ || [];
@@ -350,7 +357,7 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     .from('orders')
     .insert([
       {
-        ...orderData,
+        ...normalizedOrderData,
         idempotency_key: idempotencyKey,
         sync_status: 'synced',
         status: 'EN ATTENTE',
@@ -388,33 +395,6 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     persisted: true,
     error: null
   };
-}
-
-/** Synchronise le client dans le cache localStorage pour affichage immediat */
-async function syncCustomerFromOrder(order: AdminOrder): Promise<void> {
-  if (typeof window === "undefined") return;
-  try {
-    const key = "__PERSCADORS_CUSTOMERS_CACHE__";
-    const saved: CustomerSummary[] = JSON.parse(window.localStorage.getItem(key) || "[]");
-    const idx = saved.findIndex((c: CustomerSummary) => c.phone === order.client_phone);
-    const summary: CustomerSummary = {
-      phone: order.client_phone,
-      name: order.client_name,
-      area: order.client_area,
-      orderCount: idx >= 0 ? saved[idx].orderCount + 1 : 1,
-      totalSpent: idx >= 0 ? saved[idx].totalSpent + (order.total || 0) : (order.total || 0),
-      lastOrderDate: order.created_at,
-      lastOrderStatus: "EN ATTENTE" as CustomerSummary["lastOrderStatus"],
-      preferredSizes: [],
-      preferredColors: [],
-      segments: [],
-      notes: "",
-      tags: []
-    };
-    if (idx >= 0) { saved[idx] = summary; }
-    else { saved.push(summary); }
-    window.localStorage.setItem(key, JSON.stringify(saved));
-  } catch { /* silencieux */ }
 }
 
 export async function updateOrderStatus(

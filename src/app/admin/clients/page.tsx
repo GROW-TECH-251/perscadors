@@ -108,7 +108,12 @@ export default function AdminCustomersPage() {
     }
 
     try {
-      await deleteCustomer(phone);
+      const result = await deleteCustomer(phone);
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
+
       setCustomers((current) => current.filter((c) => c.phone !== phone));
       if (selectedCustomer?.phone === phone) {
         setDetailsOpen(false);
