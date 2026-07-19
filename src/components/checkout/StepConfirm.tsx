@@ -5,13 +5,13 @@
 
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, MessageCircle, ShieldCheck, Truck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
-import { isSupabaseConfigured } from '@/lib/supabase';
 import {
   buildWhatsAppOrderMessage,
   createOrderFromCart,
+  generateIdempotencyKey,
   generateOrderNumber,
   normalizePhoneForWhatsApp,
   type PublicCheckoutPayload,
@@ -30,6 +30,11 @@ interface StepConfirmProps {
 export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfirmProps) {
   const { cartItems, cartTotal, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Verrou synchrone : React met l'état à jour de façon asynchrone, ce ref bloque
+  // donc un double clic avant le prochain rendu.
+  const submissionLockRef = useRef(false);
+  // Une tentative et ses retries conservent la même référence et la même clé d'idempotence.
+  const pendingOrderRef = useRef<PublicCheckoutPayload | null>(null);
 
   const orderPreview = useMemo(() => {
     return cartItems.map((item) => ({
@@ -43,17 +48,24 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
   }, [cartItems]);
 
   const handleConfirm = async () => {
+    if (isSubmitting || submissionLockRef.current) {
+      return;
+    }
+
     if (cartItems.length === 0) {
       onError('Le panier est vide, impossible de confirmer la commande.');
       return;
     }
 
+    submissionLockRef.current = true;
     setIsSubmitting(true);
     onError('');
 
-    const orderNumber = generateOrderNumber();
-    const orderPayload: PublicCheckoutPayload = {
-      order_number: orderNumber,
+    // Le payload est figé au premier clic. En cas de retry, la référence métier et
+    // la clé technique restent identiques, ce qui rend la création idempotente.
+    const orderPayload = pendingOrderRef.current || {
+      order_number: generateOrderNumber(),
+      idempotency_key: generateIdempotencyKey(),
       client_name: formData.client_name,
       client_phone: normalizePhoneForWhatsApp(formData.client_phone),
       client_area: formData.client_area,
@@ -62,56 +74,54 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
       delivery_fee: 0,
       total: cartTotal,
     };
+    pendingOrderRef.current = orderPayload;
 
-    try {
-      // 1. OUVERTURE SYNCHRONE DU POPUP (Contournement absolu du bloqueur iOS Safari)
-      // Si on attend l'exécution de Supabase avant window.open, WebKit révoque le jeton d'activation !
-      let targetWindow: Window | null = null;
-      if (typeof window !== 'undefined') {
-        try {
-          targetWindow = window.open('', '_blank');
-        } catch {
-          // Ignorer si bloqué en amont
-        }
+    // Le popup est ouvert dans l'interaction utilisateur, avant toute opération async.
+    // C'est indispensable pour Safari iOS et les bloqueurs de popup.
+    let targetWindow: Window | null = null;
+    if (typeof window !== 'undefined') {
+      try {
+        targetWindow = window.open('', '_blank');
+      } catch {
+        // Le repli par location.href est appliqué plus bas.
       }
-
-      // 2. Enregistrement asynchrone Supabase (avec résilience totale)
-      if (isSupabaseConfigured) {
-        try {
-          await createOrderFromCart(orderPayload);
-        } catch (err: unknown) {
-          console.error('Erreur non bloquante Supabase orders:', err);
-          // On ne bloque JAMAIS le client, l'envoi WhatsApp reste la priorité absolue de Vioutou !
-        }
-      }
-
-      // 3. Formatage du message WhatsApp
-      const message = buildWhatsAppOrderMessage(orderPayload);
-      const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/${WHATSAPP_DIGITS}?text=${encodedMessage}`;
-
-      // 4. Redirection propre et instantanée sur l'onglet déjà ouvert ou via location.href
-      if (targetWindow) {
-        try {
-          targetWindow.location.href = whatsappUrl;
-          targetWindow.focus();
-        } catch {
-          if (typeof window !== 'undefined') {
-            window.location.href = whatsappUrl;
-          }
-        }
-      } else if (typeof window !== 'undefined') {
-        window.location.href = whatsappUrl; // Repli ultime 100% infaillible sur Safari iOS
-      }
-
-      clearCart();
-      onSuccess('Commande confirmée et transmise sur WhatsApp avec succès !', orderNumber);
-    } catch (error: unknown) {
-      console.error('Erreur confirmation checkout:', error);
-      onError('Une erreur est survenue pendant la confirmation de la commande.');
-    } finally {
-      setIsSubmitting(false);
     }
+
+    let wasPersisted = false;
+    try {
+      const result = await createOrderFromCart(orderPayload);
+      wasPersisted = result.persisted && result.syncStatus === 'synced';
+    } catch (error: unknown) {
+      // Le service journalise le détail technique. WhatsApp reste le canal de finalisation.
+      console.error('Erreur inattendue lors de la préparation de commande:', error);
+    }
+
+    // L'envoi WhatsApp reste disponible même si la persistance serveur est indisponible.
+    const message = buildWhatsAppOrderMessage(orderPayload);
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${WHATSAPP_DIGITS}?text=${encodedMessage}`;
+
+    if (targetWindow) {
+      try {
+        targetWindow.location.href = whatsappUrl;
+        targetWindow.focus();
+      } catch {
+        if (typeof window !== 'undefined') {
+          window.location.href = whatsappUrl;
+        }
+      }
+    } else if (typeof window !== 'undefined') {
+      window.location.href = whatsappUrl;
+    }
+
+    clearCart();
+    onSuccess(
+      wasPersisted
+        ? 'Commande enregistrée et transmise sur WhatsApp avec succès !'
+        : 'Votre demande est prête et a été transmise sur WhatsApp. Veuillez envoyer le message pour finaliser votre commande.',
+      orderPayload.order_number
+    );
+    setIsSubmitting(false);
   };
 
   return (

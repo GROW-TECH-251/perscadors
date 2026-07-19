@@ -72,7 +72,6 @@ export const Testimonials: React.FC = () => {
                   alt="Témoignage Poyor Poyor"
                   fill
                   className="object-contain"
-                  unoptimized
                 />
               </div>
             </div>

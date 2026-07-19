@@ -61,6 +61,7 @@ const nextConfig: NextConfig = {
   // pour que les routes admin soient correctement routées par Vercel Edge
   skipProxyUrlNormalize: true,
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: remoteHostnames.flatMap((hostname) => ([
       {
         protocol: 'https' as const,

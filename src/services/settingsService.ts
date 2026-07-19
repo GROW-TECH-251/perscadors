@@ -7,6 +7,7 @@ import { requireSupabase, supabase } from '@/lib/supabase';
 import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData, FAQItem } from '@/admin/types';
 
 const SETTINGS_ROW_ID = 1;
+const SETTINGS_CACHE_KEY = '__PERSCADORS_SETTINGS_PERSISTENCE__';
 
 const DEFAULT_DELIVERY_ZONES: DeliveryZone[] = [
   { id: 'cotonou', name: 'Cotonou', fee: 1000, freeThreshold: 50000 },
@@ -185,55 +186,61 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
   };
 }
 
-export async function fetchShopSettings(): Promise<ShopSettings | null> {
+function getMemorySettings(): ShopSettings | null {
   const globalContext = globalThis as unknown as { __PERSCADORS_SETTINGS_CACHE__?: ShopSettings };
+  return globalContext.__PERSCADORS_SETTINGS_CACHE__ || null;
+}
 
-  // 1. Priorité absolue au cache en mémoire (mis à jour dans la même session)
-  if (globalContext.__PERSCADORS_SETTINGS_CACHE__) {
-    return globalContext.__PERSCADORS_SETTINGS_CACHE__;
-  }
+function setSettingsFallback(settings: ShopSettings): void {
+  const globalContext = globalThis as unknown as { __PERSCADORS_SETTINGS_CACHE__?: ShopSettings };
+  globalContext.__PERSCADORS_SETTINGS_CACHE__ = settings;
 
-  // 2. Priorité secondaire au localStorage (partagé entre les onglets admin et vitrine publique !)
   if (typeof window !== 'undefined') {
     try {
-      const saved = window.localStorage.getItem('__PERSCADORS_SETTINGS_PERSISTENCE__');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return normalizeShopSettings(parsed as Partial<ShopSettings>);
-      }
+      window.localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
     } catch {
-      // Ignorer silencieusement
+      // Le cache est un fallback : une erreur de stockage ne bloque pas l'interface.
     }
   }
+}
 
-  if (!supabase) {
-    return getDefaultShopSettings();
+function getLocalSettingsFallback(): ShopSettings | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const saved = window.localStorage.getItem(SETTINGS_CACHE_KEY);
+    return saved ? normalizeShopSettings(JSON.parse(saved) as Partial<ShopSettings>) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchShopSettings(): Promise<ShopSettings | null> {
+  // Lorsqu'il est disponible, Supabase est la référence partagée : aucun cache local
+  // ne doit masquer une modification effectuée depuis un autre appareil.
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('shop_settings')
+      .select('*')
+      .eq('id', SETTINGS_ROW_ID)
+      .single();
+
+    if (!error && data) {
+      const settings = normalizeShopSettings(data as Partial<ShopSettings>);
+      setSettingsFallback(settings);
+      return settings;
+    }
+
+    console.error('Erreur chargement réglages Supabase:', error);
   }
 
-  const { data, error } = await supabase
-    .from('shop_settings')
-    .select('*')
-    .eq('id', SETTINGS_ROW_ID)
-    .single();
-
-  if (error || !data) {
-    return getDefaultShopSettings();
-  }
-
-  return normalizeShopSettings(data as Partial<ShopSettings>);
+  // Hors ligne ou en cas d'échec temporaire seulement : session, puis cache navigateur.
+  return getMemorySettings() || getLocalSettingsFallback() || getDefaultShopSettings();
 }
 
 export async function upsertShopSettings(
   settings: Partial<ShopSettings>
 ): Promise<ApiResponse<ShopSettings>> {
-  if (!supabase) {
-    return {
-      data: null,
-      error: 'Supabase non configuré'
-    };
-  }
-
-  const db = requireSupabase();
   const existingSettings = await fetchShopSettings();
   const nextSettings = normalizeShopSettings({
     ...existingSettings,
@@ -241,40 +248,33 @@ export async function upsertShopSettings(
     updated_at: getCurrentIsoDate()
   });
 
-  // 1. SYNCHRONISATION IMMÉDIATE EN MÉMOIRE
-  const globalContext = globalThis as unknown as { __PERSCADORS_SETTINGS_CACHE__?: ShopSettings };
-  globalContext.__PERSCADORS_SETTINGS_CACHE__ = nextSettings;
-
-  // 2. SYNCHRONISATION DANS LE LOCALSTORAGE DES NAVIGATEURS (Esquive du cache Next.js et de l'échec Supabase)
-  // Garantit à 100% que la vitrine publique affiche instantanément les nouvelles modifications de l'admin !
-  if (typeof window !== 'undefined') {
-    try {
-      window.localStorage.setItem('__PERSCADORS_SETTINGS_PERSISTENCE__', JSON.stringify(nextSettings));
-    } catch {
-      // Ignorer silencieusement si localStorage est indisponible
-    }
+  if (!supabase) {
+    setSettingsFallback(nextSettings);
+    return {
+      data: nextSettings,
+      error: 'Réglages conservés sur cet appareil. La synchronisation sera à réessayer lorsque la connexion sera disponible.'
+    };
   }
 
-  const payload = {
-    id: SETTINGS_ROW_ID,
-    ...nextSettings
-  };
-
-  const { data, error } = await db
+  const { data, error } = await requireSupabase()
     .from('shop_settings')
-    .upsert(payload)
+    .upsert({ id: SETTINGS_ROW_ID, ...nextSettings })
     .select()
     .single();
 
   if (error) {
-    console.error('Erreur Supabase upsert shop_settings:', error.message);
-    return { 
-      data: nextSettings, 
-      error: error.message
+    // Les valeurs restent disponibles localement, mais le commerçant ne voit jamais le détail technique.
+    console.error('Erreur sauvegarde réglages Supabase:', error);
+    setSettingsFallback(nextSettings);
+    return {
+      data: nextSettings,
+      error: 'Réglages conservés sur cet appareil. La synchronisation avec la boutique est à réessayer.'
     };
   }
 
-  return { data: normalizeShopSettings(data as Partial<ShopSettings>), error: null };
+  const persistedSettings = normalizeShopSettings(data as Partial<ShopSettings>);
+  setSettingsFallback(persistedSettings);
+  return { data: persistedSettings, error: null };
 }
 
 export async function updateWhatsAppPhone(phone: string): Promise<ApiResponse<ShopSettings>> {
