@@ -56,13 +56,12 @@ export function StepRecap({ onNext, onClose }: StepRecapProps) {
                     fill
                     sizes="80px"
                     className="object-cover"
-                    unoptimized
                   />
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-bebas text-lg tracking-wide text-brand-text uppercase truncate">
                         {item.product.name}
                       </p>
@@ -73,7 +72,7 @@ export function StepRecap({ onNext, onClose }: StepRecapProps) {
                     <button
                       type="button"
                       onClick={() => removeFromCart(item.product.id, item.selectedSize, item.selectedColor)}
-                      className="p-2 rounded-full hover:bg-red-50 text-brand-text-muted hover:text-red-500 transition-colors"
+                      className="relative z-10 p-2 rounded-full hover:bg-red-50 text-brand-text-muted hover:text-red-500 transition-colors"
                       aria-label="Supprimer l'article"
                     >
                       <Trash2 size={16} />
@@ -85,7 +84,7 @@ export function StepRecap({ onNext, onClose }: StepRecapProps) {
                       <button
                         type="button"
                         onClick={() => updateQuantity(item.product.id, item.selectedSize, item.selectedColor, item.quantity - 1)}
-                        className="px-3 py-2 hover:bg-brand-gold/10 transition-colors"
+                        className="px-2.5 py-2 hover:bg-brand-gold/10 transition-colors"
                         aria-label="Diminuer"
                       >
                         <Minus size={14} className="text-brand-text" />
@@ -96,7 +95,7 @@ export function StepRecap({ onNext, onClose }: StepRecapProps) {
                       <button
                         type="button"
                         onClick={() => updateQuantity(item.product.id, item.selectedSize, item.selectedColor, item.quantity + 1)}
-                        className="px-3 py-2 hover:bg-brand-gold/10 transition-colors"
+                        className="px-2.5 py-2 hover:bg-brand-gold/10 transition-colors"
                         aria-label="Augmenter"
                       >
                         <Plus size={14} className="text-brand-text" />
