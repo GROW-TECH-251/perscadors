@@ -28,6 +28,14 @@ export interface PublicCheckoutPayload {
   total: number;
 }
 
+export interface PendingOrdersSyncResult {
+  syncedCount: number;
+  pendingCount: number;
+  error: string | null;
+}
+
+const ORDERS_CACHE_KEY = '__PERSCADORS_ORDERS_CACHE__';
+
 export function generateOrderNumber(date: Date = new Date()): string {
   const datePart = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
   const randomPart = Math.floor(1000 + Math.random() * 9000);
@@ -50,6 +58,59 @@ export function generateIdempotencyKey(): string {
 
   // Repli uniquement pour les environnements anciens ne fournissant pas Web Crypto.
   return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function isSameOrder(left: Pick<AdminOrder, 'order_number' | 'idempotency_key'>, right: Pick<AdminOrder, 'order_number' | 'idempotency_key'>): boolean {
+  return Boolean(
+    (left.idempotency_key && right.idempotency_key && left.idempotency_key === right.idempotency_key)
+    || left.order_number === right.order_number
+  );
+}
+
+function readLocalOrders(): AdminOrder[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(ORDERS_CACHE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed as AdminOrder[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalOrders(orders: AdminOrder[]): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(ORDERS_CACHE_KEY, JSON.stringify(orders));
+  } catch {
+    // Le cache est un secours ; l'erreur ne doit pas casser le tunnel de commande.
+  }
+}
+
+function removeCachedOrder(order: Pick<AdminOrder, 'order_number' | 'idempotency_key'>): void {
+  writeLocalOrders(readLocalOrders().filter((cachedOrder) => !isSameOrder(cachedOrder, order)));
+
+  const globalContext = globalThis as unknown as { __PERSCADORS_ORDERS_CACHE__?: AdminOrder[] };
+  if (globalContext.__PERSCADORS_ORDERS_CACHE__) {
+    globalContext.__PERSCADORS_ORDERS_CACHE__ = globalContext.__PERSCADORS_ORDERS_CACHE__
+      .filter((cachedOrder) => !isSameOrder(cachedOrder, order));
+  }
+}
+
+function toDatabaseOrder(order: AdminOrder): Omit<AdminOrder, 'id'> {
+  const databaseOrder = Object.fromEntries(
+    Object.entries(order).filter(([key]) => key !== 'id')
+  ) as Omit<AdminOrder, 'id'>;
+
+  return {
+    ...databaseOrder,
+    sync_status: 'synced'
+  };
 }
 
 export function buildWhatsAppOrderMessage(payload: PublicCheckoutPayload): string {
@@ -75,15 +136,7 @@ export function buildWhatsAppOrderMessage(payload: PublicCheckoutPayload): strin
 }
 
 export async function fetchAdminOrders(): Promise<AdminOrder[]> {
-  let localOrders: AdminOrder[] = [];
-
-  if (typeof window !== 'undefined') {
-    try {
-      localOrders = JSON.parse(window.localStorage.getItem('__PERSCADORS_ORDERS_CACHE__') || '[]');
-    } catch {
-      // Ignorer silencieusement
-    }
-  }
+  let localOrders = readLocalOrders();
 
   const globalContext = globalThis as unknown as { __PERSCADORS_ORDERS_CACHE__?: AdminOrder[] };
   if (globalContext.__PERSCADORS_ORDERS_CACHE__) {
@@ -108,10 +161,105 @@ export async function fetchAdminOrders(): Promise<AdminOrder[]> {
 
   // Fusion intelligente pour inclure instantanément les commandes du localStorage non encore persistées en base !
   const dbOrders = (data || []) as AdminOrder[];
-  const dbOrderNumbers = new Set(dbOrders.map((o) => o.order_number));
-  const missingLocalOrders = localOrders.filter((o) => !dbOrderNumbers.has(o.order_number));
+  const missingLocalOrders = localOrders.filter((localOrder) => (
+    !dbOrders.some((databaseOrder) => isSameOrder(localOrder, databaseOrder))
+  ));
 
   return [...missingLocalOrders, ...dbOrders];
+}
+
+export function getPendingSyncOrders(orders: AdminOrder[] = readLocalOrders()): AdminOrder[] {
+  return orders.filter((order) => order.sync_status !== 'synced');
+}
+
+/**
+ * Vide la file locale uniquement après confirmation qu'une commande existe dans Supabase.
+ * Une même clé d'idempotence est conservée à chaque retry.
+ */
+export async function syncPendingOrders(): Promise<PendingOrdersSyncResult> {
+  const pendingOrders = getPendingSyncOrders();
+
+  if (pendingOrders.length === 0) {
+    return { syncedCount: 0, pendingCount: 0, error: null };
+  }
+
+  if (!supabase) {
+    return {
+      syncedCount: 0,
+      pendingCount: pendingOrders.length,
+      error: 'La synchronisation est indisponible pour le moment.'
+    };
+  }
+
+  const db = requireSupabase();
+  let syncedCount = 0;
+  let hasFailure = false;
+
+  for (const pendingOrder of pendingOrders) {
+    const orderToSync: AdminOrder = {
+      ...pendingOrder,
+      idempotency_key: pendingOrder.idempotency_key || generateIdempotencyKey(),
+      sync_status: 'pending_sync'
+    };
+
+    // Sauvegarder immédiatement une clé manquante afin que tous les retries suivants
+    // utilisent exactement le même identifiant technique.
+    writeLocalOrders(readLocalOrders().map((cachedOrder) => (
+      isSameOrder(cachedOrder, pendingOrder) ? orderToSync : cachedOrder
+    )));
+
+    try {
+      let existingOrder: AdminOrder | null = null;
+      const byIdempotencyKey = await db
+        .from('orders')
+        .select('*')
+        .eq('idempotency_key', orderToSync.idempotency_key)
+        .maybeSingle();
+
+      if (byIdempotencyKey.error && byIdempotencyKey.error.code !== 'PGRST116') {
+        throw byIdempotencyKey.error;
+      }
+      existingOrder = byIdempotencyKey.data as AdminOrder | null;
+
+      // Permet de nettoyer un cache issu d'une version antérieure qui ne possédait pas de clé.
+      if (!existingOrder) {
+        const byOrderNumber = await db
+          .from('orders')
+          .select('*')
+          .eq('order_number', orderToSync.order_number)
+          .maybeSingle();
+
+        if (byOrderNumber.error && byOrderNumber.error.code !== 'PGRST116') {
+          throw byOrderNumber.error;
+        }
+        existingOrder = byOrderNumber.data as AdminOrder | null;
+      }
+
+      if (!existingOrder) {
+        const { error } = await db
+          .from('orders')
+          .insert([toDatabaseOrder(orderToSync)]);
+
+        if (error) {
+          throw error;
+        }
+      }
+
+      removeCachedOrder(orderToSync);
+      syncedCount += 1;
+    } catch (error: unknown) {
+      hasFailure = true;
+      // Le détail est disponible pour le développeur ; l'administration reçoit un message générique.
+      console.error(`Erreur de synchronisation de la commande ${orderToSync.order_number}:`, error);
+    }
+  }
+
+  const remainingPendingOrders = getPendingSyncOrders();
+  return {
+    syncedCount,
+    pendingCount: remainingPendingOrders.length,
+    error: hasFailure ? 'Certaines commandes restent en attente de synchronisation.' : null
+  };
 }
 
 export async function fetchOrderById(id: number | string): Promise<AdminOrder | null> {
@@ -230,6 +378,9 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     idempotency_key: idempotencyKey,
     sync_status: 'synced' as const
   };
+
+  // Supabase a confirmé la persistance : la copie de secours ne doit plus rester dans la file.
+  removeCachedOrder(persistedOrder);
 
   return {
     data: persistedOrder,
