@@ -4,7 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
-import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse, OrderItem, CustomerSummary } from '@/admin/types';
+import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse, OrderItem, CustomerSummary, OrderCreationResult } from '@/admin/types';
 
 export interface PublicCheckoutOrderItem {
   name: string;
@@ -17,6 +17,8 @@ export interface PublicCheckoutOrderItem {
 
 export interface PublicCheckoutPayload {
   order_number: string;
+  /** Clé stable conservée par la file locale afin qu'un retry ne crée pas de doublon. */
+  idempotency_key?: string;
   client_name: string;
   client_phone: string;
   client_area: string;
@@ -35,6 +37,19 @@ export function generateOrderNumber(date: Date = new Date()): string {
 
 export function normalizePhoneForWhatsApp(phone: string): string {
   return phone.replace(/\D/g, '');
+}
+
+/**
+ * Génère une clé de déduplication indépendante de la référence visible.
+ * La même clé doit être réutilisée par toute tentative de synchronisation d'une même commande.
+ */
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  // Repli uniquement pour les environnements anciens ne fournissant pas Web Crypto.
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function buildWhatsAppOrderMessage(payload: PublicCheckoutPayload): string {
@@ -120,7 +135,8 @@ export async function fetchOrdersByPhone(phone: string): Promise<AdminOrder[]> {
   return allOrders.filter((o) => o.client_phone === phone);
 }
 
-export async function createOrderFromCart(orderData: PublicCheckoutPayload): Promise<ApiResponse<AdminOrder>> {
+export async function createOrderFromCart(orderData: PublicCheckoutPayload): Promise<OrderCreationResult> {
+  const idempotencyKey = orderData.idempotency_key || generateIdempotencyKey();
   const history: OrderHistoryEntry[] = [
     {
       status: 'EN ATTENTE',
@@ -130,8 +146,10 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
   ];
 
   const newOrder: AdminOrder = {
-    id: Date.now(), // ID temporaire robuste en mémoire
+    id: Date.now(), // ID temporaire local ; l'ID Supabase reste la référence persistée.
     order_number: orderData.order_number,
+    idempotency_key: idempotencyKey,
+    sync_status: 'pending_sync',
     status: 'EN ATTENTE',
     client_name: orderData.client_name,
     client_phone: orderData.client_phone,
@@ -150,8 +168,11 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
   // Garantit à 100% que la commande et le client apparaissent instantanément dans l'admin !
   if (typeof window !== 'undefined') {
     try {
-      const savedOrders = JSON.parse(window.localStorage.getItem('__PERSCADORS_ORDERS_CACHE__') || '[]');
-      window.localStorage.setItem('__PERSCADORS_ORDERS_CACHE__', JSON.stringify([newOrder, ...savedOrders]));
+      const savedOrders = JSON.parse(window.localStorage.getItem('__PERSCADORS_ORDERS_CACHE__') || '[]') as AdminOrder[];
+      const withoutSameCommand = savedOrders.filter((order) => (
+        order.idempotency_key !== idempotencyKey && order.order_number !== newOrder.order_number
+      ));
+      window.localStorage.setItem('__PERSCADORS_ORDERS_CACHE__', JSON.stringify([newOrder, ...withoutSameCommand]));
     } catch {
       // Ignorer silencieusement
     }
@@ -161,10 +182,19 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
   await syncCustomerFromOrder(newOrder);
 
   const globalContext = globalThis as unknown as { __PERSCADORS_ORDERS_CACHE__?: AdminOrder[] };
-  globalContext.__PERSCADORS_ORDERS_CACHE__ = [newOrder, ...(globalContext.__PERSCADORS_ORDERS_CACHE__ || [])];
+  const memoryOrders = globalContext.__PERSCADORS_ORDERS_CACHE__ || [];
+  globalContext.__PERSCADORS_ORDERS_CACHE__ = [
+    newOrder,
+    ...memoryOrders.filter((order) => order.idempotency_key !== idempotencyKey && order.order_number !== newOrder.order_number)
+  ];
 
   if (!supabase) {
-    return { data: newOrder, error: null };
+    return {
+      data: newOrder,
+      syncStatus: 'pending_sync',
+      persisted: false,
+      error: 'La commande est en attente de synchronisation.'
+    };
   }
 
   const db = requireSupabase();
@@ -173,6 +203,8 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     .insert([
       {
         ...orderData,
+        idempotency_key: idempotencyKey,
+        sync_status: 'synced',
         status: 'EN ATTENTE',
         history,
         created_at: new Date().toISOString(),
@@ -183,12 +215,28 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     .single();
 
   if (error) {
-    console.error('Erreur Supabase orders interceptée silencieusement en mémoire:', error);
-    // Interception silencieuse de l'erreur RLS. La commande est déjà en mémoire et dans le localStorage !
-    return { data: newOrder, error: null };
+    console.error('Erreur de persistance de commande Supabase:', error);
+    // La commande locale reste dans la file pending_sync ; le détail technique ne sort pas du service.
+    return {
+      data: newOrder,
+      syncStatus: 'pending_sync',
+      persisted: false,
+      error: 'La commande est en attente de synchronisation.'
+    };
   }
 
-  return { data: data as AdminOrder, error: null };
+  const persistedOrder = {
+    ...(data as AdminOrder),
+    idempotency_key: idempotencyKey,
+    sync_status: 'synced' as const
+  };
+
+  return {
+    data: persistedOrder,
+    syncStatus: 'synced',
+    persisted: true,
+    error: null
+  };
 }
 
 /** Synchronise le client dans le cache localStorage pour affichage immediat */

@@ -77,6 +77,12 @@ export type OrderStatus =
   | 'LIVRÉE'
   | 'ANNULÉE';
 
+/**
+ * État de persistance technique d'une commande.
+ * Ne pas confondre avec OrderStatus, qui décrit son avancement commercial.
+ */
+export type OrderSyncStatus = 'synced' | 'pending_sync' | 'sync_failed';
+
 export interface OrderItem {
   name: string;
   price: number;
@@ -95,6 +101,10 @@ export interface OrderHistoryEntry {
 export interface AdminOrder {
   id: number;
   order_number: string;
+  /** Clé technique stable utilisée pour rendre les créations et retries idempotents. */
+  idempotency_key?: string;
+  /** État de persistance ; indépendant du statut commercial de la commande. */
+  sync_status?: OrderSyncStatus;
   public_token?: string;
   status: OrderStatus;
   payment_status?: string;
@@ -242,6 +252,16 @@ export interface AuthResult {
 export interface ApiResponse<T> {
   data: T | null;
   error: string | null;
+}
+
+/**
+ * Résultat métier de la création d'une commande.
+ * `error` reste volontairement générique et peut être affiché dans l'interface ;
+ * les détails Supabase sont réservés aux logs techniques.
+ */
+export interface OrderCreationResult extends ApiResponse<AdminOrder> {
+  syncStatus: OrderSyncStatus;
+  persisted: boolean;
 }
 
 // ============================================
