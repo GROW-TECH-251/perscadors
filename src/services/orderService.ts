@@ -43,7 +43,7 @@ export function normalizePhoneForWhatsApp(phone: string): string {
  * Génère une clé de déduplication indépendante de la référence visible.
  * La même clé doit être réutilisée par toute tentative de synchronisation d'une même commande.
  */
-function generateIdempotencyKey(): string {
+export function generateIdempotencyKey(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
