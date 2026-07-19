@@ -8,8 +8,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea } from '@/admin/components';
-import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo, FileText, Send, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
-import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus, deleteOrder, createOrderFromCart } from '@/services/orderService';
+import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo, FileText, Send, Zap, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus, deleteOrder, createOrderFromCart, syncPendingOrders } from '@/services/orderService';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
 import { exportOrdersToCsv } from '@/utils/exportCsv';
 import type { AdminOrder, OrderStatus, ShopSettings } from '@/admin/types';
@@ -26,6 +26,8 @@ export default function AdminOrdersPage() {
   const [statusNote, setStatusNote] = useState('');
   const [isSavingStatus, setIsSavingStatus] = useState(false);
   const [savingOrderId, setSavingOrderId] = useState<number | null>(null);
+  const [isSyncingPending, setIsSyncingPending] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState('');
 
   // ============================================
   // PRIORITÉ 2 : RECOVERY MATRIX (Rattrapage WhatsApp)
@@ -60,6 +62,29 @@ export default function AdminOrdersPage() {
     };
     init();
   }, [loadOrders]);
+
+  const handlePendingOrdersSync = async () => {
+    setIsSyncingPending(true);
+    setSyncFeedback('');
+
+    try {
+      const result = await syncPendingOrders();
+      await loadOrders();
+
+      if (result.error) {
+        setSyncFeedback(result.error);
+      } else if (result.syncedCount > 0) {
+        setSyncFeedback(`${result.syncedCount} commande${result.syncedCount > 1 ? 's' : ''} synchronisée${result.syncedCount > 1 ? 's' : ''}.`);
+      } else {
+        setSyncFeedback('Aucune commande en attente de synchronisation.');
+      }
+    } catch (error: unknown) {
+      console.error('Erreur de synchronisation des commandes en attente:', error);
+      setSyncFeedback('La synchronisation est indisponible pour le moment.');
+    } finally {
+      setIsSyncingPending(false);
+    }
+  };
 
   // ============================================
   // LEVIER 2 & 4 : GESTION LOGISTIQUE ÉCLAIR (Effet IKEA & Purge Annulation)
@@ -335,6 +360,7 @@ export default function AdminOrdersPage() {
     });
   }, [orders, searchQuery, statusFilter]);
 
+  const pendingSyncCount = orders.filter((order) => order.sync_status !== 'synced').length;
   const orderItemsCount = selectedOrder?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const orderSubtotal = selectedOrder?.subtotal ?? selectedOrder?.items.reduce((sum, item) => sum + item.price * item.quantity, 0) ?? 0;
   const orderDeliveryFee = selectedOrder?.delivery_fee ?? Math.max((selectedOrder?.total || 0) - orderSubtotal, 0);
@@ -369,12 +395,28 @@ export default function AdminOrdersPage() {
             <Zap size={18} className="fill-current animate-pulse" />
             ⚡ Recovery Matrix (Rattrapage WhatsApp)
           </AdminButton>
+          <AdminButton
+            variant="secondary"
+            onClick={handlePendingOrdersSync}
+            loading={isSyncingPending}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw size={16} className={isSyncingPending ? 'animate-spin' : ''} />
+            Réessayer la synchronisation{pendingSyncCount > 0 ? ` (${pendingSyncCount})` : ''}
+          </AdminButton>
           <AdminButton variant="secondary" onClick={() => exportOrdersToCsv(orders)}>
             <Download size={16} />
             Exporter CSV
           </AdminButton>
         </div>
       </div>
+
+      {syncFeedback && (
+        <div className="rounded-xl border border-brand-gold/20 bg-brand-gold/10 px-4 py-3 text-sm text-brand-text flex items-center gap-2">
+          <RefreshCw size={16} className="text-brand-gold" />
+          <p>{syncFeedback}</p>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-4">
         <AdminSearch
@@ -433,6 +475,11 @@ export default function AdminOrdersPage() {
                     <p className="text-xs text-brand-text-muted mt-0.5 truncate">
                       {order.client_phone} • {order.client_area}
                     </p>
+                    {order.sync_status !== 'synced' && (
+                      <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-amber-500">
+                        En attente de synchronisation
+                      </p>
+                    )}
                   </div>
                   <AdminBadge
                     variant={

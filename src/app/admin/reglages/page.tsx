@@ -31,7 +31,7 @@ function createFAQItem(): FAQItem {
   };
 }
 
-const USER_ERROR_MSG = 'Erreur de sauvegarde. Verifiez la connexion a Supabase et les permissions RLS.';
+const USER_ERROR_MSG = 'Impossible d’enregistrer les réglages pour le moment. Réessayez lorsque la connexion sera disponible.';
 
 export default function AdminSettingsPage() {
   const router = useRouter();
@@ -69,7 +69,8 @@ export default function AdminSettingsPage() {
     try {
       const result = await upsertShopSettings(settings);
       if (result.error) {
-        alert('Erreur Supabase : ' + result.error + '\n\nVérifiez les permissions RLS sur la table shop_settings.');
+        // Message fonctionnel : aucun détail Supabase, SQL ou RLS n'est exposé.
+        alert(result.error || USER_ERROR_MSG);
       } else {
         alert('Réglages enregistrés avec succès !');
       }

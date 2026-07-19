@@ -1,90 +1,60 @@
 // src/services/customerService.ts
 // ============================================
-// Service de gestion des clients (Cadre Final : Raccordement au LocalStorage & Zéro Perte)
+// Service de gestion des clients : agrégation déterministe des commandes et métadonnées Supabase
 // ============================================
-// CRUD et agrégation des données clients via Supabase et LocalStorage
 
 import { requireSupabase, supabase } from '@/lib/supabase';
-import { fetchAdminOrders } from '@/services/orderService';
-import type { CustomerSummary, CustomerMeta, CustomerSegment, ApiResponse } from '@/admin/types';
-
-interface RawOrderCustomerRow {
-  client_phone: string;
-  client_name: string;
-  client_area: string;
-  total: number;
-  created_at: string;
-  status: string;
-  items?: Array<{
-    size: string;
-    color: string;
-  }>;
-}
+import { fetchAdminOrders, normalizeCustomerPhone } from '@/services/orderService';
+import type { AdminOrder, CustomerSummary, CustomerMeta, CustomerSegment, ApiResponse } from '@/admin/types';
 
 export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
-  // 1. CORRECTION CAPITALE : Utiliser fetchAdminOrders() au lieu de supabase.from('orders') !
-  // Ainsi, on récupère instantanément les commandes du localStorage et le nouveau client s'affiche immédiatement dans l'admin !
   const [orders, { data: customerMetaRows, error: customerMetaError }] = await Promise.all([
     fetchAdminOrders(),
     supabase ? supabase.from('customer_meta').select('*') : Promise.resolve({ data: [], error: null })
   ]);
 
-  if (!orders) {
-    return [];
-  }
-
-  // Interception propre de l'erreur PGRST205 (table customer_meta manquante)
   if (customerMetaError && customerMetaError.code !== 'PGRST205') {
     console.error('Erreur fetch customer_meta:', customerMetaError);
   }
 
+  // Les notes et tags sont les seules données client persistées indépendamment des commandes.
   const customerMetaMap = new Map<string, CustomerMeta>(
-    ((customerMetaRows || []) as CustomerMeta[]).map((customerMeta) => [customerMeta.phone, customerMeta])
+    ((customerMetaRows || []) as CustomerMeta[]).map((meta) => [normalizeCustomerPhone(meta.phone), meta])
   );
-
   const customerMap = new Map<string, CustomerSummary>();
+  const seenOrders = new Set<string>();
 
-  (orders as RawOrderCustomerRow[]).forEach((order) => {
-    const phone = order.client_phone;
+  (orders as AdminOrder[]).forEach((order) => {
+    const phone = normalizeCustomerPhone(order.client_phone);
+    if (!phone) return;
+
+    const orderIdentity = order.idempotency_key || order.order_number || `legacy-${order.id}`;
+    if (seenOrders.has(orderIdentity)) return;
+    seenOrders.add(orderIdentity);
+
     const existing = customerMap.get(phone);
-
     if (!existing) {
       customerMap.set(phone, {
-        phone,
-        name: order.client_name,
-        area: order.client_area,
-        orderCount: 1,
-        totalSpent: order.total || 0,
-        lastOrderDate: order.created_at,
-        lastOrderStatus: order.status as CustomerSummary['lastOrderStatus'],
-        preferredSizes: [],
-        preferredColors: [],
-        segments: [],
-        notes: '',
-        tags: []
+        phone, name: order.client_name, area: order.client_area, orderCount: 1,
+        totalSpent: order.total || 0, lastOrderDate: order.created_at,
+        lastOrderStatus: order.status, preferredSizes: [], preferredColors: [], segments: [], notes: '', tags: []
       });
     } else {
       existing.orderCount += 1;
       existing.totalSpent += order.total || 0;
-
-      if (new Date(order.created_at) > new Date(existing.lastOrderDate)) {
+      if (new Date(order.created_at).getTime() >= new Date(existing.lastOrderDate).getTime()) {
         existing.lastOrderDate = order.created_at;
-        existing.lastOrderStatus = order.status as CustomerSummary['lastOrderStatus'];
+        existing.lastOrderStatus = order.status;
+        existing.name = order.client_name;
+        existing.area = order.client_area;
       }
     }
 
-    const targetCustomer = customerMap.get(phone);
-    if (!targetCustomer) {
-      return;
-    }
-
+    const customer = customerMap.get(phone);
+    if (!customer) return;
     order.items?.forEach((item) => {
-      if (item.size && !targetCustomer.preferredSizes.includes(item.size)) {
-        targetCustomer.preferredSizes.push(item.size);
-      }
-      if (item.color && !targetCustomer.preferredColors.includes(item.color)) {
-        targetCustomer.preferredColors.push(item.color);
-      }
+      if (item.size && !customer.preferredSizes.includes(item.size)) customer.preferredSizes.push(item.size);
+      if (item.color && !customer.preferredColors.includes(item.color)) customer.preferredColors.push(item.color);
     });
   });
 
@@ -104,20 +74,11 @@ export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
 
   return Array.from(customerMap.values())
     .map((customer) => {
-      const customerMeta = customerMetaMap.get(customer.phone);
-
-      return {
-        ...customer,
-        notes: customerMeta?.notes || '',
-        tags: customerMeta?.tags || [],
-        segments: calculateCustomerSegments(customer)
-      };
+      const meta = customerMetaMap.get(customer.phone);
+      return { ...customer, notes: meta?.notes || '', tags: meta?.tags || [], segments: calculateCustomerSegments(customer) };
     })
-    .sort((firstCustomer, secondCustomer) => {
-      return new Date(secondCustomer.lastOrderDate).getTime() - new Date(firstCustomer.lastOrderDate).getTime();
-    });
+    .sort((first, second) => new Date(second.lastOrderDate).getTime() - new Date(first.lastOrderDate).getTime());
 }
-
 function calculateCustomerSegments(customer: CustomerSummary): CustomerSegment[] {
   const segments: CustomerSegment[] = [];
 
@@ -152,11 +113,12 @@ function calculateCustomerSegments(customer: CustomerSummary): CustomerSegment[]
 
 export async function fetchCustomerMeta(phone: string): Promise<CustomerMeta | null> {
   const db = requireSupabase();
+  const normalizedPhone = normalizeCustomerPhone(phone);
 
   const { data, error } = await db
     .from('customer_meta')
     .select('*')
-    .eq('phone', phone)
+    .eq('phone', normalizedPhone)
     .single();
 
   if (error || !data) {
@@ -168,7 +130,8 @@ export async function fetchCustomerMeta(phone: string): Promise<CustomerMeta | n
 
 export async function fetchCustomerByPhone(phone: string): Promise<CustomerSummary | null> {
   const summaries = await fetchCustomerSummaries();
-  return summaries.find((customer) => customer.phone === phone) || null;
+  const normalizedPhone = normalizeCustomerPhone(phone);
+  return summaries.find((customer) => customer.phone === normalizedPhone) || null;
 }
 
 export async function upsertCustomerMeta(
@@ -176,8 +139,10 @@ export async function upsertCustomerMeta(
   meta: Partial<CustomerMeta>
 ): Promise<ApiResponse<CustomerMeta>> {
   const db = requireSupabase();
+  const normalizedPhone = normalizeCustomerPhone(phone);
+  if (!normalizedPhone) return { data: null, error: 'Numéro de téléphone client invalide.' };
 
-  const existing = await fetchCustomerMeta(phone);
+  const existing = await fetchCustomerMeta(normalizedPhone);
 
   if (existing) {
     const { data, error } = await db
@@ -186,12 +151,13 @@ export async function upsertCustomerMeta(
         ...meta,
         updated_at: new Date().toISOString()
       })
-      .eq('phone', phone)
+      .eq('phone', normalizedPhone)
       .select()
       .single();
 
     if (error) {
-      return { data: null, error: error.message };
+      console.error('Erreur sauvegarde métadonnées client:', error);
+      return { data: null, error: 'Impossible d’enregistrer la fiche client pour le moment.' };
     }
 
     return { data: data as CustomerMeta, error: null };
@@ -201,7 +167,7 @@ export async function upsertCustomerMeta(
     .from('customer_meta')
     .insert([
       {
-        phone,
+        phone: normalizedPhone,
         notes: meta.notes || '',
         tags: meta.tags || [],
         created_at: new Date().toISOString(),
@@ -212,31 +178,40 @@ export async function upsertCustomerMeta(
     .single();
 
   if (error) {
-    return { data: null, error: error.message };
+    console.error('Erreur création métadonnées client:', error);
+    return { data: null, error: 'Impossible d’enregistrer la fiche client pour le moment.' };
   }
 
   return { data: data as CustomerMeta, error: null };
 }
 
 export async function deleteCustomer(phone: string): Promise<ApiResponse<boolean>> {
-  // Purge en mémoire locale (localStorage)
+  const normalizedPhone = normalizeCustomerPhone(phone);
+  if (!normalizedPhone) return { data: null, error: 'Numéro de téléphone client invalide.' };
+
+  // Seules les commandes locales en attente sont concernées ; les statistiques client
+  // sont toujours recalculées à partir des commandes disponibles.
   if (typeof window !== 'undefined') {
     try {
       const savedOrders = JSON.parse(window.localStorage.getItem('__PERSCADORS_ORDERS_CACHE__') || '[]');
-      window.localStorage.setItem('__PERSCADORS_ORDERS_CACHE__', JSON.stringify(savedOrders.filter((o: { client_phone?: string }) => o.client_phone !== phone)));
+      window.localStorage.setItem('__PERSCADORS_ORDERS_CACHE__', JSON.stringify(
+        savedOrders.filter((order: { client_phone?: string }) => normalizeCustomerPhone(order.client_phone || '') !== normalizedPhone)
+      ));
     } catch {
       // Ignorer silencieusement
     }
   }
 
-  if (!supabase) {
-    return { data: true, error: null };
-  }
+  if (!supabase) return { data: true, error: null };
 
   const db = requireSupabase();
-  // Suppression de la fiche customer_meta et des commandes liées
-  await db.from('customer_meta').delete().eq('phone', phone);
-  await db.from('orders').delete().eq('client_phone', phone);
+  const { error: metaError } = await db.from('customer_meta').delete().eq('phone', normalizedPhone);
+  const { error: ordersError } = await db.from('orders').delete().eq('client_phone', normalizedPhone);
+
+  if (metaError || ordersError) {
+    console.error('Erreur suppression client:', metaError || ordersError);
+    return { data: null, error: 'Impossible de supprimer ce client pour le moment.' };
+  }
 
   return { data: true, error: null };
 }
