@@ -135,6 +135,11 @@ export default function AdminProductsPage() {
     return matchesSearch && matchesFilter;
   });
 
+  const visibleProductsCount = products.filter((product) => product.visible).length;
+  const hiddenProductsCount = products.filter((product) => !product.visible).length;
+  const lowStockProductsCount = products.filter((product) => (product.stock || 0) <= 5).length;
+  const incompleteProductsCount = products.filter((product) => !product.image_url || product.sizes.length === 0 || product.stock <= 0).length;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -171,6 +176,13 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button type="button" onClick={() => setFilter('visible')} className="text-left rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 transition-all hover:border-emerald-500/60"><p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">En vente</p><p className="font-bebas text-3xl text-brand-text mt-2">{visibleProductsCount}</p><p className="text-xs text-brand-text-muted mt-1">Produits visibles</p></button>
+        <button type="button" onClick={() => setFilter('hidden')} className="text-left rounded-2xl border border-brand-gold/20 bg-brand-gold/5 p-4 transition-all hover:border-brand-gold"><p className="text-[11px] font-semibold uppercase tracking-wider text-brand-gold">Masqués</p><p className="font-bebas text-3xl text-brand-text mt-2">{hiddenProductsCount}</p><p className="text-xs text-brand-text-muted mt-1">À remettre en vente</p></button>
+        <button type="button" onClick={() => setFilter('low-stock')} className="text-left rounded-2xl border border-red-500/20 bg-red-500/5 p-4 transition-all hover:border-red-500/60"><p className="text-[11px] font-semibold uppercase tracking-wider text-red-600">Stock faible</p><p className="font-bebas text-3xl text-brand-text mt-2">{lowStockProductsCount}</p><p className="text-xs text-brand-text-muted mt-1">Risque de rupture</p></button>
+        <button type="button" onClick={() => router.push('/admin/produits')} className="text-left rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600">À compléter</p><p className="font-bebas text-3xl text-brand-text mt-2">{incompleteProductsCount}</p><p className="text-xs text-brand-text-muted mt-1">Image, taille ou stock</p></button>
+      </section>
+
       <div className="flex flex-col sm:flex-row gap-4">
         <AdminSearch
           value={searchQuery}
@@ -198,6 +210,12 @@ export default function AdminProductsPage() {
             }`}
           >
             Visibles
+          </button>
+          <button
+            onClick={() => setFilter('hidden')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${filter === 'hidden' ? 'bg-brand-gold text-[#0A0A0A]' : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'}`}
+          >
+            Masqués
           </button>
           <button
             onClick={() => setFilter('low-stock')}
