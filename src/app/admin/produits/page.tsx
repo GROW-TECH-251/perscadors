@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminToast } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminToast, AdminSkeleton } from '@/admin/components';
 import { Package, Plus, Edit, Trash2, Download, Check, X, Eye, EyeOff } from 'lucide-react';
 import { fetchAdminProducts, deleteProduct, updateProduct } from '@/services/productService';
 import type { AdminProduct } from '@/admin/types';
@@ -145,10 +145,7 @@ export default function AdminProductsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement des produits...</p>
-        </div>
+        <div className="w-full max-w-6xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="grid grid-cols-2 lg:grid-cols-4 gap-4"><AdminSkeleton className="h-24" /><AdminSkeleton className="h-24" /><AdminSkeleton className="h-24" /><AdminSkeleton className="h-24" /></div><div className="grid grid-cols-1 md:grid-cols-3 gap-5"><AdminSkeleton className="h-80" /><AdminSkeleton className="h-80" /><AdminSkeleton className="h-80" /></div></div>
       </div>
     );
   }
