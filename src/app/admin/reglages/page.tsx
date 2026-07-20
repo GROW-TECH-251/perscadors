@@ -258,10 +258,10 @@ export default function AdminSettingsPage() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
-            Personnalisation avancée • 100% Administrable
+            Configuration de votre boutique
           </span>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Réglages</h1>
-          <p className="text-brand-text-muted mt-1">Configuration opérationnelle et personnalisation de la vitrine publique</p>
+          <p className="text-brand-text-muted mt-1">Modifiez les éléments utiles à votre activité sans toucher à la partie technique.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
@@ -274,12 +274,12 @@ export default function AdminSettingsPage() {
 
       <div className="flex flex-wrap gap-2 border-b border-brand-gold/20 pb-3">
         {[
-          { id: 'general', label: 'Général' },
-          { id: 'vitrine', label: 'Vitrine & Textes' },
-          { id: 'faq', label: 'Foire Aux Questions (FAQ)' },
-          { id: 'delivery', label: 'Livraison' },
-          { id: 'whatsapp', label: 'WhatsApp & Templates' },
-          { id: 'segmentation', label: 'Segmentation' }
+          { id: 'general', label: 'Boutique', hint: 'Identité et informations principales' },
+          { id: 'delivery', label: 'Livraison', hint: 'Zones, frais et délais' },
+          { id: 'whatsapp', label: 'WhatsApp', hint: 'Messages clients et livraisons' },
+          { id: 'vitrine', label: 'Vitrine', hint: 'Hero, logo et textes publics' },
+          { id: 'faq', label: 'Preuves sociales', hint: 'Avis, vidéos et questions clients' },
+          { id: 'segmentation', label: 'Clients & fidélisation', hint: 'Seuils commerciaux' }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -290,6 +290,7 @@ export default function AdminSettingsPage() {
                 ? 'bg-brand-gold text-[#0A0A0A]'
                 : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'
             }`}
+          title={tab.hint}
           >
             {tab.label}
           </button>
@@ -782,9 +783,9 @@ export default function AdminSettingsPage() {
       )}
 
       <AdminCard className="border-l-4 border-l-red-500">
-        <h2 className="font-bebas text-xl text-red-600 uppercase mb-4">Zone de danger</h2>
+        <h2 className="font-bebas text-xl text-red-600 uppercase mb-4">Actions sensibles</h2>
         <p className="text-sm text-brand-text-muted mb-4">
-          Utilise cette action uniquement si tu veux fermer ta session administrateur.
+          Cette zone concerne les actions qui impactent votre accès administrateur. Utilisez-la uniquement lorsque nécessaire.
         </p>
         <AdminButton variant="danger" onClick={handleLogout}>
           <LogOut size={16} />
