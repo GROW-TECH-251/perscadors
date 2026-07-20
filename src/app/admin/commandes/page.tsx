@@ -104,10 +104,10 @@ export default function AdminOrdersPage() {
             setSelectedOrder(null);
             setIsModalOpen(false);
           }
-          alert('Commande annulée et supprimée avec succès !');
+          setSyncFeedback('Commande annulée et supprimée avec succès.');
         } catch (error: unknown) {
           console.error('Erreur suppression commande:', error);
-          alert('Une erreur est survenue lors de la suppression.');
+          setSyncFeedback('Impossible de supprimer cette commande pour le moment.');
         } finally {
           setSavingOrderId(null);
         }
@@ -130,7 +130,7 @@ export default function AdminOrdersPage() {
       await updateOrderStatus(id, newStatus, `Statut mis à jour rapidement vers ${newStatus}`);
     } catch (error: unknown) {
       console.error('Erreur mise à jour rapide statut:', error);
-      alert('Une erreur est survenue. Contactez votre administrateur.');
+      setSyncFeedback('Impossible de mettre à jour la commande pour le moment.');
       await loadOrders(); // Rollback en cas d'erreur
     } finally {
       setSavingOrderId(null);
@@ -171,10 +171,10 @@ export default function AdminOrdersPage() {
 
     try {
       await navigator.clipboard.writeText(slip);
-      alert('Bordereau livreur copié dans le presse-papier !');
+      setSyncFeedback('Bordereau livreur copié dans le presse-papier.');
     } catch (error: unknown) {
       console.error('Erreur copie bordereau:', error);
-      alert('Une erreur est survenue lors de la copie du bordereau');
+      setSyncFeedback('Impossible de copier le bordereau pour le moment.');
     }
   };
 
@@ -192,10 +192,10 @@ export default function AdminOrdersPage() {
           await loadOrders();
           setSelectedOrder(null);
           setIsModalOpen(false);
-          alert('Commande annulée et supprimée avec succès !');
+          setSyncFeedback('Commande annulée et supprimée avec succès.');
         } catch (error: unknown) {
           console.error('Erreur suppression commande modale:', error);
-          alert('Une erreur est survenue lors de la suppression.');
+          setSyncFeedback('Impossible de supprimer cette commande pour le moment.');
         } finally {
           setIsSavingStatus(false);
         }
@@ -213,7 +213,7 @@ export default function AdminOrdersPage() {
       );
 
       if (result.error) {
-        alert(result.error);
+        setSyncFeedback(result.error);
         return;
       }
 
@@ -227,7 +227,7 @@ export default function AdminOrdersPage() {
       setStatusNote('');
     } catch (error: unknown) {
       console.error('Erreur mise à jour commande:', error);
-      alert('Une erreur est survenue. Contactez votre administrateur.');
+      setSyncFeedback('Impossible de mettre à jour la commande pour le moment.');
     } finally {
       setIsSavingStatus(false);
     }
@@ -325,7 +325,7 @@ export default function AdminOrdersPage() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert('Message copié !');
+      setSyncFeedback('Message copié dans le presse-papier.');
     } catch (error: unknown) {
       console.error('Erreur copie:', error);
     }
