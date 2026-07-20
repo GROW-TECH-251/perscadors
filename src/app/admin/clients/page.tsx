@@ -7,7 +7,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, AdminInput, AdminTextarea, AdminBadge } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, AdminInput, AdminTextarea, AdminBadge, AdminToast } from '@/admin/components';
 import { Users, Phone, MapPin, Tag, MessageCircle, Copy, Download, Eye, Save, Zap, Trash2 } from 'lucide-react';
 import { fetchCustomerSummaries, upsertCustomerMeta, deleteCustomer } from '@/services/customerService';
 import { fetchOrdersByPhone } from '@/services/orderService';
@@ -59,6 +59,7 @@ export default function AdminCustomersPage() {
   const [noteDraft, setNoteDraft] = useState('');
   const [tagsDraft, setTagsDraft] = useState('');
   const [savingMeta, setSavingMeta] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
 
   const loadCustomers = useCallback(async () => {
     setLoading(true);
@@ -88,7 +89,7 @@ export default function AdminCustomersPage() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert('Copié dans le presse-papier !');
+      setToast({ message: 'Copié dans le presse-papier.', variant: 'success' });
     } catch (error: unknown) {
       console.error('Erreur copie:', error);
     }
@@ -110,7 +111,7 @@ export default function AdminCustomersPage() {
     try {
       const result = await deleteCustomer(phone);
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
 
@@ -119,10 +120,10 @@ export default function AdminCustomersPage() {
         setDetailsOpen(false);
         setSelectedCustomer(null);
       }
-      alert('Client supprimé avec succès !');
+      setToast({ message: 'Client supprimé avec succès.', variant: 'success' });
     } catch (error: unknown) {
       console.error('Erreur suppression client:', error);
-      alert('Une erreur est survenue lors de la suppression.');
+      setToast({ message: 'Impossible de supprimer ce client pour le moment.', variant: 'error' });
     }
   };
 
@@ -146,7 +147,7 @@ export default function AdminCustomersPage() {
       ? formatWhatsAppMessage(settings.vip_magic_template, { shopName: settings.shop_name, clientName: 'la famille VIP', couponCode: 'VIP-VIOUTOU10' })
       : `Bonjour ! ${settings.shop_name} vous réserve de nouvelles pièces. Répondez à ce message pour connaître les disponibilités du moment.`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-    alert(`Script de campagne prêt pour ${targetCount} client(s). Choisissez vos destinataires dans WhatsApp.`);
+    setToast({ message: `Script de campagne prêt pour ${targetCount} client(s). Choisissez vos destinataires dans WhatsApp.`, variant: 'info' });
   };
 
   const filteredCustomers = useMemo(() => {
@@ -201,7 +202,7 @@ export default function AdminCustomersPage() {
       });
 
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
 
@@ -218,10 +219,10 @@ export default function AdminCustomersPage() {
         )
       );
 
-      alert('Fiche client mise à jour !');
+      setToast({ message: 'Fiche client mise à jour.', variant: 'success' });
     } catch (error: unknown) {
       console.error('Erreur sauvegarde fiche client:', error);
-      alert('Erreur lors de la sauvegarde');
+      setToast({ message: 'Impossible d’enregistrer la fiche client pour le moment.', variant: 'error' });
     } finally {
       setSavingMeta(false);
     }
@@ -240,6 +241,8 @@ export default function AdminCustomersPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
