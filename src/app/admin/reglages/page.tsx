@@ -8,7 +8,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminToast } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminToast, AdminSkeleton } from '@/admin/components';
 import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap, Share2, Monitor, Star, HelpCircle } from 'lucide-react';
 import { clearAdminSession } from '@/admin/auth';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
@@ -246,10 +246,7 @@ export default function AdminSettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement des réglages...</p>
-        </div>
+        <div className="w-full max-w-6xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><AdminSkeleton className="h-28" /><AdminSkeleton className="h-28" /><AdminSkeleton className="h-28" /></div><AdminSkeleton className="h-80" /></div>
       </div>
     );
   }
