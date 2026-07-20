@@ -27,6 +27,9 @@ export default function AdminDashboardPage() {
     totalCustomers: 0,
     totalRevenue: 0,
     pendingOrders: 0,
+    readyToShipOrders: 0,
+    pendingSyncOrders: 0,
+    followupCustomers: 0,
     lowStockProducts: 0
   });
   const [recentOrders, setRecentOrders] = useState<AdminOrder[]>([]);
@@ -50,6 +53,9 @@ export default function AdminDashboardPage() {
         .reduce((sum, order) => sum + (order.total || 0), 0);
 
       const pendingOrders = orders.filter((order) => order.status === 'EN ATTENTE').length;
+      const readyToShipOrders = orders.filter((order) => order.status === 'CONFIRMÉE' || order.status === 'EN LIVRAISON').length;
+      const pendingSyncOrders = orders.filter((order) => order.sync_status !== 'synced').length;
+      const followupCustomers = customers.filter((customer) => customer.segments.includes('À relancer')).length;
       const lowStockProducts = products.filter((product) => (product.stock || 0) <= 5).length;
 
       setStats({
@@ -58,6 +64,9 @@ export default function AdminDashboardPage() {
         totalCustomers: customers.length,
         totalRevenue,
         pendingOrders,
+        readyToShipOrders,
+        pendingSyncOrders,
+        followupCustomers,
         lowStockProducts
       });
 
@@ -241,6 +250,35 @@ export default function AdminDashboardPage() {
           </AdminButton>
         </div>
       </div>
+
+      <section className="rounded-3xl border border-brand-gold/25 bg-gradient-to-br from-[#12110d] via-brand-bg-alt to-brand-bg p-5 sm:p-6 shadow-[0_18px_45px_rgba(10,10,10,0.12)]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-5">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">Pilotage du jour</span>
+            <h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase mt-1">À faire aujourd’hui</h2>
+            <p className="text-sm text-brand-text-muted mt-1">Les actions qui protègent vos ventes et votre service client.</p>
+          </div>
+          <span className="rounded-full border border-brand-gold/20 bg-brand-gold/10 px-3 py-1 text-xs font-medium text-brand-gold">{stats.pendingOrders + stats.lowStockProducts + stats.pendingSyncOrders + stats.followupCustomers} priorité(s)</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <button type="button" onClick={() => router.push('/admin/commandes')} className="group text-left rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-all hover:-translate-y-0.5 hover:border-amber-500/60 hover:bg-amber-500/10">
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wider text-amber-600">À confirmer</span><ShoppingCart size={18} className="text-amber-500" /></div>
+            <p className="font-bebas text-3xl text-brand-text mt-3">{stats.pendingOrders}</p><p className="text-xs text-brand-text-muted mt-1">Ouvrir les commandes</p>
+          </button>
+          <button type="button" onClick={() => router.push('/admin/commandes')} className="group text-left rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 transition-all hover:-translate-y-0.5 hover:border-blue-500/60 hover:bg-blue-500/10">
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wider text-blue-600">À expédier</span><Package size={18} className="text-blue-500" /></div>
+            <p className="font-bebas text-3xl text-brand-text mt-3">{stats.readyToShipOrders}</p><p className="text-xs text-brand-text-muted mt-1">Préparer les livraisons</p>
+          </button>
+          <button type="button" onClick={() => router.push('/admin/stock')} className="group text-left rounded-2xl border border-red-500/20 bg-red-500/5 p-4 transition-all hover:-translate-y-0.5 hover:border-red-500/60 hover:bg-red-500/10">
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wider text-red-600">Stock à risque</span><AlertTriangle size={18} className="text-red-500" /></div>
+            <p className="font-bebas text-3xl text-brand-text mt-3">{stats.lowStockProducts}</p><p className="text-xs text-brand-text-muted mt-1">Réapprovisionner</p>
+          </button>
+          <button type="button" onClick={() => router.push(stats.pendingSyncOrders > 0 ? '/admin/commandes' : '/admin/clients')} className="group text-left rounded-2xl border border-brand-gold/25 bg-brand-gold/5 p-4 transition-all hover:-translate-y-0.5 hover:border-brand-gold hover:bg-brand-gold/10">
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">{stats.pendingSyncOrders > 0 ? 'À synchroniser' : 'À relancer'}</span><Users size={18} className="text-brand-gold" /></div>
+            <p className="font-bebas text-3xl text-brand-text mt-3">{stats.pendingSyncOrders > 0 ? stats.pendingSyncOrders : stats.followupCustomers}</p><p className="text-xs text-brand-text-muted mt-1">{stats.pendingSyncOrders > 0 ? 'Résoudre la synchronisation' : 'Réactiver vos clients'}</p>
+          </button>
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <AdminCard className="border-l-4 border-l-brand-gold">

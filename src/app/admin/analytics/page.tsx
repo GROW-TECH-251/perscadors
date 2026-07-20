@@ -25,8 +25,6 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const COLORS = ['#B8952A', '#D4AE4E', '#10B981', '#3B82F6', '#6366F1', '#EF4444', '#888880'];
-
 export default function AdminAnalyticsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -37,6 +35,7 @@ export default function AdminAnalyticsPage() {
     ordersByStatus: [],
     topProducts: [],
     customerSegments: [],
+    actionItems: [],
     source: 'hybrid'
   });
 
@@ -267,46 +266,12 @@ export default function AdminAnalyticsPage() {
           )}
         </AdminCard>
 
-        {/* Répartition par statut */}
-        <AdminCard className="p-6 shadow-md">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase">
-              Répartition par Statut Logistique
-            </h2>
-            <span className="text-xs text-brand-text-muted bg-brand-bg px-3 py-1 rounded-full border border-brand-gold/10">
-              Global
-            </span>
+        <section className="rounded-3xl border border-brand-gold/25 bg-gradient-to-br from-[#12110d] via-brand-bg-alt to-brand-bg p-6 shadow-xl">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5"><div><span className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">Décisions du jour</span><h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase mt-1">À traiter maintenant</h2></div><p className="text-sm text-brand-text-muted">Passez des données à l’action.</p></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[{ id: 'confirm', label: 'À confirmer', hint: 'Valider les ventes', path: '/admin/commandes' }, { id: 'ship', label: 'À expédier', hint: 'Préparer les livraisons', path: '/admin/commandes' }, { id: 'stock', label: 'Stock à risque', hint: 'Réapprovisionner', path: '/admin/stock' }, { id: 'followup', label: 'Clients à relancer', hint: 'Créer une opportunité', path: '/admin/clients' }, { id: 'sync', label: 'À synchroniser', hint: 'Sécuriser les données', path: '/admin/commandes' }].map((item) => { const count = analytics.actionItems.find((action) => action.id === item.id)?.count || 0; return <button key={item.id} type="button" onClick={() => router.push(item.path)} className="text-left rounded-2xl border border-brand-gold/15 bg-brand-bg/70 p-4 transition-all hover:-translate-y-0.5 hover:border-brand-gold/60"><span className="text-[11px] font-semibold uppercase tracking-wider text-brand-gold">{item.label}</span><p className="font-bebas text-3xl text-brand-text mt-3">{count}</p><p className="text-xs text-brand-text-muted mt-1">{item.hint}</p></button>; })}
           </div>
-          {analytics.ordersByStatus.length > 0 ? (
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={analytics.ordersByStatus}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(props) => `${props.name || ''} (${((Number(props.percent) || 0) * 100).toFixed(0)}%)`}
-                  outerRadius={110}
-                  innerRadius={50}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {analytics.ordersByStatus.map((entry, index) => (
-                    <Cell key={`${entry.name}-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value) => `${Number(value || 0)} commande(s)`}
-                  contentStyle={{ backgroundColor: '#F5F0E8', border: '1px solid #B8952A', borderRadius: '12px', fontWeight: 'bold' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-64 text-brand-text-muted italic">
-              Aucune commande enregistrée
-            </div>
-          )}
-        </AdminCard>
+        </section>
       </div>
 
       {/* Grille Secondaire : Top Produits & Segments Clients */}

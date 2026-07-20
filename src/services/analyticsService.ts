@@ -22,6 +22,7 @@ export interface ComprehensiveAnalytics {
   ordersByStatus: { name: string; value: number }[];
   topProducts: { name: string; price: number; demand: number }[];
   customerSegments: { name: string; count: number }[];
+  actionItems: { id: 'confirm' | 'ship' | 'stock' | 'followup' | 'sync'; count: number }[];
   source: 'rpc' | 'hybrid';
 }
 
@@ -115,6 +116,14 @@ export async function fetchComprehensiveAnalytics(): Promise<ComprehensiveAnalyt
       return new Date(Number(y1), Number(m1) - 1).getTime() - new Date(Number(y2), Number(m2) - 1).getTime();
     });
 
+  const actionItems = [
+    { id: 'confirm' as const, count: orders.filter((order) => order.status === 'EN ATTENTE').length },
+    { id: 'ship' as const, count: orders.filter((order) => order.status === 'CONFIRMÉE' || order.status === 'EN LIVRAISON').length },
+    { id: 'stock' as const, count: products.filter((product) => (product.stock || 0) <= 5).length },
+    { id: 'followup' as const, count: customers.filter((customer) => customer.segments.includes('À relancer')).length },
+    { id: 'sync' as const, count: orders.filter((order) => order.sync_status !== 'synced').length }
+  ];
+
   const baseResult: ComprehensiveAnalytics = {
     stats: {
       totalRevenue,
@@ -129,6 +138,7 @@ export async function fetchComprehensiveAnalytics(): Promise<ComprehensiveAnalyt
     ordersByStatus: ordersByStatus.length > 0 ? ordersByStatus : [{ name: 'EN ATTENTE', value: 0 }],
     topProducts: topProducts.length > 0 ? topProducts : [{ name: 'Panier Vide', price: 0, demand: 0 }],
     customerSegments: customerSegments.length > 0 ? customerSegments : [{ name: 'Nouveau', count: 0 }],
+    actionItems,
     source: 'hybrid'
   };
 
