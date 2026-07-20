@@ -7,7 +7,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, AdminInput, AdminTextarea, AdminBadge, AdminToast, AdminSkeleton } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, AdminInput, AdminTextarea, AdminBadge, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { Users, Phone, MapPin, Tag, MessageCircle, Copy, Download, Eye, Save, Zap, Trash2 } from 'lucide-react';
 import { fetchCustomerSummaries, upsertCustomerMeta, deleteCustomer } from '@/services/customerService';
 import { fetchOrdersByPhone } from '@/services/orderService';
@@ -59,6 +59,7 @@ export default function AdminCustomersPage() {
   const [noteDraft, setNoteDraft] = useState('');
   const [tagsDraft, setTagsDraft] = useState('');
   const [savingMeta, setSavingMeta] = useState(false);
+  const [pendingDeletePhone, setPendingDeletePhone] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
 
   const loadCustomers = useCallback(async () => {
@@ -104,10 +105,7 @@ export default function AdminCustomersPage() {
   // LEVIER 4 : SUPPRESSION CLIENT & RELANCE MAGIQUE VIP (Seuil 50k)
   // ============================================
   const handleDeleteCustomer = async (phone: string) => {
-    if (!window.confirm('Voulez-vous réellement supprimer ce client du tableau de bord ? Cette action est irréversible et purgera ses commandes locales pour désencombrer l’administration.')) {
-      return;
-    }
-
+    setPendingDeletePhone(null);
     try {
       const result = await deleteCustomer(phone);
       if (result.error) {
@@ -239,6 +237,7 @@ export default function AdminCustomersPage() {
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingDeletePhone !== null} title="Supprimer ce client ?" description="Cette action supprimera sa fiche et ses commandes associées. Elle est irréversible." onCancel={() => setPendingDeletePhone(null)} onConfirm={() => pendingDeletePhone && handleDeleteCustomer(pendingDeletePhone)} />
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
@@ -329,7 +328,7 @@ export default function AdminCustomersPage() {
                 <div className="absolute top-3 right-3 z-20 opacity-0 group-hover/client:opacity-100 transition-opacity">
                   <button
                     type="button"
-                    onClick={() => handleDeleteCustomer(customer.phone)}
+                    onClick={() => setPendingDeletePhone(customer.phone)}
                     className="p-2 bg-red-950/80 text-red-400 hover:bg-red-600 hover:text-white rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm"
                     title="Supprimer ce client"
                   >
