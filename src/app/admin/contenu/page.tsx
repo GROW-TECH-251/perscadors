@@ -34,6 +34,13 @@ const CATEGORY_OPTIONS: Array<{ value: ContentPostType; label: string }> = [
   { value: 'Annonce', label: 'Annonce' }
 ];
 
+const CONTENT_TEMPLATES: Array<{ label: string; category: ContentPostType; title: string; content: string }> = [
+  { label: 'Nouvel arrivage', category: 'Arrivage', title: 'Nouveaux arrivages disponibles', content: 'De nouvelles pièces viennent d’arriver chez HP Collection. Quantités limitées : écrivez-nous sur WhatsApp pour réserver votre taille.' },
+  { label: 'Promotion', category: 'Promotion', title: 'Offre limitée cette semaine', content: 'Une sélection HP Collection est disponible en quantité limitée. Contactez-nous sur WhatsApp avant la fin de l’offre.' },
+  { label: 'Annonce', category: 'Annonce', title: 'Information importante', content: 'Nous vous partageons une information importante concernant la boutique et les prochaines disponibilités.' },
+  { label: 'Look de la semaine', category: 'Nouveauté', title: 'Le look de la semaine', content: 'Découvrez notre sélection de la semaine : une tenue pensée pour imposer votre style.' }
+];
+
 interface ContentFormState {
   title: string;
   content: string;
@@ -136,6 +143,13 @@ export default function AdminContentPage() {
       status: 'draft',
       scheduled_at: ''
     });
+    setFormOpen(true);
+  };
+
+  const handleApplyTemplate = (template: typeof CONTENT_TEMPLATES[number]) => {
+    setEditingPostId(null);
+    setUploadKey(buildPostUploadKey());
+    setFormData({ title: template.title, content: template.content, image_url: '', category: template.category, status: 'draft', scheduled_at: '' });
     setFormOpen(true);
   };
 
@@ -365,6 +379,12 @@ export default function AdminContentPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {!editingPostId && (
+              <div className="rounded-2xl border border-brand-gold/15 bg-brand-bg p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-brand-gold mb-3">Partir d’un modèle commercial</p>
+                <div className="flex flex-wrap gap-2">{CONTENT_TEMPLATES.map((template) => <button key={template.label} type="button" onClick={() => handleApplyTemplate(template)} className="rounded-xl border border-brand-gold/15 bg-brand-bg-alt px-3 py-2 text-xs font-semibold text-brand-text hover:border-brand-gold hover:text-brand-gold">{template.label}</button>)}</div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AdminInput
                 label="Titre"
