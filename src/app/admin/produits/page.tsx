@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminToast } from '@/admin/components';
 import { Package, Plus, Edit, Trash2, Download, Check, X, Eye, EyeOff } from 'lucide-react';
 import { fetchAdminProducts, deleteProduct, updateProduct } from '@/services/productService';
 import type { AdminProduct } from '@/admin/types';
@@ -25,6 +25,7 @@ export default function AdminProductsPage() {
   const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
   const [tempPrice, setTempPrice] = useState<number>(0);
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -53,13 +54,13 @@ export default function AdminProductsPage() {
     try {
       const result = await deleteProduct(id);
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
       await loadProducts();
     } catch (error: unknown) {
       console.error('Erreur suppression produit:', error);
-      alert('Erreur lors de la suppression');
+      setToast({ message: 'Impossible de supprimer ce produit pour le moment.', variant: 'error' });
     }
   };
 
@@ -154,6 +155,8 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
