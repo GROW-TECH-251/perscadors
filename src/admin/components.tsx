@@ -25,7 +25,10 @@ import {
   Loader2,
   MoreHorizontal,
   Sparkles,
-  Film
+  Film,
+  CheckCircle2,
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import type { AdminScreen, NavItem, OrderStatus } from './types';
 
@@ -709,3 +712,26 @@ export const AdminEmptyState: React.FC<{
     {action && <div>{action}</div>}
   </div>
 );
+
+
+/** Base de chargement partagée pour remplacer progressivement les écrans vides. */
+export const AdminSkeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <div className={`animate-pulse rounded-xl bg-brand-gold/10 ${className}`} aria-hidden="true" />
+);
+
+/** Notification non bloquante réutilisable dans les écrans admin. */
+export const AdminToast: React.FC<{
+  message: string;
+  variant?: 'success' | 'error' | 'info';
+  onClose?: () => void;
+}> = ({ message, variant = 'info', onClose }) => {
+  const Icon = variant === 'success' ? CheckCircle2 : variant === 'error' ? AlertCircle : Info;
+  const tone = variant === 'success' ? 'border-emerald-500/30 text-emerald-400' : variant === 'error' ? 'border-red-500/30 text-red-400' : 'border-brand-gold/25 text-brand-gold';
+  return (
+    <div role="status" className={`fixed right-5 top-5 z-[70] flex max-w-sm items-start gap-3 rounded-2xl border bg-[#0A0A0A]/95 p-4 shadow-2xl backdrop-blur ${tone}`}>
+      <Icon size={20} className="shrink-0" />
+      <p className="text-sm font-medium text-white">{message}</p>
+      {onClose && <button type="button" onClick={onClose} aria-label="Fermer la notification"><X size={16} /></button>}
+    </div>
+  );
+};
