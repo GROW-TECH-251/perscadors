@@ -737,3 +737,29 @@ export const AdminToast: React.FC<{
     </div>
   );
 };
+
+/** Confirmation destructive réutilisable, non native et accessible. */
+export const AdminConfirmDialog: React.FC<{
+  isOpen: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  loading?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, title, description, confirmLabel = 'Supprimer définitivement', loading = false, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+      <div className="w-full max-w-md rounded-3xl border border-red-500/25 bg-brand-bg-alt p-6 shadow-2xl animate-slide-up-fade">
+        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-500"><AlertTriangle size={24} /></div>
+        <h2 id="confirm-dialog-title" className="font-bebas text-2xl uppercase tracking-wider text-brand-text">{title}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-brand-text-muted">{description}</p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <AdminButton type="button" variant="secondary" onClick={onCancel} disabled={loading}>Annuler</AdminButton>
+          <AdminButton type="button" variant="danger" onClick={onConfirm} loading={loading}>{confirmLabel}</AdminButton>
+        </div>
+      </div>
+    </div>
+  );
+};
