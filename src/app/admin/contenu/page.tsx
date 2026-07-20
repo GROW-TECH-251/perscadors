@@ -8,7 +8,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminSearch, AdminEmptyState, AdminBadge } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminSearch, AdminEmptyState, AdminBadge, AdminToast } from '@/admin/components';
 import { FileText, Plus, Edit, Trash2, Upload, Send, Clock3 } from 'lucide-react';
 import {
   createContentPost,
@@ -88,6 +88,7 @@ export default function AdminContentPage() {
   const [typeFilter, setTypeFilter] = useState<ContentPostType | 'all'>('all');
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [uploadKey, setUploadKey] = useState(buildPostUploadKey());
   const [formData, setFormData] = useState<ContentFormState>({
     title: '',
@@ -172,7 +173,7 @@ export default function AdminContentPage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner une image valide');
+      setToast({ message: 'Veuillez sélectionner une image valide.', variant: 'error' });
       return;
     }
 
@@ -185,7 +186,7 @@ export default function AdminContentPage() {
         // En cas de blocage RLS Storage, on utilise une URL temporaire Blob locale pour ne jamais figer le client !
         const localBlob = URL.createObjectURL(compressedFile);
         setFormData((currentData) => ({ ...currentData, image_url: localBlob }));
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         return;
       }
 
@@ -195,7 +196,7 @@ export default function AdminContentPage() {
       }));
     } catch (error: unknown) {
       console.error('Erreur upload contenu:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -214,7 +215,7 @@ export default function AdminContentPage() {
       if (shouldDelete) {
         const result = await deleteImageByUrl(BUCKETS.CONTENT_IMAGES, formData.image_url);
         if (result.error) {
-          alert(USER_ERROR_MSG);
+          setToast({ message: USER_ERROR_MSG, variant: 'error' });
           return;
         }
       }
@@ -230,7 +231,7 @@ export default function AdminContentPage() {
     event.preventDefault();
 
     if (formData.status === 'scheduled' && !formData.scheduled_at) {
-      alert('Veuillez choisir une date de planification.');
+      setToast({ message: 'Veuillez choisir une date de planification.', variant: 'error' });
       return;
     }
 
@@ -276,7 +277,7 @@ export default function AdminContentPage() {
         } else {
           setPosts((currentPosts) => [optimisticPost, ...currentPosts]);
         }
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         resetForm();
         return;
       }
@@ -285,7 +286,7 @@ export default function AdminContentPage() {
       resetForm();
     } catch (error: unknown) {
       console.error('Erreur sauvegarde contenu:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -299,14 +300,14 @@ export default function AdminContentPage() {
     try {
       const result = await deleteContentPost(post.id);
       if (result.error) {
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         return;
       }
 
       await loadPosts();
     } catch (error: unknown) {
       console.error('Erreur suppression contenu:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     }
   };
 
@@ -316,14 +317,14 @@ export default function AdminContentPage() {
     try {
       const result = await togglePostPublication(post.id, nextStatus);
       if (result.error) {
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         return;
       }
 
       await loadPosts();
     } catch (error: unknown) {
       console.error('Erreur publication contenu:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     }
   };
 
@@ -352,6 +353,8 @@ export default function AdminContentPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
