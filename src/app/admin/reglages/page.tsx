@@ -8,7 +8,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminToast, AdminSkeleton } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap, Share2, Monitor, Star, HelpCircle } from 'lucide-react';
 import { clearAdminSession } from '@/admin/auth';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
@@ -42,6 +42,7 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
+  const [pendingLogoDeletion, setPendingLogoDeletion] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'vitrine' | 'faq' | 'delivery' | 'whatsapp' | 'segmentation'>('general');
 
@@ -184,8 +185,8 @@ export default function AdminSettingsPage() {
   const handleRemoveLogo = async () => {
     if (!settings.logo_url) return;
 
-    const shouldDelete = window.confirm('Supprimer ce logo ?');
-    if (shouldDelete) {
+    setPendingLogoDeletion(false);
+    {
       const result = await deleteImageByUrl(BUCKETS.BRAND_ASSETS, settings.logo_url);
       if (result.error) {
         setToast({ message: USER_ERROR_MSG, variant: 'error' });
@@ -254,6 +255,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingLogoDeletion} title="Supprimer ce logo ?" description="Le logo sera retiré de la vitrine et supprimé du stockage. Cette action est irréversible." loading={uploadingLogo} onCancel={() => setPendingLogoDeletion(false)} onConfirm={handleRemoveLogo} />
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
@@ -353,7 +355,7 @@ export default function AdminSettingsPage() {
                 {uploadingLogo ? 'Upload du logo...' : 'Uploader le logo'}
               </label>
               {settings.logo_url && (
-                <AdminButton type="button" variant="danger" onClick={handleRemoveLogo}>
+                <AdminButton type="button" variant="danger" onClick={() => setPendingLogoDeletion(true)}>
                   <Trash2 size={16} />
                   Supprimer le logo
                 </AdminButton>
