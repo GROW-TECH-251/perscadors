@@ -8,7 +8,7 @@
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminToast } from '@/admin/components';
 import { Save, X, Upload } from 'lucide-react';
 import { createProduct } from '@/services/productService';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadProductImage } from '@/services/mediaService';
@@ -23,6 +23,7 @@ export default function NewProductPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadKey] = useState(createDraftUploadKey);
   const [formData, setFormData] = useState<ProductFormData>({
@@ -47,12 +48,12 @@ export default function NewProductPage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner une image valide');
+      setToast({ message: 'Veuillez sélectionner une image valide.', variant: 'error' });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('L\'image ne doit pas dépasser 5MB');
+      setToast({ message: 'L’image ne doit pas dépasser 5 Mo.', variant: 'error' });
       return;
     }
 
@@ -62,13 +63,13 @@ export default function NewProductPage() {
       const result = await uploadProductImage(compressedFile, uploadKey);
 
       if (result.error || !result.data) {
-        alert(result.error || 'Erreur upload image');
+        setToast({ message: result.error || 'Erreur d’upload image.', variant: 'error' });
       } else {
         setFormData((currentData) => ({ ...currentData, image_url: result.data || '' }));
       }
     } catch (error: unknown) {
       console.error('Erreur upload image:', error);
-      alert('Erreur lors de l\'upload');
+      setToast({ message: 'Erreur lors de l’upload de l’image.', variant: 'error' });
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -86,7 +87,7 @@ export default function NewProductPage() {
     if (shouldDelete) {
       const result = await deleteImageByUrl(BUCKETS.PRODUCT_IMAGES, formData.image_url);
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
     }
@@ -101,15 +102,15 @@ export default function NewProductPage() {
     try {
       const result = await createProduct(formData);
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
 
-      alert('Produit créé avec succès !');
+      setToast({ message: 'Produit créé avec succès.', variant: 'success' });
       router.push('/admin/produits');
     } catch (error: unknown) {
       console.error('Erreur création produit:', error);
-      alert('Erreur lors de la création');
+      setToast({ message: 'Impossible de créer ce produit pour le moment.', variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -131,6 +132,8 @@ export default function NewProductPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
