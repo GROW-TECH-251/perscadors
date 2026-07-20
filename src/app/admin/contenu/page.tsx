@@ -8,7 +8,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminSearch, AdminEmptyState, AdminBadge, AdminToast, AdminSkeleton } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminSearch, AdminEmptyState, AdminBadge, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { FileText, Plus, Edit, Trash2, Upload, Send, Clock3 } from 'lucide-react';
 import {
   createContentPost,
@@ -88,6 +88,7 @@ export default function AdminContentPage() {
   const [typeFilter, setTypeFilter] = useState<ContentPostType | 'all'>('all');
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [pendingDeletePost, setPendingDeletePost] = useState<ContentPost | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [uploadKey, setUploadKey] = useState(buildPostUploadKey());
   const [formData, setFormData] = useState<ContentFormState>({
@@ -293,10 +294,7 @@ export default function AdminContentPage() {
   };
 
   const handleDelete = async (post: ContentPost) => {
-    if (!window.confirm(`Supprimer le post "${post.title}" ?`)) {
-      return;
-    }
-
+    setPendingDeletePost(null);
     try {
       const result = await deleteContentPost(post.id);
       if (result.error) {
@@ -351,6 +349,7 @@ export default function AdminContentPage() {
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingDeletePost !== null} title="Supprimer cette publication ?" description={`La publication ${pendingDeletePost?.title || ''} sera retirée. Cette action est irréversible.`} loading={saving} onCancel={() => setPendingDeletePost(null)} onConfirm={() => pendingDeletePost && handleDelete(pendingDeletePost)} />
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
@@ -584,7 +583,7 @@ export default function AdminContentPage() {
                   </AdminButton>
                   <button
                     type="button"
-                    onClick={() => handleDelete(post)}
+                    onClick={() => setPendingDeletePost(post)}
                     className="p-2 hover:bg-red-50 rounded transition-colors cursor-pointer"
                     aria-label="Supprimer"
                   >
