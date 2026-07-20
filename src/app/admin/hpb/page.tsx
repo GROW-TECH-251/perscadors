@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, AdminModal } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, AdminModal, AdminToast } from '@/admin/components';
 import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle } from 'lucide-react';
 import { fetchAdminOutfits, createOutfit, updateOutfit, deleteOutfit } from '@/services/outfitService';
 import { fetchAdminProducts } from '@/services/productService';
@@ -20,6 +20,7 @@ export default function AdminHpbPage() {
   const [outfits, setOutfits] = useState<AdminOutfit[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   // États de la modale d'édition / création
@@ -71,7 +72,7 @@ export default function AdminHpbPage() {
       await updateOutfit(id, { visible: nextVisible });
     } catch (error: unknown) {
       console.error('Erreur bascule visibilité outfit:', error);
-      alert('Erreur lors de la mise à jour de la visibilité');
+      setToast({ message: 'Impossible de mettre à jour la visibilité du look.', variant: 'error' });
       await loadData();
     } finally {
       setSavingId(null);
@@ -91,7 +92,7 @@ export default function AdminHpbPage() {
       await updateOutfit(outfitId, { product_ids: updatedIds });
     } catch (error: unknown) {
       console.error('Erreur retrait produit outfit:', error);
-      alert('Erreur lors de la suppression de la pièce');
+      setToast({ message: 'Impossible de retirer cette pièce du look.', variant: 'error' });
       await loadData();
     } finally {
       setSavingId(null);
@@ -108,7 +109,7 @@ export default function AdminHpbPage() {
       await loadData();
     } catch (error: unknown) {
       console.error('Erreur suppression outfit:', error);
-      alert('Erreur lors de la suppression');
+      setToast({ message: 'Impossible de supprimer ce look pour le moment.', variant: 'error' });
     }
   };
 
@@ -145,11 +146,11 @@ export default function AdminHpbPage() {
       if (result.data) {
         setImageUrl(result.data);
       } else {
-        alert(result.error || 'Erreur d’upload de l’image');
+        setToast({ message: result.error || 'Erreur d’upload de l’image.', variant: 'error' });
       }
     } catch (error: unknown) {
       console.error('Erreur upload image outfit:', error);
-      alert('Erreur lors de l’upload de l’image');
+      setToast({ message: 'Erreur lors de l’upload de l’image.', variant: 'error' });
     } finally {
       setUploadingImage(false);
     }
@@ -166,11 +167,11 @@ export default function AdminHpbPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      alert('Le nom du Look est requis.');
+      setToast({ message: 'Le nom du look est requis.', variant: 'error' });
       return;
     }
     if (!imageUrl) {
-      alert('L’image du Look est requise.');
+      setToast({ message: 'L’image du look est requise.', variant: 'error' });
       return;
     }
 
@@ -194,7 +195,7 @@ export default function AdminHpbPage() {
       setIsModalOpen(false);
     } catch (error: unknown) {
       console.error('Erreur sauvegarde outfit:', error);
-      alert('Erreur lors de l’enregistrement');
+      setToast({ message: 'Impossible d’enregistrer ce look pour le moment.', variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -226,6 +227,8 @@ export default function AdminHpbPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
