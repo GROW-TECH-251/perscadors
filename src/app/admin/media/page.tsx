@@ -256,11 +256,11 @@ export default function AdminMediaPage() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between border-b border-brand-gold/10 pb-6">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-gold/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold border border-brand-gold/20 shadow-sm">
-            <Sparkles size={12} className="animate-pulse" /> Universal Media Dashboard • Pilotage Global
+            <Sparkles size={12} className="animate-pulse" /> Bibliothèque visuelle de la boutique
           </span>
-          <h1 className="font-bebas text-4xl tracking-wider text-brand-text uppercase mt-3">Gestion Dynamique des Médias</h1>
+          <h1 className="font-bebas text-4xl tracking-wider text-brand-text uppercase mt-3">Médias & visuels</h1>
           <p className="text-brand-text-muted mt-1 text-base">
-            Uploade, remplace et organise l&apos;intégralité des photos, vidéos et embeds de ta vitrine sans toucher au code.
+            Choisissez où vos photos et vidéos apparaissent, puis remplacez-les en toute simplicité.
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
@@ -275,7 +275,7 @@ export default function AdminMediaPage() {
       {/* Grille de Catégories (Sections Médias) */}
       <div className="space-y-3">
         <label className="font-bebas text-xl text-brand-gold uppercase tracking-wider block">
-          1. Sélectionne la zone média à administrer :
+          Choisissez l&apos;emplacement à personnaliser :
         </label>
         <div className="flex gap-2.5 overflow-x-auto pb-3 scrollbar-none">
           {SECTIONS_CONFIG.map((section) => {
