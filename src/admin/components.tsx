@@ -82,7 +82,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   const getIcon = (iconName: string) => iconMap[iconName] || <Package size={20} />;
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-[#0A0A0A] border-r border-brand-gold/20 min-h-screen fixed left-0 top-0 z-40 shadow-[0_0_40px_rgba(0,0,0,0.18)]">
+    <aside className="hidden lg:flex flex-col w-64 bg-[#0A0A0A] border-r border-brand-gold/20 h-screen fixed left-0 top-0 z-40 shadow-[0_0_40px_rgba(0,0,0,0.18)]">
       <div className="p-6 border-b border-brand-gold/20 bg-gradient-to-b from-white/5 to-transparent">
         <Link href="/" className="block">
           <div className="relative w-32 h-10">
@@ -101,7 +101,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         </p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-5 overflow-y-auto">
+      <nav className="flex-1 min-h-0 p-4 space-y-5 overflow-y-auto">
         {NAVIGATION_GROUPS.map((group) => (
           <div key={group.label}>
             <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-500">{group.label}</p>
