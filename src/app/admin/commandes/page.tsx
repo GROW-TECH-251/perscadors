@@ -7,7 +7,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea, AdminSkeleton } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo, FileText, Send, Zap, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus, deleteOrder, createOrderFromCart, syncPendingOrders } from '@/services/orderService';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
@@ -26,6 +26,7 @@ export default function AdminOrdersPage() {
   const [statusNote, setStatusNote] = useState('');
   const [isSavingStatus, setIsSavingStatus] = useState(false);
   const [savingOrderId, setSavingOrderId] = useState<number | null>(null);
+  const [pendingDeletion, setPendingDeletion] = useState<AdminOrder | null>(null);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState('');
 
@@ -94,25 +95,9 @@ export default function AdminOrdersPage() {
   const handleQuickStatusChange = async (id: number, newStatus: OrderStatus) => {
     // CORRECTION CADRE FINAL : Si la commande devient ANNULÉE, proposer la suppression directe !
     if (newStatus === 'ANNULÉE') {
-      const shouldDelete = window.confirm('Cette commande est marquée comme ANNULÉE. Voulez-vous supprimer définitivement cette commande et purger son historique pour ne pas encombrer le dashboard ?');
-      if (shouldDelete) {
-        setSavingOrderId(id);
-        try {
-          await deleteOrder(id);
-          await loadOrders();
-          if (selectedOrder?.id === id) {
-            setSelectedOrder(null);
-            setIsModalOpen(false);
-          }
-          setSyncFeedback('Commande annulée et supprimée avec succès.');
-        } catch (error: unknown) {
-          console.error('Erreur suppression commande:', error);
-          setSyncFeedback('Impossible de supprimer cette commande pour le moment.');
-        } finally {
-          setSavingOrderId(null);
-        }
-        return;
-      }
+      const order = orders.find((item) => item.id === id);
+      if (order) setPendingDeletion(order);
+      return;
     }
 
     setSavingOrderId(id);
@@ -135,6 +120,23 @@ export default function AdminOrdersPage() {
     } finally {
       setSavingOrderId(null);
     }
+  };
+
+  const handleConfirmDeletion = async () => {
+    if (!pendingDeletion) return;
+    const order = pendingDeletion;
+    setSavingOrderId(order.id);
+    setIsSavingStatus(true);
+    try {
+      await deleteOrder(order.id);
+      await loadOrders();
+      if (selectedOrder?.id === order.id) { setSelectedOrder(null); setIsModalOpen(false); }
+      setPendingDeletion(null);
+      setSyncFeedback(`Commande ${order.order_number} supprimée avec succès.`);
+    } catch (error: unknown) {
+      console.error('Erreur suppression commande:', error);
+      setSyncFeedback('Impossible de supprimer cette commande pour le moment.');
+    } finally { setSavingOrderId(null); setIsSavingStatus(false); }
   };
 
   // 2. Bouton "Expédier via WhatsApp" (Dispatch to Driver personnalisé)
@@ -184,23 +186,8 @@ export default function AdminOrdersPage() {
     }
 
     if (statusDraft === 'ANNULÉE') {
-      const shouldDelete = window.confirm('Cette commande est marquée comme ANNULÉE. Voulez-vous supprimer définitivement cette commande et purger son historique pour ne pas encombrer le dashboard ?');
-      if (shouldDelete) {
-        setIsSavingStatus(true);
-        try {
-          await deleteOrder(selectedOrder.id);
-          await loadOrders();
-          setSelectedOrder(null);
-          setIsModalOpen(false);
-          setSyncFeedback('Commande annulée et supprimée avec succès.');
-        } catch (error: unknown) {
-          console.error('Erreur suppression commande modale:', error);
-          setSyncFeedback('Impossible de supprimer cette commande pour le moment.');
-        } finally {
-          setIsSavingStatus(false);
-        }
-        return;
-      }
+      setPendingDeletion(selectedOrder);
+      return;
     }
 
     setIsSavingStatus(true);
@@ -409,6 +396,8 @@ export default function AdminOrdersPage() {
           </AdminButton>
         </div>
       </div>
+
+      <AdminConfirmDialog isOpen={pendingDeletion !== null} title="Supprimer cette commande ?" description={`La commande ${pendingDeletion?.order_number || ''} et son historique seront supprimés définitivement. Cette action est irréversible.`} loading={pendingDeletion ? savingOrderId === pendingDeletion.id : false} onCancel={() => setPendingDeletion(null)} onConfirm={handleConfirmDeletion} />
 
       {syncFeedback && (
         <div className="rounded-xl border border-brand-gold/20 bg-brand-gold/10 px-4 py-3 text-sm text-brand-text flex items-center gap-2">
