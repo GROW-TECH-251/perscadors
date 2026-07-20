@@ -88,6 +88,8 @@ export default function AdminContentPage() {
   const [typeFilter, setTypeFilter] = useState<ContentPostType | 'all'>('all');
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [pendingImageDeletion, setPendingImageDeletion] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(false);
   const [pendingDeletePost, setPendingDeletePost] = useState<ContentPost | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [uploadKey, setUploadKey] = useState(buildPostUploadKey());
@@ -206,20 +208,21 @@ export default function AdminContentPage() {
     }
   };
 
-  const handleRemoveImage = async () => {
+  const handleConfirmRemoveImage = async () => {
     if (!formData.image_url) {
       return;
     }
 
     if (!formData.image_url.startsWith('blob:')) {
-      const shouldDelete = window.confirm('Supprimer cette image ?');
-      if (shouldDelete) {
+      setPendingImageDeletion(false);
+      setDeletingImage(true);
+      try {
         const result = await deleteImageByUrl(BUCKETS.CONTENT_IMAGES, formData.image_url);
         if (result.error) {
           setToast({ message: USER_ERROR_MSG, variant: 'error' });
           return;
         }
-      }
+      } finally { setDeletingImage(false); }
     }
 
     setFormData((currentData) => ({
@@ -349,6 +352,7 @@ export default function AdminContentPage() {
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingImageDeletion} title="Supprimer cette image ?" description="Cette image sera retirée de la publication et supprimée du stockage. Cette action est irréversible." loading={deletingImage} onCancel={() => setPendingImageDeletion(false)} onConfirm={handleConfirmRemoveImage} />
       <AdminConfirmDialog isOpen={pendingDeletePost !== null} title="Supprimer cette publication ?" description={`La publication ${pendingDeletePost?.title || ''} sera retirée. Cette action est irréversible.`} loading={saving} onCancel={() => setPendingDeletePost(null)} onConfirm={() => pendingDeletePost && handleDelete(pendingDeletePost)} />
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -454,7 +458,7 @@ export default function AdminContentPage() {
                 </label>
 
                 {formData.image_url && (
-                  <AdminButton variant="danger" type="button" onClick={handleRemoveImage}>
+                  <AdminButton variant="danger" type="button" onClick={() => setPendingImageDeletion(true)}>
                     Supprimer l’image
                   </AdminButton>
                 )}

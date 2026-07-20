@@ -7,7 +7,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSkeleton } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSkeleton, AdminToast, AdminConfirmDialog } from '@/admin/components';
 import { CheckSquare, Square, RefreshCw, Save, AlertTriangle, Package, ShoppingCart, FileText, Tag, Users } from 'lucide-react';
 import { fetchAdminProducts } from '@/services/productService';
 import { fetchAdminOrders } from '@/services/orderService';
@@ -64,11 +64,13 @@ function readStoredChecklist(): ManualChecklistItem[] {
 export default function AdminQaPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [contentPosts, setContentPosts] = useState<ContentPost[]>([]);
+  const [pendingReset, setPendingReset] = useState(false);
   const [manualChecklist, setManualChecklist] = useState<ManualChecklistItem[]>(readStoredChecklist);
 
   const loadQaData = useCallback(async () => {
@@ -186,16 +188,14 @@ export default function AdminQaPage() {
 
   const handleSaveChecklist = () => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(manualChecklist));
-    alert('Santé boutique sauvegardée !');
+    setToast({ message: 'Santé boutique sauvegardée.', variant: 'success' });
   };
 
   const handleResetChecklist = () => {
-    if (!window.confirm('Réinitialiser la checklist QA ?')) {
-      return;
-    }
-
+    setPendingReset(false);
     setManualChecklist(DEFAULT_CHECKLIST);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CHECKLIST));
+    setToast({ message: 'Checklist réinitialisée.', variant: 'success' });
   };
 
   if (loading) {
@@ -208,6 +208,10 @@ export default function AdminQaPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingReset} title="Réinitialiser la checklist ?" description="Toutes les étapes cochées seront remises à zéro. Cette action ne peut pas être annulée." confirmLabel="Réinitialiser la checklist" onCancel={() => setPendingReset(false)} onConfirm={handleResetChecklist} />
+
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Santé boutique</h1>
@@ -273,7 +277,7 @@ export default function AdminQaPage() {
             <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">{category}</h2>
             <button
               type="button"
-              onClick={handleResetChecklist}
+              onClick={() => setPendingReset(true)}
               className="text-sm text-brand-text-muted hover:text-brand-gold cursor-pointer"
             >
               Réinitialiser
