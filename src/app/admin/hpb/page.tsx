@@ -9,7 +9,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, AdminModal } from '@/admin/components';
-import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt } from 'lucide-react';
+import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle } from 'lucide-react';
 import { fetchAdminOutfits, createOutfit, updateOutfit, deleteOutfit } from '@/services/outfitService';
 import { fetchAdminProducts } from '@/services/productService';
 import { uploadOutfitImage } from '@/services/mediaService';
@@ -302,6 +302,11 @@ export default function AdminHpbPage() {
                           <Eye size={12} /> Visible
                         </span>
                       )}
+                      {(attachedProducts.length === 0 || !outfit.image_url) && (
+                        <span className="px-2.5 py-1 bg-amber-950/90 text-amber-400 border border-amber-800 text-xs font-semibold rounded-lg backdrop-blur-sm flex items-center gap-1.5">
+                          <AlertTriangle size={12} /> À compléter
+                        </span>
+                      )}
                       {outfit.custom_price !== null && (
                         <span className="px-2.5 py-1 bg-brand-gold/20 text-brand-gold border border-brand-gold/40 text-xs font-semibold rounded-lg backdrop-blur-sm">
                           Prix Spécial Look
@@ -410,6 +415,14 @@ export default function AdminHpbPage() {
 
                 <div className="p-5 pt-0 bg-brand-bg-alt relative z-20">
                   <div className="pt-3 border-t border-brand-gold/10">
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <AdminButton variant="success" size="sm" className="justify-center gap-1" disabled={attachedProducts.length === 0} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('✨ ' + outfit.name + '\n\nLook complet : ' + displayPrice.toLocaleString() + ' FCFA\n' + attachedProducts.map((product) => '• ' + product.name).join('\n') + '\n\nÉcrivez-nous pour réserver votre taille !')}`, '_blank')}>
+                        <MessageCircle size={14} /> Partager
+                      </AdminButton>
+                      <AdminButton variant="secondary" size="sm" className="justify-center" onClick={() => handleOpenModal(outfit)}>
+                        <Edit size={14} /> Modifier
+                      </AdminButton>
+                    </div>
                     <AdminButton
                       variant="secondary"
                       size="sm"
