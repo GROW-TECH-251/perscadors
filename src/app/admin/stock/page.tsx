@@ -60,6 +60,18 @@ export default function AdminStockPage() {
     });
   }, [filter, products, searchQuery]);
 
+  const handleTemporaryHide = async (product: AdminProduct) => {
+    setRestockingId(product.id);
+    try {
+      await updateProduct(product.id, { visible: false });
+      await loadProducts();
+    } catch (error) {
+      console.error('Erreur masquage produit:', error);
+    } finally {
+      setRestockingId(null);
+    }
+  };
+
   const handleQuickRestock = async (product: AdminProduct, quantity: number) => {
     setRestockingId(product.id);
     try {
@@ -127,6 +139,12 @@ export default function AdminStockPage() {
           </AdminButton>
         </div>
       </div>
+
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button type="button" onClick={() => setFilter('out')} className="text-left rounded-2xl border border-red-500/25 bg-red-500/5 p-5 transition-all hover:-translate-y-0.5 hover:border-red-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-red-600">Ventes bloquées</p><p className="font-bebas text-3xl text-brand-text mt-2">{outOfStockProducts.length}</p><p className="text-sm text-brand-text-muted mt-1">Produits à réapprovisionner ou masquer</p></button>
+        <button type="button" onClick={() => setFilter('critical')} className="text-left rounded-2xl border border-amber-500/25 bg-amber-500/5 p-5 transition-all hover:-translate-y-0.5 hover:border-amber-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-amber-600">Risque de rupture</p><p className="font-bebas text-3xl text-brand-text mt-2">{criticalStockProducts.length}</p><p className="text-sm text-brand-text-muted mt-1">Agir avant la prochaine vente</p></button>
+        <button type="button" onClick={() => setFilter('healthy')} className="text-left rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Catalogue disponible</p><p className="font-bebas text-3xl text-brand-text mt-2">{healthyStockProducts.length}</p><p className="text-sm text-brand-text-muted mt-1">Produits prêts à vendre</p></button>
+      </section>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <AdminCard className="border-l-4 border-l-red-500">
@@ -232,6 +250,11 @@ export default function AdminStockPage() {
                 >
                   +10
                 </AdminButton>
+                {product.stock <= 0 && product.visible && (
+                  <AdminButton variant="danger" size="sm" onClick={() => handleTemporaryHide(product)} loading={restockingId === product.id}>
+                    Masquer
+                  </AdminButton>
+                )}
               </div>
 
               <Link
