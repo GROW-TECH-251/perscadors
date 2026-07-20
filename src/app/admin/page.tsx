@@ -12,7 +12,7 @@ import { fetchAdminProducts, deleteProduct } from '@/services/productService';
 import { fetchAdminOrders } from '@/services/orderService';
 import { fetchCustomerSummaries } from '@/services/customerService';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
-import { AdminCard, AdminButton } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSkeleton } from '@/admin/components';
 import { Package, ShoppingCart, Users, DollarSign, TrendingUp, AlertTriangle, Eye, Edit, Trash2, MessageCircle, Share2, Award, X } from 'lucide-react';
 import type { AdminProduct, AdminOrder, ShopSettings } from '@/admin/types';
 
@@ -195,10 +195,7 @@ export default function AdminDashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement du dashboard...</p>
-        </div>
+        <div className="w-full max-w-5xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><AdminSkeleton className="h-32" /><AdminSkeleton className="h-32" /><AdminSkeleton className="h-32" /></div><AdminSkeleton className="h-64" /></div>
       </div>
     );
   }

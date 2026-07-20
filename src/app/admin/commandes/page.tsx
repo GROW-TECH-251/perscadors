@@ -7,7 +7,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea, AdminSkeleton } from '@/admin/components';
 import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo, FileText, Send, Zap, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus, deleteOrder, createOrderFromCart, syncPendingOrders } from '@/services/orderService';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
@@ -370,10 +370,7 @@ export default function AdminOrdersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement des commandes...</p>
-        </div>
+        <div className="w-full max-w-5xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><AdminSkeleton className="h-28" /><AdminSkeleton className="h-28" /><AdminSkeleton className="h-28" /></div><AdminSkeleton className="h-72" /></div>
       </div>
     );
   }
