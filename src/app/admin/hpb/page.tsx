@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, AdminModal, AdminToast } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, AdminModal, AdminToast, AdminConfirmDialog } from '@/admin/components';
 import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle } from 'lucide-react';
 import { fetchAdminOutfits, createOutfit, updateOutfit, deleteOutfit } from '@/services/outfitService';
 import { fetchAdminProducts } from '@/services/productService';
@@ -20,6 +20,7 @@ export default function AdminHpbPage() {
   const [outfits, setOutfits] = useState<AdminOutfit[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -100,10 +101,7 @@ export default function AdminHpbPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce Look ?')) {
-      return;
-    }
-
+    setPendingDeleteId(null);
     try {
       await deleteOutfit(id);
       await loadData();
@@ -228,6 +226,7 @@ export default function AdminHpbPage() {
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer ce look ?" description="Ce look, son image et ses associations de produits seront retirés. Cette action est irréversible." loading={pendingDeleteId ? savingId === pendingDeleteId : false} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId !== null && handleDelete(pendingDeleteId)} />
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
@@ -334,7 +333,7 @@ export default function AdminHpbPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDelete(outfit.id)}
+                        onClick={() => setPendingDeleteId(outfit.id)}
                         className="p-2.5 bg-red-950/80 text-red-400 hover:bg-red-600 hover:text-white rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm opacity-0 group-hover/outfit:opacity-100"
                         title="Supprimer le Look"
                       >

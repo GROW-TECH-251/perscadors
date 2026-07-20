@@ -9,7 +9,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminModal, AdminSkeleton } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminModal, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { Film, Image as ImageIcon, Plus, Trash2, Eye, EyeOff, Upload, CheckCircle2, AlertCircle, Link as LinkIcon, Sparkles } from 'lucide-react';
 import { fetchSiteAssets, uploadSiteAssetMedia, upsertSiteAsset, deleteSiteAsset, toggleSiteAssetActive } from '@/services/mediaService';
 import type { SiteAsset, SiteAssetSection, SiteAssetType } from '@/admin/types';
@@ -31,6 +31,7 @@ export default function AdminMediaPage() {
   const router = useRouter();
   const [assets, setAssets] = useState<SiteAsset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<SiteAssetSection>('hero');
   
   // Modale d'upload / création
@@ -108,10 +109,7 @@ export default function AdminMediaPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer définitivement ce média du site ?')) {
-      return;
-    }
-
+    setPendingDeleteId(null);
     setProcessingId(id);
     try {
       const res = await deleteSiteAsset(id);
@@ -238,6 +236,8 @@ export default function AdminMediaPage() {
   return (
     <div className="space-y-8 relative">
       {/* Toast de retours (UX Non-Technique) */}
+      <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer ce média ?" description="Ce visuel sera retiré de la bibliothèque et pourra ne plus apparaître sur la vitrine. Cette action est irréversible." loading={pendingDeleteId ? processingId === pendingDeleteId : false} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId && handleDelete(pendingDeleteId)} />
+
       {toastMessage && (
         <div className="fixed top-24 right-6 z-50 animate-slide-up-fade flex items-center gap-3 px-5 py-4 rounded-2xl bg-[#0A0A0A]/95 border border-brand-gold/20 shadow-2xl backdrop-blur-md">
           {toastMessage.type === 'success' ? (
@@ -412,7 +412,7 @@ export default function AdminMediaPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(asset.id)}
+                          onClick={() => setPendingDeleteId(asset.id)}
                           disabled={isProcessing}
                           className="p-2.5 bg-red-950/80 text-red-400 hover:bg-red-600 hover:text-white rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm opacity-0 group-hover/media:opacity-100"
                           title="Supprimer définitivement"
