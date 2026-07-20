@@ -697,19 +697,21 @@ export const AdminEmptyState: React.FC<{
   description?: string;
   action?: React.ReactNode;
 }> = ({ icon, title, description, action }) => (
-  <div className="text-center py-12">
-    {icon && (
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-gold/10 text-brand-gold mb-4">
-        {icon}
-      </div>
-    )}
-    <h3 className="font-bebas text-2xl tracking-wider text-brand-text uppercase mb-2">
-      {title}
-    </h3>
-    {description && (
-      <p className="text-brand-text-muted mb-6">{description}</p>
-    )}
-    {action && <div>{action}</div>}
+  <div className="relative overflow-hidden rounded-3xl border border-dashed border-brand-gold/25 bg-gradient-to-br from-brand-bg-alt via-brand-bg-alt to-brand-gold/5 px-6 py-12 text-center shadow-inner">
+    <div className="pointer-events-none absolute -right-14 -top-14 h-40 w-40 rounded-full bg-brand-gold/10 blur-2xl" />
+    <div className="relative mx-auto max-w-md">
+      {icon && (
+        <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-gold/20 bg-brand-gold/10 text-brand-gold shadow-[0_12px_30px_rgba(184,149,42,0.12)]">
+          {icon}
+        </div>
+      )}
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-gold">Prêt à démarrer</p>
+      <h3 className="font-bebas text-2xl tracking-wider text-brand-text uppercase mb-2">
+        {title}
+      </h3>
+      {description && <p className="mx-auto max-w-sm text-sm leading-relaxed text-brand-text-muted mb-6">{description}</p>}
+      {action && <div className="inline-flex">{action}</div>}
+    </div>
   </div>
 );
 
