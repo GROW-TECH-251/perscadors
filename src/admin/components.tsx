@@ -31,16 +31,25 @@ import type { AdminScreen, NavItem, OrderStatus } from './types';
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Dashboard', icon: 'home' },
-  { id: 'products', label: 'Produits', icon: 'package' },
   { id: 'orders', label: 'Commandes', icon: 'cart' },
-  { id: 'customers', label: 'Clients', icon: 'users' },
-  { id: 'hpb', label: 'HP Looks', icon: 'hpb' },
-  { id: 'media', label: 'Gestion Médias', icon: 'media' },
-  { id: 'analytics', label: 'Analytics', icon: 'analytics' },
-  { id: 'content', label: 'Contenu', icon: 'content' },
+  { id: 'products', label: 'Produits', icon: 'package' },
   { id: 'stockAlerts', label: 'Alertes Stock', icon: 'alerts' },
-  { id: 'settings', label: 'Réglages', icon: 'settings' }
+  { id: 'customers', label: 'Clients', icon: 'users' },
+  { id: 'analytics', label: 'Analytics', icon: 'analytics' },
+  { id: 'categories', label: 'Catégories', icon: 'categories' },
+  { id: 'hpb', label: 'HP Looks', icon: 'hpb' },
+  { id: 'content', label: 'Contenu', icon: 'content' },
+  { id: 'media', label: 'Gestion Médias', icon: 'media' },
+  { id: 'settings', label: 'Réglages', icon: 'settings' },
+  { id: 'qa', label: 'Santé boutique', icon: 'qa' }
 ];
+
+const NAVIGATION_GROUPS = [
+  { label: 'Piloter', items: ['home', 'orders', 'customers', 'stockAlerts', 'analytics'] },
+  { label: 'Vendre', items: ['products', 'categories', 'hpb', 'content', 'media'] },
+  { label: 'Configurer', items: ['settings', 'qa'] }
+] as const;
+
 
 const iconMap: Record<string, React.ReactNode> = {
   home: <Home size={20} />,
@@ -92,35 +101,21 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         </p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {ADMIN_NAV_ITEMS.map((item) => {
-          const isActive = currentScreen === item.id;
-          const showBadge = item.id === 'stockAlerts' && lowStockCount > 0;
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              type="button"
-              aria-label={`Aller à ${item.label}`}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer ${
-                isActive
-                  ? 'bg-brand-gold text-[#0A0A0A] shadow-[0_12px_24px_rgba(184,149,42,0.22)]'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                {getIcon(item.icon)}
-                <span className="font-medium text-sm">{item.label}</span>
-              </div>
-              {showBadge && (
-                <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
-                  {lowStockCount}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      <nav className="flex-1 p-4 space-y-5 overflow-y-auto">
+        {NAVIGATION_GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-500">{group.label}</p>
+            <div className="space-y-1">
+              {group.items.map((id) => {
+                const item = ADMIN_NAV_ITEMS.find((entry) => entry.id === id);
+                if (!item) return null;
+                const isActive = currentScreen === item.id;
+                const showBadge = item.id === 'stockAlerts' && lowStockCount > 0;
+                return <button key={item.id} onClick={() => onNavigate(item.id)} type="button" aria-label={`Aller à ${item.label}`} className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer ${isActive ? 'bg-brand-gold text-[#0A0A0A] shadow-[0_12px_24px_rgba(184,149,42,0.22)]' : 'text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1'}`}><div className="flex items-center gap-3">{getIcon(item.icon)}<span className="font-medium text-sm">{item.label}</span></div>{showBadge && <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">{lowStockCount}</span>}</button>;
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="p-4 border-t border-brand-gold/20">
