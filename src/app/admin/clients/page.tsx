@@ -137,6 +137,18 @@ export default function AdminCustomersPage() {
     window.open(`https://wa.me/${customer.phone}?text=${encodedMessage}`, '_blank');
   };
 
+  const followupCustomers = customers.filter((customer) => customer.segments.includes('À relancer'));
+  const vipCustomers = customers.filter((customer) => customer.segments.includes('VIP'));
+
+  const handleSegmentCampaign = (segment: 'VIP' | 'À relancer') => {
+    const targetCount = segment === 'VIP' ? vipCustomers.length : followupCustomers.length;
+    const message = segment === 'VIP'
+      ? formatWhatsAppMessage(settings.vip_magic_template, { shopName: settings.shop_name, clientName: 'la famille VIP', couponCode: 'VIP-VIOUTOU10' })
+      : `Bonjour ! ${settings.shop_name} vous réserve de nouvelles pièces. Répondez à ce message pour connaître les disponibilités du moment.`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    alert(`Script de campagne prêt pour ${targetCount} client(s). Choisissez vos destinataires dans WhatsApp.`);
+  };
+
   const filteredCustomers = useMemo(() => {
     return customers.filter((customer) => {
       const matchesSearch =
@@ -247,6 +259,11 @@ export default function AdminCustomersPage() {
           </AdminButton>
         </div>
       </div>
+
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button type="button" onClick={() => setSegmentFilter('À relancer')} className="text-left rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 transition-all hover:-translate-y-0.5 hover:border-amber-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-amber-600">Opportunité de relance</p><p className="font-bebas text-3xl text-brand-text mt-2">{followupCustomers.length}</p><p className="text-sm text-brand-text-muted mt-1">Clients à réactiver cette semaine</p><span className="inline-flex mt-3 text-xs font-semibold text-amber-600">Voir ces clients →</span></button>
+        <button type="button" onClick={() => handleSegmentCampaign('VIP')} className="text-left rounded-2xl border border-brand-gold/25 bg-brand-gold/5 p-5 transition-all hover:-translate-y-0.5 hover:border-brand-gold"><p className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Campagne VIP</p><p className="font-bebas text-3xl text-brand-text mt-2">{vipCustomers.length}</p><p className="text-sm text-brand-text-muted mt-1">Préparer une offre pour vos meilleurs clients</p><span className="inline-flex mt-3 text-xs font-semibold text-brand-gold">Préparer le message WhatsApp →</span></button>
+      </section>
 
       <div className="flex flex-col sm:flex-row gap-4">
         <AdminSearch
