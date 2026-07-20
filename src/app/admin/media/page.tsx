@@ -9,7 +9,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminModal } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminModal, AdminSkeleton } from '@/admin/components';
 import { Film, Image as ImageIcon, Plus, Trash2, Eye, EyeOff, Upload, CheckCircle2, AlertCircle, Link as LinkIcon, Sparkles } from 'lucide-react';
 import { fetchSiteAssets, uploadSiteAssetMedia, upsertSiteAsset, deleteSiteAsset, toggleSiteAssetActive } from '@/services/mediaService';
 import type { SiteAsset, SiteAssetSection, SiteAssetType } from '@/admin/types';
@@ -230,10 +230,7 @@ export default function AdminMediaPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement du gestionnaire de médias...</p>
-        </div>
+        <div className="w-full max-w-6xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="flex gap-3"><AdminSkeleton className="h-16 w-36" /><AdminSkeleton className="h-16 w-36" /><AdminSkeleton className="h-16 w-36" /></div><div className="grid grid-cols-1 md:grid-cols-3 gap-5"><AdminSkeleton className="h-72" /><AdminSkeleton className="h-72" /><AdminSkeleton className="h-72" /></div></div>
       </div>
     );
   }
