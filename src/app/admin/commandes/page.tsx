@@ -361,6 +361,8 @@ export default function AdminOrdersPage() {
   }, [orders, searchQuery, statusFilter]);
 
   const pendingSyncCount = orders.filter((order) => order.sync_status !== 'synced').length;
+  const pendingConfirmationCount = orders.filter((order) => order.status === 'EN ATTENTE').length;
+  const readyToShipCount = orders.filter((order) => order.status === 'CONFIRMÉE' || order.status === 'EN LIVRAISON').length;
   const orderItemsCount = selectedOrder?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const orderSubtotal = selectedOrder?.subtotal ?? selectedOrder?.items.reduce((sum, item) => sum + item.price * item.quantity, 0) ?? 0;
   const orderDeliveryFee = selectedOrder?.delivery_fee ?? Math.max((selectedOrder?.total || 0) - orderSubtotal, 0);
@@ -393,7 +395,7 @@ export default function AdminOrdersPage() {
             className="bg-amber-500 text-[#0A0A0A] hover:bg-amber-400 font-bebas uppercase tracking-wider shadow-lg flex items-center gap-2 border border-amber-300/30"
           >
             <Zap size={18} className="fill-current animate-pulse" />
-            ⚡ Recovery Matrix (Rattrapage WhatsApp)
+            Ajouter une commande WhatsApp
           </AdminButton>
           <AdminButton
             variant="secondary"
@@ -417,6 +419,12 @@ export default function AdminOrdersPage() {
           <p>{syncFeedback}</p>
         </div>
       )}
+
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button type="button" onClick={() => setStatusFilter('EN ATTENTE')} className="text-left rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-all hover:border-amber-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-amber-600">À confirmer</p><p className="font-bebas text-3xl text-brand-text mt-2">{pendingConfirmationCount}</p><p className="text-xs text-brand-text-muted mt-1">Traiter les nouvelles ventes</p></button>
+        <button type="button" onClick={() => setStatusFilter('CONFIRMÉE')} className="text-left rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 transition-all hover:border-blue-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-blue-600">À expédier</p><p className="font-bebas text-3xl text-brand-text mt-2">{readyToShipCount}</p><p className="text-xs text-brand-text-muted mt-1">Préparer les livraisons</p></button>
+        <button type="button" onClick={handlePendingOrdersSync} className="text-left rounded-2xl border border-brand-gold/25 bg-brand-gold/5 p-4 transition-all hover:border-brand-gold"><p className="text-xs font-semibold uppercase tracking-wider text-brand-gold">À synchroniser</p><p className="font-bebas text-3xl text-brand-text mt-2">{pendingSyncCount}</p><p className="text-xs text-brand-text-muted mt-1">Sécuriser les commandes</p></button>
+      </section>
 
       <div className="flex flex-col lg:flex-row gap-4">
         <AdminSearch
@@ -802,7 +810,7 @@ export default function AdminOrdersPage() {
       <AdminModal
         isOpen={isRecoveryModalOpen}
         onClose={() => setIsRecoveryModalOpen(false)}
-        title="⚡ Recovery Matrix — Re-synchronisation Express WhatsApp"
+        title="Ajouter une commande reçue sur WhatsApp"
       >
         <form onSubmit={handleRecoverySubmit} className="space-y-6">
           {recoverySuccess && (
@@ -819,8 +827,8 @@ export default function AdminOrdersPage() {
           )}
 
           <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl text-sm text-brand-text-muted space-y-1">
-            <p className="font-bebas text-lg text-amber-500 uppercase tracking-wider">Objectif Métier : Zéro Perte de Données</p>
-            <p>Si une commande passée par un client sur la vitrine n&apos;est pas apparue ici (coupure réseau, erreur Supabase), copiez simplement le message reçu sur votre WhatsApp et collez-le ci-dessous. Le système recréera et synchronisera la commande instantanément !</p>
+            <p className="font-bebas text-lg text-amber-500 uppercase tracking-wider">Ajouter une vente reçue sur WhatsApp</p>
+            <p>Vous avez reçu une commande directement sur WhatsApp ? Collez son message ici pour l’ajouter au suivi de votre boutique. Nous détectons automatiquement les informations principales.</p>
           </div>
 
           <AdminTextarea
