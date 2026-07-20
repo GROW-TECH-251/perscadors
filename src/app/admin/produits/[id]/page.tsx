@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminToast } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminToast, AdminConfirmDialog } from '@/admin/components';
 import { Save, X, Upload } from 'lucide-react';
 import { fetchProductById, updateProduct } from '@/services/productService';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadProductImage } from '@/services/mediaService';
@@ -21,6 +21,8 @@ export default function EditProductPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
+  const [pendingImageDeletion, setPendingImageDeletion] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [fetching, setFetching] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -109,21 +111,23 @@ export default function EditProductPage() {
     }
   };
 
-  const handleRemoveImage = async () => {
+  const handleConfirmRemoveImage = async () => {
     if (!formData.image_url) {
       return;
     }
 
-    const shouldDelete = window.confirm('Supprimer aussi l’image du stockage Supabase ?');
-    if (shouldDelete) {
+    setPendingImageDeletion(false);
+    setDeletingImage(true);
+    try {
       const result = await deleteImageByUrl(BUCKETS.PRODUCT_IMAGES, formData.image_url);
       if (result.error) {
         setToast({ message: result.error, variant: 'error' });
         return;
       }
-    }
 
     setFormData((currentData) => ({ ...currentData, image_url: '' }));
+    setToast({ message: 'Image supprimée du produit.', variant: 'success' });
+    } finally { setDeletingImage(false); }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -175,6 +179,7 @@ export default function EditProductPage() {
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingImageDeletion} title="Supprimer cette image ?" description="Cette image sera retirée du produit et supprimée du stockage. Cette action est irréversible." loading={deletingImage} onCancel={() => setPendingImageDeletion(false)} onConfirm={handleConfirmRemoveImage} />
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
@@ -242,7 +247,7 @@ export default function EditProductPage() {
                 {uploading ? 'Upload en cours...' : 'Remplacer l’image'}
               </label>
               {formData.image_url && (
-                <AdminButton type="button" variant="danger" onClick={handleRemoveImage}>
+                <AdminButton type="button" variant="danger" onClick={() => setPendingImageDeletion(true)}>
                   Supprimer l’image
                 </AdminButton>
               )}
