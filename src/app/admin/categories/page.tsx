@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminEmptyState, AdminTextarea, AdminToast } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminEmptyState, AdminTextarea, AdminToast, AdminConfirmDialog } from '@/admin/components';
 import { Tag, Plus, Edit, Trash2, Eye, EyeOff, X, Save, Upload } from 'lucide-react';
 import { fetchCategories, updateCategory, deleteCategory, createCategory } from '@/services/categoryService';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
@@ -42,6 +42,7 @@ export default function AdminCategoriesPage() {
   const [newCategory, setNewCategory] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [formData, setFormData] = useState<CategoryFormState>({
     name: '',
@@ -129,10 +130,7 @@ export default function AdminCategoriesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Supprimer cette catégorie ?')) {
-      return;
-    }
-
+    setPendingDeleteId(null);
     try {
       const result = await deleteCategory(id);
       if (result.error) {
@@ -240,6 +238,7 @@ export default function AdminCategoriesPage() {
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer cette catégorie ?" description="Cette action est irréversible. Vérifiez que cet élément ne doit plus apparaître dans votre boutique." loading={saving} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId !== null && handleDelete(pendingDeleteId)} />
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
@@ -453,7 +452,7 @@ export default function AdminCategoriesPage() {
                     )}
                   </button>
                   <button
-                    onClick={() => handleDelete(category.id)}
+                    onClick={() => setPendingDeleteId(category.id)}
                     className="p-2 hover:bg-red-50 rounded transition-colors cursor-pointer"
                     type="button"
                     aria-label="Supprimer"

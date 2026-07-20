@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminToast, AdminSkeleton } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { Package, Plus, Edit, Trash2, Download, Check, X, Eye, EyeOff } from 'lucide-react';
 import { fetchAdminProducts, deleteProduct, updateProduct } from '@/services/productService';
 import type { AdminProduct } from '@/admin/types';
@@ -18,6 +18,7 @@ export default function AdminProductsPage() {
   const router = useRouter();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'visible' | 'hidden' | 'low-stock' | 'incomplete'>('all');
 
@@ -25,7 +26,7 @@ export default function AdminProductsPage() {
   const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
   const [tempPrice, setTempPrice] = useState<number>(0);
   const [savingId, setSavingId] = useState<number | null>(null);
-  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -47,10 +48,7 @@ export default function AdminProductsPage() {
   }, [loadProducts]);
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
-      return;
-    }
-
+    setPendingDeleteId(null);
     try {
       const result = await deleteProduct(id);
       if (result.error) {
@@ -79,7 +77,7 @@ export default function AdminProductsPage() {
       await updateProduct(id, { visible: nextVisible });
     } catch (err: unknown) {
       console.error('Erreur bascule visibilité:', err);
-      alert('Erreur lors de la mise à jour de la visibilité');
+      setToast({ message: 'Erreur lors de la mise à jour de la visibilité', variant: 'error' });
       await loadProducts(); // Rollback en cas d'erreur
     } finally {
       setSavingId(null);
@@ -97,7 +95,7 @@ export default function AdminProductsPage() {
       await updateProduct(id, { price: tempPrice });
     } catch (err: unknown) {
       console.error('Erreur sauvegarde prix:', err);
-      alert('Erreur lors de la sauvegarde du prix');
+      setToast({ message: 'Erreur lors de la sauvegarde du prix', variant: 'error' });
       await loadProducts();
     } finally {
       setSavingId(null);
@@ -119,7 +117,7 @@ export default function AdminProductsPage() {
       await updateProduct(id, { outOfStockSizes: updatedOutOfStock });
     } catch (err: unknown) {
       console.error('Erreur bascule stock taille:', err);
-      alert('Erreur lors de la mise à jour du stock pour cette taille');
+      setToast({ message: 'Erreur lors de la mise à jour du stock pour cette taille', variant: 'error' });
       await loadProducts();
     } finally {
       setSavingId(null);
@@ -152,6 +150,8 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer cette produit ?" description="Cette action est irréversible. Vérifiez que cet élément ne doit plus apparaître dans votre boutique." loading={savingId === pendingDeleteId} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId !== null && handleDelete(pendingDeleteId)} />
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -320,7 +320,7 @@ export default function AdminProductsPage() {
                       {product.visible ? <Eye size={18} /> : <EyeOff size={18} />}
                     </button>
                     <button
-                      onClick={() => handleDelete(product.id)}
+                      onClick={() => setPendingDeleteId(product.id)}
                       className="p-2.5 bg-red-950/80 text-red-400 hover:bg-red-600 hover:text-white rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm opacity-0 group-hover/card:opacity-100"
                       type="button"
                       aria-label="Supprimer"
