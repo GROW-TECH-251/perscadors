@@ -8,7 +8,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminEmptyState, AdminSearch, AdminBadge } from '@/admin/components';
+import { AdminCard, AdminButton, AdminEmptyState, AdminSearch, AdminBadge, AdminToast } from '@/admin/components';
 import { Package, RefreshCw, Plus } from 'lucide-react';
 import { fetchAdminProducts, updateProduct } from '@/services/productService';
 import type { AdminProduct } from '@/admin/types';
@@ -20,6 +20,7 @@ export default function AdminStockPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'critical' | 'out' | 'healthy'>('all');
   const [restockingId, setRestockingId] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -80,14 +81,15 @@ export default function AdminStockPage() {
       });
 
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
 
       await loadProducts();
+      setToast({ message: `Stock de ${product.name} mis à jour.`, variant: 'success' });
     } catch (error: unknown) {
       console.error('Erreur restockage:', error);
-      alert('Erreur lors du réassort');
+      setToast({ message: 'Impossible de réapprovisionner ce produit pour le moment.', variant: 'error' });
     } finally {
       setRestockingId(null);
     }
@@ -126,6 +128,8 @@ export default function AdminStockPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Alertes Stock</h1>
