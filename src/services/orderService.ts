@@ -143,17 +143,13 @@ export function buildWhatsAppOrderMessage(payload: PublicCheckoutPayload): strin
 }
 
 export async function fetchAdminOrders(): Promise<AdminOrder[]> {
-  let localOrders = readLocalOrders();
-
-  const globalContext = globalThis as unknown as { __PERSCADORS_ORDERS_CACHE__?: AdminOrder[] };
-  if (globalContext.__PERSCADORS_ORDERS_CACHE__) {
-    const existingIds = new Set(localOrders.map((o) => o.order_number));
-    const uniqueMemory = globalContext.__PERSCADORS_ORDERS_CACHE__.filter((o) => !existingIds.has(o.order_number));
-    localOrders = [...uniqueMemory, ...localOrders];
-  }
+  // Le dashboard admin lit toujours la base partagée en premier.
+  // Le cache navigateur ne contient que les commandes explicitement pending_sync.
+  const pendingLocalOrders = readLocalOrders().filter((order) => order.sync_status === 'pending_sync');
 
   if (!supabase) {
-    return localOrders;
+    console.error('Supabase indisponible : affichage limité aux commandes en attente locales.');
+    return pendingLocalOrders;
   }
 
   const { data, error } = await supabase
@@ -162,17 +158,17 @@ export async function fetchAdminOrders(): Promise<AdminOrder[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Erreur fetch commandes:', error);
-    return localOrders;
+    console.error('Erreur critique de lecture des commandes Supabase:', error);
+    // Ne jamais mélanger un cache historique avec les données globales : seul le retry local reste visible.
+    return pendingLocalOrders;
   }
 
-  // Fusion intelligente pour inclure instantanément les commandes du localStorage non encore persistées en base !
-  const dbOrders = (data || []) as AdminOrder[];
-  const missingLocalOrders = localOrders.filter((localOrder) => (
-    !dbOrders.some((databaseOrder) => isSameOrder(localOrder, databaseOrder))
+  const databaseOrders = (data || []) as AdminOrder[];
+  const missingPendingOrders = pendingLocalOrders.filter((localOrder) => (
+    !databaseOrders.some((databaseOrder) => isSameOrder(localOrder, databaseOrder))
   ));
 
-  return [...missingLocalOrders, ...dbOrders];
+  return [...missingPendingOrders, ...databaseOrders];
 }
 
 export function getPendingSyncOrders(orders: AdminOrder[] = readLocalOrders()): AdminOrder[] {
@@ -335,13 +331,6 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     }
   }
 
-
-  const globalContext = globalThis as unknown as { __PERSCADORS_ORDERS_CACHE__?: AdminOrder[] };
-  const memoryOrders = globalContext.__PERSCADORS_ORDERS_CACHE__ || [];
-  globalContext.__PERSCADORS_ORDERS_CACHE__ = [
-    newOrder,
-    ...memoryOrders.filter((order) => order.idempotency_key !== idempotencyKey && order.order_number !== newOrder.order_number)
-  ];
 
   if (!supabase) {
     return {
