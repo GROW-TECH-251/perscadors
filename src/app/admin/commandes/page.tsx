@@ -5,6 +5,7 @@
 
 'use client';
 
+import { useOrdersRealtime } from '@/hooks/useOrdersRealtime';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
@@ -63,6 +64,8 @@ export default function AdminOrdersPage() {
     };
     init();
   }, [loadOrders]);
+
+  useOrdersRealtime(() => { loadOrders(); });
 
   const handlePendingOrdersSync = async () => {
     setIsSyncingPending(true);

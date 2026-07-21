@@ -5,6 +5,7 @@
 
 'use client';
 
+import { useOrdersRealtime } from '@/hooks/useOrdersRealtime';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton } from '@/admin/components';
@@ -60,6 +61,8 @@ export default function AdminAnalyticsPage() {
     }, 0);
     return () => clearTimeout(timer);
   }, [loadAnalytics]);
+
+  useOrdersRealtime(() => { loadAnalytics(); });
 
   const formatCurrency = (value: number) => `${value.toLocaleString('fr-FR')} FCFA`;
   const formatChartCurrency = (value: number | string | undefined) => formatCurrency(Number(value || 0));

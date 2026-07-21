@@ -5,6 +5,7 @@
 
 'use client';
 
+import { useOrdersRealtime } from '@/hooks/useOrdersRealtime';
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -98,6 +99,8 @@ export default function AdminDashboardPage() {
 
     init();
   }, [loadDashboardData]);
+
+  useOrdersRealtime(() => { loadDashboardData(); });
 
   const handleDeleteProduct = async (productId: number) => {
     if (!window.confirm('Supprimer ce produit ?')) {

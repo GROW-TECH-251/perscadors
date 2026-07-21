@@ -5,6 +5,7 @@
 
 'use client';
 
+import { useOrdersRealtime } from '@/hooks/useOrdersRealtime';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, AdminInput, AdminTextarea, AdminBadge, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
@@ -86,6 +87,8 @@ export default function AdminCustomersPage() {
     };
     init();
   }, [loadCustomers]);
+
+  useOrdersRealtime(() => { loadCustomers(); });
 
   const copyToClipboard = async (text: string) => {
     try {
