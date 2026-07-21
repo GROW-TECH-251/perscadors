@@ -374,47 +374,34 @@ export async function compressImage(file: File, maxWidth: number = 800): Promise
 // ============================================
 
 export async function fetchSiteAssets(): Promise<SiteAsset[]> {
-  // 1. Essayer le cache local en priorité pour une réactivité instantanée
+  // Supabase est la source de vérité partagée. Le cache local sert uniquement de secours hors ligne.
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('site_assets')
+      .select('*')
+      .order('order_index', { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      const assets = data as SiteAsset[];
+      if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
+      return assets;
+    }
+
+    console.error('Erreur lecture site_assets Supabase:', error);
+  }
+
   if (typeof window !== 'undefined') {
-    const cached = window.localStorage.getItem(STORAGE_KEY);
-    if (cached) {
-      try {
+    try {
+      const cached = window.localStorage.getItem(STORAGE_KEY);
+      if (cached) {
         const parsed = JSON.parse(cached) as SiteAsset[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch (err: unknown) {
-        console.error('Erreur parse site_assets cache:', err);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    }
+    } catch { /* cache invalide : utiliser le fallback */ }
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SITE_ASSETS));
   }
 
-  if (!isSupabaseConfigured || !supabase) {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SITE_ASSETS));
-    }
-    return DEFAULT_SITE_ASSETS;
-  }
-
-  // 2. Interroger Supabase
-  const { data, error } = await supabase
-    .from('site_assets')
-    .select('*')
-    .order('order_index', { ascending: true });
-
-  if (error || !data || data.length === 0) {
-    // Mode de secours silencieux si table inexistante (PGRST205) ou vide
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SITE_ASSETS));
-    }
-    return DEFAULT_SITE_ASSETS;
-  }
-
-  const assets = data as SiteAsset[];
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
-  }
-  return assets;
+  return DEFAULT_SITE_ASSETS;
 }
 
 export async function fetchActiveAssetsBySection(section: SiteAssetSection): Promise<SiteAsset[]> {
@@ -507,7 +494,7 @@ export async function upsertSiteAsset(asset: Partial<SiteAsset>): Promise<ApiRes
   if (error) {
     // Interception silencieuse si RLS ou table manquante, le localStorage garantit la synchro
     console.error('Erreur Supabase site_assets upsert (interceptée):', error.message);
-    return { data: updatedAsset, error: null };
+    return { data: null, error: 'Impossible d’enregistrer le média sur le serveur.' };
   }
 
   return { data: data as SiteAsset, error: null };
@@ -537,7 +524,7 @@ export async function deleteSiteAsset(id: string): Promise<ApiResponse<boolean>>
 
   if (error) {
     console.error('Erreur Supabase site_assets delete (interceptée):', error.message);
-    return { data: true, error: null };
+    return { data: false, error: 'Impossible de supprimer le média sur le serveur.' };
   }
 
   return { data: true, error: null };
