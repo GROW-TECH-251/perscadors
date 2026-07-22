@@ -7,12 +7,16 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import { fetchActiveAssetBySection } from '@/services/mediaService';
+const HERO_FALLBACK_IMAGE = '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0036.jpg';
+
 import type { ShopSettings } from '@/admin/types';
 
 export const Hero: React.FC = () => {
   const [mediaUrl, setMediaUrl] = useState<string>('');
   const [mediaType, setMediaType] = useState<'video' | 'image'>('video');
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
+
+  const [realtimeVersion, setRealtimeVersion] = useState(0);
 
   useEffect(() => {
     async function loadHero() {
@@ -41,10 +45,10 @@ export const Hero: React.FC = () => {
       return () => clearTimeout(timer);
     }
     loadHero();
-  }, []);
+  }, [realtimeVersion]);
 
-  useShopSettingsRealtime(() => { window.location.reload(); });
-  useSiteAssetsRealtime(() => { window.location.reload(); });
+  useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
+  useSiteAssetsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
   return (
     <section
@@ -53,6 +57,7 @@ export const Hero: React.FC = () => {
       {/* Background Flexible (Vidéo ou Image selon le choix du client en admin) */}
       {mediaUrl && mediaType === 'video' ? (
         <video
+          onError={() => { setMediaUrl(HERO_FALLBACK_IMAGE); setMediaType('image'); }}
           autoPlay
           loop
           muted

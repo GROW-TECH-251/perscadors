@@ -416,7 +416,11 @@ export async function fetchActiveAssetsBySection(section: SiteAssetSection): Pro
 
 export async function fetchActiveAssetBySection(section: SiteAssetSection): Promise<SiteAsset | null> {
   const assets = await fetchActiveAssetsBySection(section);
-  return assets.length > 0 ? assets[0] : null;
+  // Hero et logo sont des médias exclusifs : le plus récemment modifié doit gagner.
+  return assets.sort((first, second) => {
+    const updated = new Date(second.updated_at).getTime() - new Date(first.updated_at).getTime();
+    return updated || second.order_index - first.order_index;
+  })[0] || null;
 }
 
 export async function uploadSiteAssetMedia(
@@ -485,6 +489,19 @@ export async function upsertSiteAsset(asset: Partial<SiteAsset>): Promise<ApiRes
     // Hors ligne uniquement : le cache garde une modification pending locale.
     if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
     return { data: updatedAsset, error: null };
+  }
+
+  // Une seule ressource Hero ou Logo peut être active à la fois.
+  if (updatedAsset.active && (updatedAsset.section === 'hero' || updatedAsset.section === 'logo')) {
+    const { error: deactivateError } = await supabase
+      .from('site_assets')
+      .update({ active: false, updated_at: new Date().toISOString() })
+      .eq('section', updatedAsset.section)
+      .neq('id', updatedAsset.id);
+    if (deactivateError) {
+      console.warn('Désactivation des médias exclusifs refusée:', deactivateError.message || 'erreur inconnue');
+      return { data: null, error: 'Impossible d’activer ce média sur le serveur.' };
+    }
   }
 
   const { data, error } = await supabase
