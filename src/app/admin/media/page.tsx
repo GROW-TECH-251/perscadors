@@ -6,6 +6,7 @@
 
 'use client';
 
+import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -68,6 +69,8 @@ export default function AdminMediaPage() {
     }, 0);
     return () => clearTimeout(timer);
   }, [loadAssets]);
+
+  useSiteAssetsRealtime(loadAssets);
 
   // Purge du toast après 4s
   useEffect(() => {

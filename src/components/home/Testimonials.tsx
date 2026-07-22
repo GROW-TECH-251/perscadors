@@ -1,5 +1,6 @@
 'use client';
 
+import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -28,6 +29,7 @@ export const Testimonials: React.FC = () => {
   }, []);
 
   useShopSettingsRealtime(() => { window.location.reload(); });
+  useSiteAssetsRealtime(() => { window.location.reload(); });
 
   const data = settings.testimonials_json;
 
