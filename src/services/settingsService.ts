@@ -223,8 +223,11 @@ export async function fetchShopSettings(): Promise<ShopSettings | null> {
     const { data, error } = await supabase
       .from('shop_settings')
       .select('*')
-      .eq('id', SETTINGS_ROW_ID)
-      .single();
+      // La base historique utilise une clé booléenne et peut contenir une ancienne ligne.
+      // La configuration la plus récemment enregistrée est la référence publique.
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (!error && data) {
       const settings = normalizeShopSettings(data as Partial<ShopSettings>);
