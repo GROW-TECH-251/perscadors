@@ -5,6 +5,7 @@
 
 'use client';
 
+import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -65,6 +66,8 @@ export default function AdminSettingsPage() {
     };
     init();
   }, [loadSettings]);
+
+  useShopSettingsRealtime(loadSettings);
 
   const handleSave = async () => {
     setSaving(true);
