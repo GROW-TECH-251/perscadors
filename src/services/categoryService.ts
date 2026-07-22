@@ -4,6 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { AdminCategory, ApiResponse } from '@/admin/types';
 
 export type CategoryFormData = Omit<AdminCategory, 'id' | 'created_at' | 'updated_at'>;
@@ -19,7 +20,7 @@ export async function fetchCategories(): Promise<AdminCategory[]> {
     .order('position', { ascending: true });
 
   if (error) {
-    console.error('Erreur fetch catégories:', error);
+    logSupabaseWarning('categoryService', error);
     return [];
   }
 
@@ -36,7 +37,7 @@ export async function fetchCategoryById(id: number | string): Promise<AdminCateg
     .single();
 
   if (error || !data) {
-    console.error('Erreur fetch catégorie:', error);
+    logSupabaseWarning('categoryService', error);
     return null;
   }
 
@@ -53,7 +54,7 @@ export async function fetchCategoryBySlug(slug: string): Promise<AdminCategory |
     .single();
 
   if (error || !data) {
-    console.error('Erreur fetch catégorie par slug:', error);
+    logSupabaseWarning('categoryService', error);
     return null;
   }
 
@@ -70,7 +71,7 @@ export async function fetchVisibleCategories(): Promise<AdminCategory[]> {
     .order('position', { ascending: true });
 
   if (error) {
-    console.error('Erreur fetch catégories visibles:', error);
+    logSupabaseWarning('categoryService', error);
     return [];
   }
 
@@ -93,7 +94,7 @@ export async function createCategory(categoryData: CategoryFormData): Promise<Ap
     .single();
 
   if (error) {
-    console.error('Erreur création catégorie:', error);
+    logSupabaseWarning('categoryService', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -117,7 +118,7 @@ export async function updateCategory(
     .single();
 
   if (error) {
-    console.error('Erreur mise à jour catégorie:', error);
+    logSupabaseWarning('categoryService', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -133,7 +134,7 @@ export async function deleteCategory(id: number | string): Promise<ApiResponse<b
     .eq('id', Number(id));
 
   if (error) {
-    console.error('Erreur suppression catégorie:', error);
+    logSupabaseWarning('categoryService', error);
     return { data: false, error: USER_ERROR_MSG };
   }
 
@@ -153,7 +154,7 @@ export async function reorderCategories(categoryIds: (number | string)[]): Promi
     .upsert(updates);
 
   if (error) {
-    console.error('Erreur réordonnancement catégories:', error);
+    logSupabaseWarning('categoryService', error);
     return { data: false, error: USER_ERROR_MSG };
   }
 

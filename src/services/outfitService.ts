@@ -4,34 +4,16 @@
 // ============================================
 
 import { requireSupabase, supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { outfits as fallbackOutfits } from '@/data/outfits';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { AdminOutfit, OutfitFormData, ApiResponse } from '@/admin/types';
 
 const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
-function getFallbackAdminOutfits(): AdminOutfit[] {
-  return fallbackOutfits.map((outfit, index) => {
-    const numericId = Number(outfit.id.replace(/\D/g, '')) || (index + 1);
-    const productIds = outfit.products.map((p) => Number(p.id) || 1);
-
-    return {
-      id: numericId,
-      name: outfit.name,
-      image_url: outfit.image,
-      custom_price: outfit.price,
-      product_ids: productIds,
-      visible: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-  });
-}
 
 export async function fetchAdminOutfits(): Promise<AdminOutfit[]> {
-  const fallbackList = getFallbackAdminOutfits();
-
   if (!isSupabaseConfigured || !supabase) {
-    return fallbackList;
+    console.warn('Lecture HP Looks indisponible : Supabase non configuré.');
+    return [];
   }
 
   const { data, error } = await supabase
@@ -40,47 +22,17 @@ export async function fetchAdminOutfits(): Promise<AdminOutfit[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    return fallbackList;
-  }
-
-  // CADRE FINAL : Si la table Supabase est vide ou incomplète, on peuple automatiquement avec les 32 HP Looks d'origine du repo !
-  if (!data || data.length < fallbackList.length) {
-    const existingNames = new Set((data || []).map((o: { name?: string }) => o.name));
-    const missingOutfits = fallbackList.filter((item) => !existingNames.has(item.name));
-
-    if (missingOutfits.length > 0) {
-      const seedPayload = missingOutfits.map((item) => ({
-        id: item.id,
-        name: item.name,
-        image_url: item.image_url,
-        custom_price: item.custom_price,
-        product_ids: item.product_ids,
-        visible: item.visible,
-        created_at: item.created_at,
-        updated_at: item.updated_at
-      }));
-
-      supabase.from('outfits').upsert(seedPayload).then(() => {
-        // Exécution silencieuse en arrière-plan sans bloquer l'affichage ni polluer le terminal
-      });
-
-      const mergedList = [...(data || []), ...seedPayload];
-      return mergedList as AdminOutfit[];
-    }
-
-    return data as AdminOutfit[];
+    logSupabaseWarning('outfitService', error.message || 'erreur inconnue');
+    return [];
   }
 
   return (data || []) as AdminOutfit[];
 }
 
 export async function fetchOutfitById(id: number | string): Promise<AdminOutfit | null> {
-  const fallbackList = getFallbackAdminOutfits();
   const numericId = Number(id);
 
-  if (!supabase) {
-    return fallbackList.find((o) => o.id === numericId) || null;
-  }
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('outfits')
@@ -88,9 +40,7 @@ export async function fetchOutfitById(id: number | string): Promise<AdminOutfit 
     .eq('id', numericId)
     .single();
 
-  if (error || !data) {
-    return fallbackList.find((o) => o.id === numericId) || null;
-  }
+  if (error || !data) return null;
 
   return data as AdminOutfit;
 }

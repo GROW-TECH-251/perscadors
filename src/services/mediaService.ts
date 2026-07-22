@@ -5,6 +5,7 @@
 // Upload, suppression, synchronisation temps réel et gestion hybride des assets du site
 
 import { requireSupabase, supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { ApiResponse, SiteAsset, SiteAssetSection, SiteAssetType } from '@/admin/types';
 
 export const BUCKETS = {
@@ -168,9 +169,7 @@ export async function uploadImage(
   path: string
 ): Promise<ApiResponse<string>> {
   if (!isSupabaseConfigured || !supabase) {
-    // Mode de repli local (création d'un blob d'aperçu pour résilience totale)
-    const fallbackUrl = URL.createObjectURL(file);
-    return { data: fallbackUrl, error: null };
+    return { data: null, error: 'Stockage Supabase indisponible.' };
   }
 
   const db = requireSupabase();
@@ -184,9 +183,8 @@ export async function uploadImage(
       });
 
     if (error) {
-      console.error('Erreur upload storage:', error);
-      const fallbackUrl = URL.createObjectURL(file);
-      return { data: fallbackUrl, error: null };
+      const normalized = logSupabaseWarning('storage', error);
+      return { data: null, error: normalized.userMessage };
     }
 
     const { data: urlData } = db.storage
@@ -195,9 +193,8 @@ export async function uploadImage(
 
     return { data: urlData.publicUrl, error: null };
   } catch (err: unknown) {
-    console.error('Erreur upload storage:', err);
-    const fallbackUrl = URL.createObjectURL(file);
-    return { data: fallbackUrl, error: null };
+    const normalized = logSupabaseWarning('storage', err);
+    return { data: null, error: normalized.userMessage };
   }
 }
 
@@ -247,7 +244,7 @@ export async function deleteImage(
   path: string
 ): Promise<ApiResponse<boolean>> {
   if (!isSupabaseConfigured || !supabase) {
-    return { data: true, error: null };
+    return { data: false, error: 'Stockage Supabase indisponible.' };
   }
 
   const db = requireSupabase();
@@ -257,8 +254,8 @@ export async function deleteImage(
     .remove([path]);
 
   if (error) {
-    console.error('Erreur suppression storage:', error);
-    return { data: true, error: null };
+    console.warn('Suppression Storage refusée:', error.message || 'erreur inconnue');
+    return { data: false, error: 'Impossible de supprimer le fichier sur le serveur.' };
   }
 
   return { data: true, error: null };
@@ -269,7 +266,7 @@ export async function deleteMultipleImages(
   paths: string[]
 ): Promise<ApiResponse<boolean>> {
   if (!isSupabaseConfigured || !supabase) {
-    return { data: true, error: null };
+    return { data: false, error: 'Stockage Supabase indisponible.' };
   }
 
   const db = requireSupabase();
@@ -279,8 +276,8 @@ export async function deleteMultipleImages(
     .remove(paths);
 
   if (error) {
-    console.error('Erreur suppression storage multiple:', error);
-    return { data: true, error: null };
+    console.warn('Suppression Storage multiple refusée:', error.message || 'erreur inconnue');
+    return { data: false, error: 'Impossible de supprimer les fichiers sur le serveur.' };
   }
 
   return { data: true, error: null };
@@ -416,7 +413,11 @@ export async function fetchActiveAssetsBySection(section: SiteAssetSection): Pro
 
 export async function fetchActiveAssetBySection(section: SiteAssetSection): Promise<SiteAsset | null> {
   const assets = await fetchActiveAssetsBySection(section);
-  return assets.length > 0 ? assets[0] : null;
+  // Hero et logo sont des médias exclusifs : le plus récemment modifié doit gagner.
+  return assets.sort((first, second) => {
+    const updated = new Date(second.updated_at).getTime() - new Date(first.updated_at).getTime();
+    return updated || second.order_index - first.order_index;
+  })[0] || null;
 }
 
 export async function uploadSiteAssetMedia(
@@ -481,13 +482,23 @@ export async function upsertSiteAsset(asset: Partial<SiteAsset>): Promise<ApiRes
     nextAssets = [...currentAssets, updatedAsset];
   }
 
-  // Persistance locale immédiate pour synchronisation temps réel de la vitrine
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
+  if (!isSupabaseConfigured || !supabase) {
+    // Hors ligne uniquement : le cache garde une modification pending locale.
+    if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
+    return { data: updatedAsset, error: null };
   }
 
-  if (!isSupabaseConfigured || !supabase) {
-    return { data: updatedAsset, error: null };
+  // Une seule ressource Hero ou Logo peut être active à la fois.
+  if (updatedAsset.active && (updatedAsset.section === 'hero' || updatedAsset.section === 'logo')) {
+    const { error: deactivateError } = await supabase
+      .from('site_assets')
+      .update({ active: false, updated_at: new Date().toISOString() })
+      .eq('section', updatedAsset.section)
+      .neq('id', updatedAsset.id);
+    if (deactivateError) {
+      console.warn('Désactivation des médias exclusifs refusée:', deactivateError.message || 'erreur inconnue');
+      return { data: null, error: 'Impossible d’activer ce média sur le serveur.' };
+    }
   }
 
   const { data, error } = await supabase
@@ -498,10 +509,11 @@ export async function upsertSiteAsset(asset: Partial<SiteAsset>): Promise<ApiRes
 
   if (error) {
     // Interception silencieuse si RLS ou table manquante, le localStorage garantit la synchro
-    console.error('Erreur Supabase site_assets upsert (interceptée):', error.message);
+    console.warn('Écriture site_assets Supabase refusée:', error.message || 'erreur inconnue');
     return { data: null, error: 'Impossible d’enregistrer le média sur le serveur.' };
   }
 
+  if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
   return { data: data as SiteAsset, error: null };
 }
 
@@ -510,9 +522,6 @@ export async function deleteSiteAsset(id: string): Promise<ApiResponse<boolean>>
   const target = currentAssets.find((a) => a.id === id);
 
   const nextAssets = currentAssets.filter((a) => a.id !== id);
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
-  }
 
   if (target && target.storage_path && !target.is_social_url) {
     await deleteImage(BUCKETS.SITE_ASSETS, target.storage_path);
@@ -528,10 +537,11 @@ export async function deleteSiteAsset(id: string): Promise<ApiResponse<boolean>>
     .eq('id', id);
 
   if (error) {
-    console.error('Erreur Supabase site_assets delete (interceptée):', error.message);
+    console.warn('Suppression site_assets Supabase refusée:', error.message || 'erreur inconnue');
     return { data: false, error: 'Impossible de supprimer le média sur le serveur.' };
   }
 
+  if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
   return { data: true, error: null };
 }
 

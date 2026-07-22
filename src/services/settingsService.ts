@@ -4,6 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData, FAQItem } from '@/admin/types';
 
 const SETTINGS_ROW_ID = 1;
@@ -231,7 +232,7 @@ export async function fetchShopSettings(): Promise<ShopSettings | null> {
       return settings;
     }
 
-    console.error('Erreur chargement réglages Supabase:', error);
+    console.warn('Lecture réglages Supabase indisponible:', error?.message || 'erreur inconnue');
   }
 
   // Hors ligne ou en cas d'échec temporaire seulement : session, puis cache navigateur.
@@ -249,10 +250,9 @@ export async function upsertShopSettings(
   });
 
   if (!supabase) {
-    setSettingsFallback(nextSettings);
     return {
-      data: nextSettings,
-      error: 'Réglages conservés sur cet appareil. La synchronisation sera à réessayer lorsque la connexion sera disponible.'
+      data: null,
+      error: 'Impossible d’enregistrer les réglages sans connexion à la boutique.'
     };
   }
 
@@ -263,13 +263,9 @@ export async function upsertShopSettings(
     .single();
 
   if (error) {
-    // Les valeurs restent disponibles localement, mais le commerçant ne voit jamais le détail technique.
-    console.error('Erreur sauvegarde réglages Supabase:', error);
-    setSettingsFallback(nextSettings);
-    return {
-      data: nextSettings,
-      error: 'Réglages conservés sur cet appareil. La synchronisation avec la boutique est à réessayer.'
-    };
+    // Ne jamais présenter une modification locale comme une sauvegarde partagée.
+    const normalized = logSupabaseWarning('shop_settings', error);
+    return { data: null, error: normalized.userMessage };
   }
 
   const persistedSettings = normalizeShopSettings(data as Partial<ShopSettings>);
