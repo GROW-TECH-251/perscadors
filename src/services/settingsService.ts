@@ -249,10 +249,9 @@ export async function upsertShopSettings(
   });
 
   if (!supabase) {
-    setSettingsFallback(nextSettings);
     return {
-      data: nextSettings,
-      error: 'Réglages conservés sur cet appareil. La synchronisation sera à réessayer lorsque la connexion sera disponible.'
+      data: null,
+      error: 'Impossible d’enregistrer les réglages sans connexion à la boutique.'
     };
   }
 
