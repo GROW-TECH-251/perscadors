@@ -1,5 +1,7 @@
 'use client';
 
+import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
+import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -40,6 +42,9 @@ export const Hero: React.FC = () => {
     }
     loadHero();
   }, []);
+
+  useShopSettingsRealtime(() => { window.location.reload(); });
+  useSiteAssetsRealtime(() => { window.location.reload(); });
 
   return (
     <section

@@ -8,7 +8,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminTextarea } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap, Share2, Monitor, Star, HelpCircle } from 'lucide-react';
 import { clearAdminSession } from '@/admin/auth';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
@@ -42,6 +42,8 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
+  const [pendingLogoDeletion, setPendingLogoDeletion] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'vitrine' | 'faq' | 'delivery' | 'whatsapp' | 'segmentation'>('general');
 
   const loadSettings = useCallback(async () => {
@@ -70,9 +72,9 @@ export default function AdminSettingsPage() {
       const result = await upsertShopSettings(settings);
       if (result.error) {
         // Message fonctionnel : aucun détail Supabase, SQL ou RLS n'est exposé.
-        alert(result.error || USER_ERROR_MSG);
+        setToast({ message: result.error || USER_ERROR_MSG, variant: 'error' });
       } else {
-        alert('Réglages enregistrés avec succès !');
+        setToast({ message: 'Réglages enregistrés avec succès.', variant: 'success' });
       }
 
       if (result.data) {
@@ -80,7 +82,7 @@ export default function AdminSettingsPage() {
       }
     } catch (error: unknown) {
       console.error('Erreur sauvegarde réglages:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -153,7 +155,7 @@ export default function AdminSettingsPage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner une image valide.');
+      setToast({ message: 'Veuillez sélectionner une image valide.', variant: 'error' });
       return;
     }
 
@@ -163,7 +165,7 @@ export default function AdminSettingsPage() {
       const result = await uploadBrandAsset(compressedLogo, 'logos/shop-logo');
 
       if (result.error || !result.data) {
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         return;
       }
 
@@ -173,7 +175,7 @@ export default function AdminSettingsPage() {
       }));
     } catch (error: unknown) {
       console.error('Erreur upload logo:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     } finally {
       setUploadingLogo(false);
       if (logoInputRef.current) logoInputRef.current.value = '';
@@ -183,11 +185,11 @@ export default function AdminSettingsPage() {
   const handleRemoveLogo = async () => {
     if (!settings.logo_url) return;
 
-    const shouldDelete = window.confirm('Supprimer ce logo ?');
-    if (shouldDelete) {
+    setPendingLogoDeletion(false);
+    {
       const result = await deleteImageByUrl(BUCKETS.BRAND_ASSETS, settings.logo_url);
       if (result.error) {
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         return;
       }
     }
@@ -205,7 +207,7 @@ export default function AdminSettingsPage() {
       const result = await uploadBrandAsset(compressed, 'testimonials/screenshot');
 
       if (result.error || !result.data) {
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         return;
       }
 
@@ -218,7 +220,7 @@ export default function AdminSettingsPage() {
       }));
     } catch (error: unknown) {
       console.error('Erreur upload screenshot:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     } finally {
       setUploadingScreenshot(false);
       if (screenshotInputRef.current) screenshotInputRef.current.value = '';
@@ -245,23 +247,23 @@ export default function AdminSettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement des réglages...</p>
-        </div>
+        <div className="w-full max-w-6xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><AdminSkeleton className="h-28" /><AdminSkeleton className="h-28" /><AdminSkeleton className="h-28" /></div><AdminSkeleton className="h-80" /></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingLogoDeletion} title="Supprimer ce logo ?" description="Le logo sera retiré de la vitrine et supprimé du stockage. Cette action est irréversible." loading={uploadingLogo} onCancel={() => setPendingLogoDeletion(false)} onConfirm={handleRemoveLogo} />
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
-            Personnalisation avancée • 100% Administrable
+            Configuration de votre boutique
           </span>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Réglages</h1>
-          <p className="text-brand-text-muted mt-1">Configuration opérationnelle et personnalisation de la vitrine publique</p>
+          <p className="text-brand-text-muted mt-1">Modifiez les éléments utiles à votre activité sans toucher à la partie technique.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
@@ -274,12 +276,12 @@ export default function AdminSettingsPage() {
 
       <div className="flex flex-wrap gap-2 border-b border-brand-gold/20 pb-3">
         {[
-          { id: 'general', label: 'Général' },
-          { id: 'vitrine', label: 'Vitrine & Textes' },
-          { id: 'faq', label: 'Foire Aux Questions (FAQ)' },
-          { id: 'delivery', label: 'Livraison' },
-          { id: 'whatsapp', label: 'WhatsApp & Templates' },
-          { id: 'segmentation', label: 'Segmentation' }
+          { id: 'general', label: 'Boutique', hint: 'Identité et informations principales' },
+          { id: 'delivery', label: 'Livraison', hint: 'Zones, frais et délais' },
+          { id: 'whatsapp', label: 'WhatsApp', hint: 'Messages clients et livraisons' },
+          { id: 'vitrine', label: 'Vitrine', hint: 'Hero, logo et textes publics' },
+          { id: 'faq', label: 'Preuves sociales', hint: 'Avis, vidéos et questions clients' },
+          { id: 'segmentation', label: 'Clients & fidélisation', hint: 'Seuils commerciaux' }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -290,6 +292,7 @@ export default function AdminSettingsPage() {
                 ? 'bg-brand-gold text-[#0A0A0A]'
                 : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'
             }`}
+          title={tab.hint}
           >
             {tab.label}
           </button>
@@ -352,7 +355,7 @@ export default function AdminSettingsPage() {
                 {uploadingLogo ? 'Upload du logo...' : 'Uploader le logo'}
               </label>
               {settings.logo_url && (
-                <AdminButton type="button" variant="danger" onClick={handleRemoveLogo}>
+                <AdminButton type="button" variant="danger" onClick={() => setPendingLogoDeletion(true)}>
                   <Trash2 size={16} />
                   Supprimer le logo
                 </AdminButton>
@@ -782,9 +785,9 @@ export default function AdminSettingsPage() {
       )}
 
       <AdminCard className="border-l-4 border-l-red-500">
-        <h2 className="font-bebas text-xl text-red-600 uppercase mb-4">Zone de danger</h2>
+        <h2 className="font-bebas text-xl text-red-600 uppercase mb-4">Actions sensibles</h2>
         <p className="text-sm text-brand-text-muted mb-4">
-          Utilise cette action uniquement si tu veux fermer ta session administrateur.
+          Cette zone concerne les actions qui impactent votre accès administrateur. Utilisez-la uniquement lorsque nécessaire.
         </p>
         <AdminButton variant="danger" onClick={handleLogout}>
           <LogOut size={16} />
@@ -794,3 +797,4 @@ export default function AdminSettingsPage() {
     </div>
   );
 }
+ 

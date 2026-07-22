@@ -1,5 +1,6 @@
 'use client';
 
+import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -44,6 +45,8 @@ export const Navbar: React.FC = () => {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  useShopSettingsRealtime(() => { window.location.reload(); });
 
   const navLinks = useMemo(() => {
     const categoryLinks = categories.slice(0, 4).map((category) => ({

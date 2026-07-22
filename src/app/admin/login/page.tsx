@@ -155,14 +155,9 @@ export default function AdminLoginPage() {
             </AdminButton>
           </form>
 
-          <div className="mt-6 text-center text-xs text-brand-text-muted">
-            <p>
-              Identifiant : <code className="text-brand-gold">admin@perscadors.com</code>
-            </p>
-            <p>
-              Mot de passe : <code className="text-brand-gold">perscadors2024</code>
-            </p>
-          </div>
+          <p className="mt-6 text-center text-xs leading-relaxed text-brand-text-muted">
+            Vous n&apos;avez pas accès ? Contactez l&apos;administrateur de la boutique.
+          </p>
         </div>
 
         <div className="text-center mt-6">

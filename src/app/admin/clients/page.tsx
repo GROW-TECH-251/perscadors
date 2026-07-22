@@ -5,9 +5,10 @@
 
 'use client';
 
+import { useOrdersRealtime } from '@/hooks/useOrdersRealtime';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, AdminInput, AdminTextarea, AdminBadge } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, AdminInput, AdminTextarea, AdminBadge, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { Users, Phone, MapPin, Tag, MessageCircle, Copy, Download, Eye, Save, Zap, Trash2 } from 'lucide-react';
 import { fetchCustomerSummaries, upsertCustomerMeta, deleteCustomer } from '@/services/customerService';
 import { fetchOrdersByPhone } from '@/services/orderService';
@@ -59,6 +60,8 @@ export default function AdminCustomersPage() {
   const [noteDraft, setNoteDraft] = useState('');
   const [tagsDraft, setTagsDraft] = useState('');
   const [savingMeta, setSavingMeta] = useState(false);
+  const [pendingDeletePhone, setPendingDeletePhone] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
 
   const loadCustomers = useCallback(async () => {
     setLoading(true);
@@ -85,10 +88,12 @@ export default function AdminCustomersPage() {
     init();
   }, [loadCustomers]);
 
+  useOrdersRealtime(() => { loadCustomers(); });
+
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert('Copié dans le presse-papier !');
+      setToast({ message: 'Copié dans le presse-papier.', variant: 'success' });
     } catch (error: unknown) {
       console.error('Erreur copie:', error);
     }
@@ -103,14 +108,11 @@ export default function AdminCustomersPage() {
   // LEVIER 4 : SUPPRESSION CLIENT & RELANCE MAGIQUE VIP (Seuil 50k)
   // ============================================
   const handleDeleteCustomer = async (phone: string) => {
-    if (!window.confirm('Voulez-vous réellement supprimer ce client du tableau de bord ? Cette action est irréversible et purgera ses commandes locales pour désencombrer l’administration.')) {
-      return;
-    }
-
+    setPendingDeletePhone(null);
     try {
       const result = await deleteCustomer(phone);
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
 
@@ -119,10 +121,10 @@ export default function AdminCustomersPage() {
         setDetailsOpen(false);
         setSelectedCustomer(null);
       }
-      alert('Client supprimé avec succès !');
+      setToast({ message: 'Client supprimé avec succès.', variant: 'success' });
     } catch (error: unknown) {
       console.error('Erreur suppression client:', error);
-      alert('Une erreur est survenue lors de la suppression.');
+      setToast({ message: 'Impossible de supprimer ce client pour le moment.', variant: 'error' });
     }
   };
 
@@ -135,6 +137,18 @@ export default function AdminCustomersPage() {
 
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${customer.phone}?text=${encodedMessage}`, '_blank');
+  };
+
+  const followupCustomers = customers.filter((customer) => customer.segments.includes('À relancer'));
+  const vipCustomers = customers.filter((customer) => customer.segments.includes('VIP'));
+
+  const handleSegmentCampaign = (segment: 'VIP' | 'À relancer') => {
+    const targetCount = segment === 'VIP' ? vipCustomers.length : followupCustomers.length;
+    const message = segment === 'VIP'
+      ? formatWhatsAppMessage(settings.vip_magic_template, { shopName: settings.shop_name, clientName: 'la famille VIP', couponCode: 'VIP-VIOUTOU10' })
+      : `Bonjour ! ${settings.shop_name} vous réserve de nouvelles pièces. Répondez à ce message pour connaître les disponibilités du moment.`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    setToast({ message: `Script de campagne prêt pour ${targetCount} client(s). Choisissez vos destinataires dans WhatsApp.`, variant: 'info' });
   };
 
   const filteredCustomers = useMemo(() => {
@@ -189,7 +203,7 @@ export default function AdminCustomersPage() {
       });
 
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
 
@@ -206,10 +220,10 @@ export default function AdminCustomersPage() {
         )
       );
 
-      alert('Fiche client mise à jour !');
+      setToast({ message: 'Fiche client mise à jour.', variant: 'success' });
     } catch (error: unknown) {
       console.error('Erreur sauvegarde fiche client:', error);
-      alert('Erreur lors de la sauvegarde');
+      setToast({ message: 'Impossible d’enregistrer la fiche client pour le moment.', variant: 'error' });
     } finally {
       setSavingMeta(false);
     }
@@ -218,16 +232,16 @@ export default function AdminCustomersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement des clients...</p>
-        </div>
+        <div className="w-full max-w-6xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="grid grid-cols-2 lg:grid-cols-4 gap-4"><AdminSkeleton className="h-24" /><AdminSkeleton className="h-24" /><AdminSkeleton className="h-24" /><AdminSkeleton className="h-24" /></div><div className="grid grid-cols-1 md:grid-cols-3 gap-5"><AdminSkeleton className="h-80" /><AdminSkeleton className="h-80" /><AdminSkeleton className="h-80" /></div></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingDeletePhone !== null} title="Supprimer ce client ?" description="Cette action supprimera sa fiche et ses commandes associées. Elle est irréversible." onCancel={() => setPendingDeletePhone(null)} onConfirm={() => pendingDeletePhone && handleDeleteCustomer(pendingDeletePhone)} />
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
@@ -247,6 +261,11 @@ export default function AdminCustomersPage() {
           </AdminButton>
         </div>
       </div>
+
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button type="button" onClick={() => setSegmentFilter('À relancer')} className="text-left rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 transition-all hover:-translate-y-0.5 hover:border-amber-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-amber-600">Opportunité de relance</p><p className="font-bebas text-3xl text-brand-text mt-2">{followupCustomers.length}</p><p className="text-sm text-brand-text-muted mt-1">Clients à réactiver cette semaine</p><span className="inline-flex mt-3 text-xs font-semibold text-amber-600">Voir ces clients →</span></button>
+        <button type="button" onClick={() => handleSegmentCampaign('VIP')} className="text-left rounded-2xl border border-brand-gold/25 bg-brand-gold/5 p-5 transition-all hover:-translate-y-0.5 hover:border-brand-gold"><p className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Campagne VIP</p><p className="font-bebas text-3xl text-brand-text mt-2">{vipCustomers.length}</p><p className="text-sm text-brand-text-muted mt-1">Préparer une offre pour vos meilleurs clients</p><span className="inline-flex mt-3 text-xs font-semibold text-brand-gold">Préparer le message WhatsApp →</span></button>
+      </section>
 
       <div className="flex flex-col sm:flex-row gap-4">
         <AdminSearch
@@ -312,7 +331,7 @@ export default function AdminCustomersPage() {
                 <div className="absolute top-3 right-3 z-20 opacity-0 group-hover/client:opacity-100 transition-opacity">
                   <button
                     type="button"
-                    onClick={() => handleDeleteCustomer(customer.phone)}
+                    onClick={() => setPendingDeletePhone(customer.phone)}
                     className="p-2 bg-red-950/80 text-red-400 hover:bg-red-600 hover:text-white rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm"
                     title="Supprimer ce client"
                   >

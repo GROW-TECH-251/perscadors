@@ -1,51 +1,55 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-
-const ADMIN_SESSION_COOKIE = 'perscadors_admin_session';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
 
 function isAdminPath(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/');
 }
 
-/**
- * Middleware de protection des routes admin.
- * - Redirige vers /admin/login si non authentifié
- * - Redirige vers /admin si déjà authentifié sur /admin/login
- * - Ajoute en-têtes de sécurité pour les routes admin
- */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  if (!isAdminPath(pathname)) return NextResponse.next();
 
-  if (!isAdminPath(pathname)) {
-    return NextResponse.next();
+  const isLoginPath = pathname === '/admin/login';
+  const response = NextResponse.next({ request });
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+  if (!url || !anonKey) {
+    if (!isLoginPath) return NextResponse.redirect(new URL('/admin/login', request.url));
+    return response;
   }
 
-  const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-  const isLoginPath = pathname === '/admin/login';
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll: (cookies: Array<{ name: string; value: string; options: CookieOptions }>) => {
+        cookies.forEach(({ name, value }) => request.cookies.set(name, value));
+        cookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+      }
+    }
+  });
 
-  if (!sessionCookie && !isLoginPath) {
-    const loginUrl = new URL(
-      `/admin/login?redirect=${encodeURIComponent(pathname + search)}`,
-      request.nextUrl.origin
-    );
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    if (isLoginPath) return response;
+    return NextResponse.redirect(new URL(`/admin/login?redirect=${encodeURIComponent(pathname + search)}`, request.url));
+  }
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
+
+  if (!isAdmin) {
+    if (isLoginPath) return response;
+    const loginUrl = new URL('/admin/login?reason=unauthorized', request.url);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (sessionCookie && isLoginPath) {
-    const dashboardUrl = new URL('/admin', request.nextUrl.origin);
-    return NextResponse.redirect(dashboardUrl);
-  }
+  if (isLoginPath) return NextResponse.redirect(new URL('/admin', request.url));
 
-  const response = NextResponse.next();
-
-  if (!isLoginPath) {
-    response.headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
-    response.headers.set('cache-control', 'private, no-store, max-age=0');
-  }
-
+  response.headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
+  response.headers.set('cache-control', 'private, no-store, max-age=0');
   return response;
 }
 
-export const config = {
-  matcher: ['/admin', '/admin/:path*'],
-};
+export const config = { matcher: ['/admin', '/admin/:path*'] };

@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminEmptyState, AdminTextarea } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminEmptyState, AdminTextarea, AdminToast, AdminConfirmDialog } from '@/admin/components';
 import { Tag, Plus, Edit, Trash2, Eye, EyeOff, X, Save, Upload } from 'lucide-react';
 import { fetchCategories, updateCategory, deleteCategory, createCategory } from '@/services/categoryService';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
@@ -42,6 +42,8 @@ export default function AdminCategoriesPage() {
   const [newCategory, setNewCategory] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [formData, setFormData] = useState<CategoryFormState>({
     name: '',
     category: '',
@@ -91,24 +93,24 @@ export default function AdminCategoriesPage() {
       if (editingId) {
         const result = await updateCategory(editingId, formData);
         if (result.error) {
-          alert(result.error);
+          setToast({ message: result.error, variant: 'error' });
           return;
         }
-        alert('Catégorie mise à jour !');
+        setToast({ message: 'Catégorie mise à jour.', variant: 'success' });
       } else {
         const result = await createCategory(formData);
         if (result.error) {
-          alert(result.error);
+          setToast({ message: result.error, variant: 'error' });
           return;
         }
-        alert('Catégorie créée !');
+        setToast({ message: 'Catégorie créée.', variant: 'success' });
       }
 
       await loadCategories();
       resetForm();
     } catch (error: unknown) {
       console.error('Erreur sauvegarde catégorie:', error);
-      alert('Erreur lors de la sauvegarde');
+      setToast({ message: 'Impossible d’enregistrer cette catégorie pour le moment.', variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -128,20 +130,17 @@ export default function AdminCategoriesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Supprimer cette catégorie ?')) {
-      return;
-    }
-
+    setPendingDeleteId(null);
     try {
       const result = await deleteCategory(id);
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
       await loadCategories();
     } catch (error: unknown) {
       console.error('Erreur suppression catégorie:', error);
-      alert('Erreur suppression');
+      setToast({ message: 'Impossible de supprimer cette catégorie pour le moment.', variant: 'error' });
     }
   };
 
@@ -149,13 +148,13 @@ export default function AdminCategoriesPage() {
     try {
       const result = await updateCategory(id, { visible: !currentVisible });
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
       await loadCategories();
     } catch (error: unknown) {
       console.error('Erreur mise à jour catégorie:', error);
-      alert('Erreur mise à jour');
+      setToast({ message: 'Impossible de mettre à jour cette catégorie.', variant: 'error' });
     }
   };
 
@@ -175,7 +174,7 @@ export default function AdminCategoriesPage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner une image valide');
+      setToast({ message: 'Veuillez sélectionner une image valide.', variant: 'error' });
       return;
     }
 
@@ -186,7 +185,7 @@ export default function AdminCategoriesPage() {
       const result = await uploadBrandAsset(compressedFile, `collections/${uploadKey}`);
 
       if (result.error || !result.data) {
-        alert(result.error || 'Erreur upload image');
+        setToast({ message: result.error || 'Erreur d’upload image.', variant: 'error' });
         return;
       }
 
@@ -196,7 +195,7 @@ export default function AdminCategoriesPage() {
       }));
     } catch (error: unknown) {
       console.error('Erreur upload catégorie:', error);
-      alert('Erreur lors de l’upload de l’image');
+      setToast({ message: 'Erreur lors de l’upload de l’image.', variant: 'error' });
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -214,7 +213,7 @@ export default function AdminCategoriesPage() {
     if (shouldDelete) {
       const result = await deleteImageByUrl(BUCKETS.BRAND_ASSETS, formData.image_url);
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
     }
@@ -238,6 +237,9 @@ export default function AdminCategoriesPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer cette catégorie ?" description="Cette action est irréversible. Vérifiez que cet élément ne doit plus apparaître dans votre boutique." loading={saving} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId !== null && handleDelete(pendingDeleteId)} />
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
@@ -450,7 +452,7 @@ export default function AdminCategoriesPage() {
                     )}
                   </button>
                   <button
-                    onClick={() => handleDelete(category.id)}
+                    onClick={() => setPendingDeleteId(category.id)}
                     className="p-2 hover:bg-red-50 rounded transition-colors cursor-pointer"
                     type="button"
                     aria-label="Supprimer"

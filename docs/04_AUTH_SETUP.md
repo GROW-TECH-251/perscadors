@@ -14,11 +14,11 @@ L'accès à l'interface d'administration `/admin` (incluant la gestion des médi
 1. Toujours dans la section **"Authentication"**, cliquez sur l'onglet **"Users"** dans le menu supérieur.
 2. Cliquez sur le bouton vert **"Add User"** > **"Create user"**.
 3. **Email :** `admin@perscadors.com`
-4. **Password :** `perscadors2024` (ou le mot de passe fort choisi par Vioutou).
+4. **Password :** choisissez un mot de passe unique et fort, jamais stocké dans Git ou dans une variable `NEXT_PUBLIC_`.
 5. Cliquez sur **"Create user"**.
 6. Le compte apparaît dans la liste des utilisateurs avec un identifiant unique (UUID).
 
-### ÉTAPE 3 : PERSISTANCE DES SESSIONS ET PROTECTION DES ROUTES
+### ÉTAPE 3 : ATTRIBUTION DU RÔLE ADMINISTRATEUR
 Le système d'authentification e-commerce est implémenté nativement dans `src/admin/auth.ts` et exploite les fonctionnalités avancées de Supabase Auth :
 - **Login sécurisé :** Géré par le client Supabase `auth.signInWithPassword()`.
 - **Session persistante :** Stockage sécurisé en cache local pour éviter à Vioutou de se reconnecter en permanence depuis son téléphone.
@@ -29,7 +29,7 @@ Le système d'authentification e-commerce est implémenté nativement dans `src/
 1. Lancez votre serveur local `npm run dev`.
 2. Naviguez sur `http://localhost:3000/admin`.
 3. Le système vous redirige automatiquement sur `http://localhost:3000/admin/login`.
-4. Saisissez `admin@perscadors.com` et `perscadors2024`.
+4. Saisissez l’e-mail et le mot de passe du compte créé dans Supabase Auth.
 5. Validez. Vous êtes redirigé instantanément vers le tableau de bord d'administration.
 
 ---

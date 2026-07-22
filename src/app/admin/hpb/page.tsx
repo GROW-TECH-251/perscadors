@@ -8,8 +8,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, AdminModal } from '@/admin/components';
-import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt } from 'lucide-react';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, AdminModal, AdminToast, AdminConfirmDialog } from '@/admin/components';
+import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle } from 'lucide-react';
 import { fetchAdminOutfits, createOutfit, updateOutfit, deleteOutfit } from '@/services/outfitService';
 import { fetchAdminProducts } from '@/services/productService';
 import { uploadOutfitImage } from '@/services/mediaService';
@@ -20,6 +20,8 @@ export default function AdminHpbPage() {
   const [outfits, setOutfits] = useState<AdminOutfit[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   // États de la modale d'édition / création
@@ -71,7 +73,7 @@ export default function AdminHpbPage() {
       await updateOutfit(id, { visible: nextVisible });
     } catch (error: unknown) {
       console.error('Erreur bascule visibilité outfit:', error);
-      alert('Erreur lors de la mise à jour de la visibilité');
+      setToast({ message: 'Impossible de mettre à jour la visibilité du look.', variant: 'error' });
       await loadData();
     } finally {
       setSavingId(null);
@@ -91,7 +93,7 @@ export default function AdminHpbPage() {
       await updateOutfit(outfitId, { product_ids: updatedIds });
     } catch (error: unknown) {
       console.error('Erreur retrait produit outfit:', error);
-      alert('Erreur lors de la suppression de la pièce');
+      setToast({ message: 'Impossible de retirer cette pièce du look.', variant: 'error' });
       await loadData();
     } finally {
       setSavingId(null);
@@ -99,16 +101,13 @@ export default function AdminHpbPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce Look ?')) {
-      return;
-    }
-
+    setPendingDeleteId(null);
     try {
       await deleteOutfit(id);
       await loadData();
     } catch (error: unknown) {
       console.error('Erreur suppression outfit:', error);
-      alert('Erreur lors de la suppression');
+      setToast({ message: 'Impossible de supprimer ce look pour le moment.', variant: 'error' });
     }
   };
 
@@ -145,11 +144,11 @@ export default function AdminHpbPage() {
       if (result.data) {
         setImageUrl(result.data);
       } else {
-        alert(result.error || 'Erreur d’upload de l’image');
+        setToast({ message: result.error || 'Erreur d’upload de l’image.', variant: 'error' });
       }
     } catch (error: unknown) {
       console.error('Erreur upload image outfit:', error);
-      alert('Erreur lors de l’upload de l’image');
+      setToast({ message: 'Erreur lors de l’upload de l’image.', variant: 'error' });
     } finally {
       setUploadingImage(false);
     }
@@ -166,11 +165,11 @@ export default function AdminHpbPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      alert('Le nom du Look est requis.');
+      setToast({ message: 'Le nom du look est requis.', variant: 'error' });
       return;
     }
     if (!imageUrl) {
-      alert('L’image du Look est requise.');
+      setToast({ message: 'L’image du look est requise.', variant: 'error' });
       return;
     }
 
@@ -194,7 +193,7 @@ export default function AdminHpbPage() {
       setIsModalOpen(false);
     } catch (error: unknown) {
       console.error('Erreur sauvegarde outfit:', error);
-      alert('Erreur lors de l’enregistrement');
+      setToast({ message: 'Impossible d’enregistrer ce look pour le moment.', variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -226,6 +225,9 @@ export default function AdminHpbPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer ce look ?" description="Ce look, son image et ses associations de produits seront retirés. Cette action est irréversible." loading={pendingDeleteId ? savingId === pendingDeleteId : false} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId !== null && handleDelete(pendingDeleteId)} />
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold border border-brand-gold/20">
@@ -302,6 +304,11 @@ export default function AdminHpbPage() {
                           <Eye size={12} /> Visible
                         </span>
                       )}
+                      {(attachedProducts.length === 0 || !outfit.image_url) && (
+                        <span className="px-2.5 py-1 bg-amber-950/90 text-amber-400 border border-amber-800 text-xs font-semibold rounded-lg backdrop-blur-sm flex items-center gap-1.5">
+                          <AlertTriangle size={12} /> À compléter
+                        </span>
+                      )}
                       {outfit.custom_price !== null && (
                         <span className="px-2.5 py-1 bg-brand-gold/20 text-brand-gold border border-brand-gold/40 text-xs font-semibold rounded-lg backdrop-blur-sm">
                           Prix Spécial Look
@@ -326,7 +333,7 @@ export default function AdminHpbPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDelete(outfit.id)}
+                        onClick={() => setPendingDeleteId(outfit.id)}
                         className="p-2.5 bg-red-950/80 text-red-400 hover:bg-red-600 hover:text-white rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm opacity-0 group-hover/outfit:opacity-100"
                         title="Supprimer le Look"
                       >
@@ -410,6 +417,14 @@ export default function AdminHpbPage() {
 
                 <div className="p-5 pt-0 bg-brand-bg-alt relative z-20">
                   <div className="pt-3 border-t border-brand-gold/10">
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <AdminButton variant="success" size="sm" className="justify-center gap-1" disabled={attachedProducts.length === 0} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('✨ ' + outfit.name + '\n\nLook complet : ' + displayPrice.toLocaleString() + ' FCFA\n' + attachedProducts.map((product) => '• ' + product.name).join('\n') + '\n\nÉcrivez-nous pour réserver votre taille !')}`, '_blank')}>
+                        <MessageCircle size={14} /> Partager
+                      </AdminButton>
+                      <AdminButton variant="secondary" size="sm" className="justify-center" onClick={() => handleOpenModal(outfit)}>
+                        <Edit size={14} /> Modifier
+                      </AdminButton>
+                    </div>
                     <AdminButton
                       variant="secondary"
                       size="sm"
