@@ -147,6 +147,11 @@ export default function AdminMediaPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (selectedSection === 'hero' && file.type.startsWith('video/') && file.type !== 'video/mp4') {
+      setToastMessage({ type: 'error', text: 'Pour le Hero, utilisez une vidéo MP4 encodée en H.264.' });
+      e.target.value = '';
+      return;
+    }
 
     setSelectedFile(file);
     setIsSocialUrl(false);
@@ -364,10 +369,11 @@ export default function AdminMediaPage() {
                         ) : (
                           <video
                             src={asset.url}
-                            autoPlay
-                            loop
+                            controls
+                            preload="metadata"
                             muted
                             playsInline
+                            onError={() => setToastMessage({ type: 'error', text: `La vidéo « ${asset.title} » ne peut pas être lue par ce navigateur. Utilisez MP4 H.264.` })}
                             className="w-full h-full object-cover opacity-90 group-hover/media:opacity-100 transition-opacity"
                           />
                         )
@@ -527,7 +533,7 @@ export default function AdminMediaPage() {
                   <div className="space-y-4 pointer-events-none relative z-10">
                     {selectedFile?.type.startsWith('video/') ? (
                       <div className="w-full max-w-xs aspect-[16/10] mx-auto bg-black rounded-2xl overflow-hidden border border-brand-gold/20 shadow">
-                        <video src={filePreview} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                        <video src={filePreview} controls preload="metadata" muted playsInline onError={() => setToastMessage({ type: 'error', text: 'Cette vidéo ne peut pas être lue. Utilisez MP4 H.264.' })} className="w-full h-full object-cover" />
                       </div>
                     ) : (
                       <div className="relative w-full max-w-xs aspect-[16/10] mx-auto bg-black rounded-2xl overflow-hidden border border-brand-gold/20 shadow">
