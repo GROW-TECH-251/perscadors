@@ -12,7 +12,8 @@ export const BUCKETS = {
   BRAND_ASSETS: 'brand-assets',
   CONTENT_IMAGES: 'content-images',
   OUTFITS_COLLECTION: 'outfits-collection',
-  SITE_ASSETS: 'site-assets'
+  // Bucket réellement présent dans Supabase (audité le 22/07/2026).
+  SITE_ASSETS: 'site-media'
 } as const;
 
 const STORAGE_KEY = '__PERSCADORS_SITE_ASSETS_CACHE__';
