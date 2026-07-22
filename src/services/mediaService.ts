@@ -168,9 +168,7 @@ export async function uploadImage(
   path: string
 ): Promise<ApiResponse<string>> {
   if (!isSupabaseConfigured || !supabase) {
-    // Mode de repli local (création d'un blob d'aperçu pour résilience totale)
-    const fallbackUrl = URL.createObjectURL(file);
-    return { data: fallbackUrl, error: null };
+    return { data: null, error: 'Stockage Supabase indisponible.' };
   }
 
   const db = requireSupabase();
@@ -184,9 +182,8 @@ export async function uploadImage(
       });
 
     if (error) {
-      console.error('Erreur upload storage:', error);
-      const fallbackUrl = URL.createObjectURL(file);
-      return { data: fallbackUrl, error: null };
+      console.warn('Upload Storage refusé:', error.message || 'erreur inconnue');
+      return { data: null, error: 'Impossible d’envoyer le fichier sur le serveur.' };
     }
 
     const { data: urlData } = db.storage
@@ -195,9 +192,8 @@ export async function uploadImage(
 
     return { data: urlData.publicUrl, error: null };
   } catch (err: unknown) {
-    console.error('Erreur upload storage:', err);
-    const fallbackUrl = URL.createObjectURL(file);
-    return { data: fallbackUrl, error: null };
+    console.warn('Upload Storage interrompu:', err);
+    return { data: null, error: 'Impossible d’envoyer le fichier sur le serveur.' };
   }
 }
 
@@ -247,7 +243,7 @@ export async function deleteImage(
   path: string
 ): Promise<ApiResponse<boolean>> {
   if (!isSupabaseConfigured || !supabase) {
-    return { data: true, error: null };
+    return { data: false, error: 'Stockage Supabase indisponible.' };
   }
 
   const db = requireSupabase();
@@ -257,8 +253,8 @@ export async function deleteImage(
     .remove([path]);
 
   if (error) {
-    console.error('Erreur suppression storage:', error);
-    return { data: true, error: null };
+    console.warn('Suppression Storage refusée:', error.message || 'erreur inconnue');
+    return { data: false, error: 'Impossible de supprimer le fichier sur le serveur.' };
   }
 
   return { data: true, error: null };
@@ -269,7 +265,7 @@ export async function deleteMultipleImages(
   paths: string[]
 ): Promise<ApiResponse<boolean>> {
   if (!isSupabaseConfigured || !supabase) {
-    return { data: true, error: null };
+    return { data: false, error: 'Stockage Supabase indisponible.' };
   }
 
   const db = requireSupabase();
@@ -279,8 +275,8 @@ export async function deleteMultipleImages(
     .remove(paths);
 
   if (error) {
-    console.error('Erreur suppression storage multiple:', error);
-    return { data: true, error: null };
+    console.warn('Suppression Storage multiple refusée:', error.message || 'erreur inconnue');
+    return { data: false, error: 'Impossible de supprimer les fichiers sur le serveur.' };
   }
 
   return { data: true, error: null };
