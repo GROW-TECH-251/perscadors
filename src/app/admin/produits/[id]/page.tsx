@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminToast, AdminConfirmDialog } from '@/admin/components';
 import { Save, X, Upload } from 'lucide-react';
 import { fetchProductById, updateProduct } from '@/services/productService';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadProductImage } from '@/services/mediaService';
@@ -21,6 +21,9 @@ export default function EditProductPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
+  const [pendingImageDeletion, setPendingImageDeletion] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [fetching, setFetching] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState<ProductFormData>({
@@ -78,12 +81,12 @@ export default function EditProductPage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner une image valide');
+      setToast({ message: 'Veuillez sélectionner une image valide.', variant: 'error' });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('L\'image ne doit pas dépasser 5MB');
+      setToast({ message: 'L’image ne doit pas dépasser 5 Mo.', variant: 'error' });
       return;
     }
 
@@ -93,13 +96,13 @@ export default function EditProductPage() {
       const result = await uploadProductImage(compressedFile, productId);
 
       if (result.error || !result.data) {
-        alert(result.error || 'Erreur upload image');
+        setToast({ message: result.error || 'Erreur d’upload image.', variant: 'error' });
       } else {
         setFormData((currentData) => ({ ...currentData, image_url: result.data || '' }));
       }
     } catch (error: unknown) {
       console.error('Erreur upload image:', error);
-      alert('Erreur lors de l\'upload');
+      setToast({ message: 'Erreur lors de l’upload de l’image.', variant: 'error' });
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -108,21 +111,23 @@ export default function EditProductPage() {
     }
   };
 
-  const handleRemoveImage = async () => {
+  const handleConfirmRemoveImage = async () => {
     if (!formData.image_url) {
       return;
     }
 
-    const shouldDelete = window.confirm('Supprimer aussi l’image du stockage Supabase ?');
-    if (shouldDelete) {
+    setPendingImageDeletion(false);
+    setDeletingImage(true);
+    try {
       const result = await deleteImageByUrl(BUCKETS.PRODUCT_IMAGES, formData.image_url);
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
-    }
 
     setFormData((currentData) => ({ ...currentData, image_url: '' }));
+    setToast({ message: 'Image supprimée du produit.', variant: 'success' });
+    } finally { setDeletingImage(false); }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -132,15 +137,15 @@ export default function EditProductPage() {
     try {
       const result = await updateProduct(Number(productId), formData);
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
 
-      alert('Produit mis à jour avec succès !');
+      setToast({ message: 'Produit mis à jour avec succès.', variant: 'success' });
       router.push('/admin/produits');
     } catch (error: unknown) {
       console.error('Erreur mise à jour produit:', error);
-      alert('Erreur lors de la mise à jour');
+      setToast({ message: 'Impossible de mettre à jour ce produit pour le moment.', variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -173,6 +178,9 @@ export default function EditProductPage() {
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingImageDeletion} title="Supprimer cette image ?" description="Cette image sera retirée du produit et supprimée du stockage. Cette action est irréversible." loading={deletingImage} onCancel={() => setPendingImageDeletion(false)} onConfirm={handleConfirmRemoveImage} />
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
@@ -239,7 +247,7 @@ export default function EditProductPage() {
                 {uploading ? 'Upload en cours...' : 'Remplacer l’image'}
               </label>
               {formData.image_url && (
-                <AdminButton type="button" variant="danger" onClick={handleRemoveImage}>
+                <AdminButton type="button" variant="danger" onClick={() => setPendingImageDeletion(true)}>
                   Supprimer l’image
                 </AdminButton>
               )}

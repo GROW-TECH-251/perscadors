@@ -8,7 +8,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminSearch, AdminEmptyState, AdminBadge } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminSearch, AdminEmptyState, AdminBadge, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { FileText, Plus, Edit, Trash2, Upload, Send, Clock3 } from 'lucide-react';
 import {
   createContentPost,
@@ -32,6 +32,13 @@ const CATEGORY_OPTIONS: Array<{ value: ContentPostType; label: string }> = [
   { value: 'Promotion', label: 'Promotion' },
   { value: 'Nouveauté', label: 'Nouveauté' },
   { value: 'Annonce', label: 'Annonce' }
+];
+
+const CONTENT_TEMPLATES: Array<{ label: string; category: ContentPostType; title: string; content: string }> = [
+  { label: 'Nouvel arrivage', category: 'Arrivage', title: 'Nouveaux arrivages disponibles', content: 'De nouvelles pièces viennent d’arriver chez HP Collection. Quantités limitées : écrivez-nous sur WhatsApp pour réserver votre taille.' },
+  { label: 'Promotion', category: 'Promotion', title: 'Offre limitée cette semaine', content: 'Une sélection HP Collection est disponible en quantité limitée. Contactez-nous sur WhatsApp avant la fin de l’offre.' },
+  { label: 'Annonce', category: 'Annonce', title: 'Information importante', content: 'Nous vous partageons une information importante concernant la boutique et les prochaines disponibilités.' },
+  { label: 'Look de la semaine', category: 'Nouveauté', title: 'Le look de la semaine', content: 'Découvrez notre sélection de la semaine : une tenue pensée pour imposer votre style.' }
 ];
 
 interface ContentFormState {
@@ -81,6 +88,10 @@ export default function AdminContentPage() {
   const [typeFilter, setTypeFilter] = useState<ContentPostType | 'all'>('all');
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [pendingImageDeletion, setPendingImageDeletion] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(false);
+  const [pendingDeletePost, setPendingDeletePost] = useState<ContentPost | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [uploadKey, setUploadKey] = useState(buildPostUploadKey());
   const [formData, setFormData] = useState<ContentFormState>({
     title: '',
@@ -139,6 +150,13 @@ export default function AdminContentPage() {
     setFormOpen(true);
   };
 
+  const handleApplyTemplate = (template: typeof CONTENT_TEMPLATES[number]) => {
+    setEditingPostId(null);
+    setUploadKey(buildPostUploadKey());
+    setFormData({ title: template.title, content: template.content, image_url: '', category: template.category, status: 'draft', scheduled_at: '' });
+    setFormOpen(true);
+  };
+
   const handleEditMode = (post: ContentPost) => {
     setEditingPostId(post.id);
     setUploadKey(buildPostUploadKey(post.id));
@@ -158,7 +176,7 @@ export default function AdminContentPage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner une image valide');
+      setToast({ message: 'Veuillez sélectionner une image valide.', variant: 'error' });
       return;
     }
 
@@ -171,7 +189,7 @@ export default function AdminContentPage() {
         // En cas de blocage RLS Storage, on utilise une URL temporaire Blob locale pour ne jamais figer le client !
         const localBlob = URL.createObjectURL(compressedFile);
         setFormData((currentData) => ({ ...currentData, image_url: localBlob }));
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         return;
       }
 
@@ -181,7 +199,7 @@ export default function AdminContentPage() {
       }));
     } catch (error: unknown) {
       console.error('Erreur upload contenu:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -190,20 +208,21 @@ export default function AdminContentPage() {
     }
   };
 
-  const handleRemoveImage = async () => {
+  const handleConfirmRemoveImage = async () => {
     if (!formData.image_url) {
       return;
     }
 
     if (!formData.image_url.startsWith('blob:')) {
-      const shouldDelete = window.confirm('Supprimer cette image ?');
-      if (shouldDelete) {
+      setPendingImageDeletion(false);
+      setDeletingImage(true);
+      try {
         const result = await deleteImageByUrl(BUCKETS.CONTENT_IMAGES, formData.image_url);
         if (result.error) {
-          alert(USER_ERROR_MSG);
+          setToast({ message: USER_ERROR_MSG, variant: 'error' });
           return;
         }
-      }
+      } finally { setDeletingImage(false); }
     }
 
     setFormData((currentData) => ({
@@ -216,7 +235,7 @@ export default function AdminContentPage() {
     event.preventDefault();
 
     if (formData.status === 'scheduled' && !formData.scheduled_at) {
-      alert('Veuillez choisir une date de planification.');
+      setToast({ message: 'Veuillez choisir une date de planification.', variant: 'error' });
       return;
     }
 
@@ -262,7 +281,7 @@ export default function AdminContentPage() {
         } else {
           setPosts((currentPosts) => [optimisticPost, ...currentPosts]);
         }
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         resetForm();
         return;
       }
@@ -271,28 +290,25 @@ export default function AdminContentPage() {
       resetForm();
     } catch (error: unknown) {
       console.error('Erreur sauvegarde contenu:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (post: ContentPost) => {
-    if (!window.confirm(`Supprimer le post "${post.title}" ?`)) {
-      return;
-    }
-
+    setPendingDeletePost(null);
     try {
       const result = await deleteContentPost(post.id);
       if (result.error) {
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         return;
       }
 
       await loadPosts();
     } catch (error: unknown) {
       console.error('Erreur suppression contenu:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     }
   };
 
@@ -302,14 +318,14 @@ export default function AdminContentPage() {
     try {
       const result = await togglePostPublication(post.id, nextStatus);
       if (result.error) {
-        alert(USER_ERROR_MSG);
+        setToast({ message: USER_ERROR_MSG, variant: 'error' });
         return;
       }
 
       await loadPosts();
     } catch (error: unknown) {
       console.error('Erreur publication contenu:', error);
-      alert(USER_ERROR_MSG);
+      setToast({ message: USER_ERROR_MSG, variant: 'error' });
     }
   };
 
@@ -328,16 +344,17 @@ export default function AdminContentPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement des contenus...</p>
-        </div>
+        <div className="w-full max-w-6xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="flex gap-3"><AdminSkeleton className="h-16 w-36" /><AdminSkeleton className="h-16 w-36" /><AdminSkeleton className="h-16 w-36" /></div><div className="grid grid-cols-1 md:grid-cols-3 gap-5"><AdminSkeleton className="h-72" /><AdminSkeleton className="h-72" /><AdminSkeleton className="h-72" /></div></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingImageDeletion} title="Supprimer cette image ?" description="Cette image sera retirée de la publication et supprimée du stockage. Cette action est irréversible." loading={deletingImage} onCancel={() => setPendingImageDeletion(false)} onConfirm={handleConfirmRemoveImage} />
+      <AdminConfirmDialog isOpen={pendingDeletePost !== null} title="Supprimer cette publication ?" description={`La publication ${pendingDeletePost?.title || ''} sera retirée. Cette action est irréversible.`} loading={saving} onCancel={() => setPendingDeletePost(null)} onConfirm={() => pendingDeletePost && handleDelete(pendingDeletePost)} />
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
@@ -365,6 +382,12 @@ export default function AdminContentPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {!editingPostId && (
+              <div className="rounded-2xl border border-brand-gold/15 bg-brand-bg p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-brand-gold mb-3">Partir d’un modèle commercial</p>
+                <div className="flex flex-wrap gap-2">{CONTENT_TEMPLATES.map((template) => <button key={template.label} type="button" onClick={() => handleApplyTemplate(template)} className="rounded-xl border border-brand-gold/15 bg-brand-bg-alt px-3 py-2 text-xs font-semibold text-brand-text hover:border-brand-gold hover:text-brand-gold">{template.label}</button>)}</div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AdminInput
                 label="Titre"
@@ -435,7 +458,7 @@ export default function AdminContentPage() {
                 </label>
 
                 {formData.image_url && (
-                  <AdminButton variant="danger" type="button" onClick={handleRemoveImage}>
+                  <AdminButton variant="danger" type="button" onClick={() => setPendingImageDeletion(true)}>
                     Supprimer l’image
                   </AdminButton>
                 )}
@@ -564,7 +587,7 @@ export default function AdminContentPage() {
                   </AdminButton>
                   <button
                     type="button"
-                    onClick={() => handleDelete(post)}
+                    onClick={() => setPendingDeletePost(post)}
                     className="p-2 hover:bg-red-50 rounded transition-colors cursor-pointer"
                     aria-label="Supprimer"
                   >

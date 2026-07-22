@@ -1,13 +1,13 @@
 // src/app/admin/qa/page.tsx
 // ============================================
-// Checklist QA opérationnelle
+// Santé boutique opérationnelle
 // ============================================
 
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSkeleton, AdminToast, AdminConfirmDialog } from '@/admin/components';
 import { CheckSquare, Square, RefreshCw, Save, AlertTriangle, Package, ShoppingCart, FileText, Tag, Users } from 'lucide-react';
 import { fetchAdminProducts } from '@/services/productService';
 import { fetchAdminOrders } from '@/services/orderService';
@@ -64,11 +64,13 @@ function readStoredChecklist(): ManualChecklistItem[] {
 export default function AdminQaPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [contentPosts, setContentPosts] = useState<ContentPost[]>([]);
+  const [pendingReset, setPendingReset] = useState(false);
   const [manualChecklist, setManualChecklist] = useState<ManualChecklistItem[]>(readStoredChecklist);
 
   const loadQaData = useCallback(async () => {
@@ -160,6 +162,11 @@ export default function AdminQaPage() {
     ];
   }, [customers.length, hiddenCategories.length, lowStockProducts.length, pendingOrders.length, productsWithoutImage.length, publishedContent.length]);
 
+  const criticalMetrics = auditMetrics.filter((metric) => metric.status === 'danger').length;
+  const warningMetrics = auditMetrics.filter((metric) => metric.status === 'warning').length;
+  const healthScore = Math.max(0, 100 - criticalMetrics * 25 - warningMetrics * 8);
+  const metricLinks: Record<string, string> = { 'products-images': '/admin/produits', 'stock-critical': '/admin/stock', 'orders-pending': '/admin/commandes', 'categories-hidden': '/admin/categories', 'content-published': '/admin/contenu', 'customers-known': '/admin/clients' };
+
   const manualProgress = Math.round((manualChecklist.filter((item) => item.checked).length / manualChecklist.length) * 100);
   const groupedChecklist = useMemo(() => {
     return manualChecklist.reduce((accumulator, item) => {
@@ -181,41 +188,40 @@ export default function AdminQaPage() {
 
   const handleSaveChecklist = () => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(manualChecklist));
-    alert('Checklist QA sauvegardée !');
+    setToast({ message: 'Santé boutique sauvegardée.', variant: 'success' });
   };
 
   const handleResetChecklist = () => {
-    if (!window.confirm('Réinitialiser la checklist QA ?')) {
-      return;
-    }
-
+    setPendingReset(false);
     setManualChecklist(DEFAULT_CHECKLIST);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CHECKLIST));
+    setToast({ message: 'Checklist réinitialisée.', variant: 'success' });
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Audit QA en cours...</p>
-        </div>
+        <div className="w-full max-w-6xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><AdminSkeleton className="h-28" /><AdminSkeleton className="h-28" /><AdminSkeleton className="h-28" /></div><AdminSkeleton className="h-80" /></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingReset} title="Réinitialiser la checklist ?" description="Toutes les étapes cochées seront remises à zéro. Cette action ne peut pas être annulée." confirmLabel="Réinitialiser la checklist" onCancel={() => setPendingReset(false)} onConfirm={handleResetChecklist} />
+
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Checklist QA</h1>
-          <p className="text-brand-text-muted mt-1">Pilotage qualité avant livraison client ou mise en production</p>
+          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Santé boutique</h1>
+          <p className="text-brand-text-muted mt-1">Les priorités à corriger pour garder votre boutique prête à vendre.</p>
         </div>
         <div className="flex gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
           <AdminButton variant="secondary" onClick={() => loadQaData()}>
             <RefreshCw size={16} />
-            Rafraîchir l’audit
+            Actualiser
           </AdminButton>
           <AdminButton variant="primary" onClick={handleSaveChecklist}>
             <Save size={16} />
@@ -224,9 +230,14 @@ export default function AdminQaPage() {
         </div>
       </div>
 
+      <section className="rounded-3xl border border-brand-gold/25 bg-gradient-to-br from-[#12110d] via-brand-bg-alt to-brand-bg p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div><span className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">État global</span><h2 className="font-bebas text-3xl text-brand-text uppercase mt-1">{healthScore >= 85 ? 'Boutique prête à vendre' : 'Priorités à traiter'}</h2><p className="text-sm text-brand-text-muted mt-1">{criticalMetrics} problème(s) critique(s) · {warningMetrics} point(s) à surveiller</p></div>
+        <div className="text-right"><p className="font-bebas text-5xl text-brand-gold">{healthScore}%</p><p className="text-xs uppercase tracking-wider text-brand-text-muted">Score de santé</p></div>
+      </section>
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {auditMetrics.map((metric) => (
-          <AdminCard key={metric.id} className={`border-l-4 ${
+          <button type="button" key={metric.id} onClick={() => router.push(metricLinks[metric.id])} className="text-left rounded-2xl transition-transform hover:-translate-y-0.5"><AdminCard className={`border-l-4 ${
             metric.status === 'success'
               ? 'border-l-green-500'
               : metric.status === 'warning'
@@ -243,7 +254,7 @@ export default function AdminQaPage() {
                 {metric.icon}
               </div>
             </div>
-          </AdminCard>
+          </AdminCard></button>
         ))}
       </div>
 
@@ -266,7 +277,7 @@ export default function AdminQaPage() {
             <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">{category}</h2>
             <button
               type="button"
-              onClick={handleResetChecklist}
+              onClick={() => setPendingReset(true)}
               className="text-sm text-brand-text-muted hover:text-brand-gold cursor-pointer"
             >
               Réinitialiser
@@ -300,10 +311,10 @@ export default function AdminQaPage() {
           <div className="text-center py-6">
             <CheckSquare size={48} className="mx-auto text-green-500 mb-4" />
             <h2 className="font-bebas text-2xl text-green-700 uppercase">
-              QA prête pour validation finale
+              Boutique prête pour la journée
             </h2>
             <p className="text-green-600 mt-2">
-              Le back-office a passé l’audit fonctionnel et la checklist manuelle.
+              Les contrôles importants sont validés : votre boutique est prête à vendre.
             </p>
           </div>
         </AdminCard>

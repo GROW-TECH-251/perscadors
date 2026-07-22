@@ -5,9 +5,10 @@
 
 'use client';
 
+import { useOrdersRealtime } from '@/hooks/useOrdersRealtime';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminBadge, AdminModal, AdminSelect, AdminTextarea, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { ShoppingCart, Eye, MessageCircle, Copy, Download, ClipboardList, Truck, BadgeInfo, FileText, Send, Zap, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { buildWhatsAppOrderMessage, fetchAdminOrders, updateOrderStatus, deleteOrder, createOrderFromCart, syncPendingOrders } from '@/services/orderService';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
@@ -26,6 +27,7 @@ export default function AdminOrdersPage() {
   const [statusNote, setStatusNote] = useState('');
   const [isSavingStatus, setIsSavingStatus] = useState(false);
   const [savingOrderId, setSavingOrderId] = useState<number | null>(null);
+  const [pendingDeletion, setPendingDeletion] = useState<AdminOrder | null>(null);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState('');
 
@@ -63,6 +65,8 @@ export default function AdminOrdersPage() {
     init();
   }, [loadOrders]);
 
+  useOrdersRealtime(() => { loadOrders(); });
+
   const handlePendingOrdersSync = async () => {
     setIsSyncingPending(true);
     setSyncFeedback('');
@@ -94,25 +98,9 @@ export default function AdminOrdersPage() {
   const handleQuickStatusChange = async (id: number, newStatus: OrderStatus) => {
     // CORRECTION CADRE FINAL : Si la commande devient ANNULÉE, proposer la suppression directe !
     if (newStatus === 'ANNULÉE') {
-      const shouldDelete = window.confirm('Cette commande est marquée comme ANNULÉE. Voulez-vous supprimer définitivement cette commande et purger son historique pour ne pas encombrer le dashboard ?');
-      if (shouldDelete) {
-        setSavingOrderId(id);
-        try {
-          await deleteOrder(id);
-          await loadOrders();
-          if (selectedOrder?.id === id) {
-            setSelectedOrder(null);
-            setIsModalOpen(false);
-          }
-          alert('Commande annulée et supprimée avec succès !');
-        } catch (error: unknown) {
-          console.error('Erreur suppression commande:', error);
-          alert('Une erreur est survenue lors de la suppression.');
-        } finally {
-          setSavingOrderId(null);
-        }
-        return;
-      }
+      const order = orders.find((item) => item.id === id);
+      if (order) setPendingDeletion(order);
+      return;
     }
 
     setSavingOrderId(id);
@@ -130,11 +118,28 @@ export default function AdminOrdersPage() {
       await updateOrderStatus(id, newStatus, `Statut mis à jour rapidement vers ${newStatus}`);
     } catch (error: unknown) {
       console.error('Erreur mise à jour rapide statut:', error);
-      alert('Une erreur est survenue. Contactez votre administrateur.');
+      setSyncFeedback('Impossible de mettre à jour la commande pour le moment.');
       await loadOrders(); // Rollback en cas d'erreur
     } finally {
       setSavingOrderId(null);
     }
+  };
+
+  const handleConfirmDeletion = async () => {
+    if (!pendingDeletion) return;
+    const order = pendingDeletion;
+    setSavingOrderId(order.id);
+    setIsSavingStatus(true);
+    try {
+      await deleteOrder(order.id);
+      await loadOrders();
+      if (selectedOrder?.id === order.id) { setSelectedOrder(null); setIsModalOpen(false); }
+      setPendingDeletion(null);
+      setSyncFeedback(`Commande ${order.order_number} supprimée avec succès.`);
+    } catch (error: unknown) {
+      console.error('Erreur suppression commande:', error);
+      setSyncFeedback('Impossible de supprimer cette commande pour le moment.');
+    } finally { setSavingOrderId(null); setIsSavingStatus(false); }
   };
 
   // 2. Bouton "Expédier via WhatsApp" (Dispatch to Driver personnalisé)
@@ -171,10 +176,10 @@ export default function AdminOrdersPage() {
 
     try {
       await navigator.clipboard.writeText(slip);
-      alert('Bordereau livreur copié dans le presse-papier !');
+      setSyncFeedback('Bordereau livreur copié dans le presse-papier.');
     } catch (error: unknown) {
       console.error('Erreur copie bordereau:', error);
-      alert('Une erreur est survenue lors de la copie du bordereau');
+      setSyncFeedback('Impossible de copier le bordereau pour le moment.');
     }
   };
 
@@ -184,23 +189,8 @@ export default function AdminOrdersPage() {
     }
 
     if (statusDraft === 'ANNULÉE') {
-      const shouldDelete = window.confirm('Cette commande est marquée comme ANNULÉE. Voulez-vous supprimer définitivement cette commande et purger son historique pour ne pas encombrer le dashboard ?');
-      if (shouldDelete) {
-        setIsSavingStatus(true);
-        try {
-          await deleteOrder(selectedOrder.id);
-          await loadOrders();
-          setSelectedOrder(null);
-          setIsModalOpen(false);
-          alert('Commande annulée et supprimée avec succès !');
-        } catch (error: unknown) {
-          console.error('Erreur suppression commande modale:', error);
-          alert('Une erreur est survenue lors de la suppression.');
-        } finally {
-          setIsSavingStatus(false);
-        }
-        return;
-      }
+      setPendingDeletion(selectedOrder);
+      return;
     }
 
     setIsSavingStatus(true);
@@ -213,7 +203,7 @@ export default function AdminOrdersPage() {
       );
 
       if (result.error) {
-        alert(result.error);
+        setSyncFeedback(result.error);
         return;
       }
 
@@ -227,7 +217,7 @@ export default function AdminOrdersPage() {
       setStatusNote('');
     } catch (error: unknown) {
       console.error('Erreur mise à jour commande:', error);
-      alert('Une erreur est survenue. Contactez votre administrateur.');
+      setSyncFeedback('Impossible de mettre à jour la commande pour le moment.');
     } finally {
       setIsSavingStatus(false);
     }
@@ -325,7 +315,7 @@ export default function AdminOrdersPage() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert('Message copié !');
+      setSyncFeedback('Message copié dans le presse-papier.');
     } catch (error: unknown) {
       console.error('Erreur copie:', error);
     }
@@ -361,6 +351,8 @@ export default function AdminOrdersPage() {
   }, [orders, searchQuery, statusFilter]);
 
   const pendingSyncCount = orders.filter((order) => order.sync_status !== 'synced').length;
+  const pendingConfirmationCount = orders.filter((order) => order.status === 'EN ATTENTE').length;
+  const readyToShipCount = orders.filter((order) => order.status === 'CONFIRMÉE' || order.status === 'EN LIVRAISON').length;
   const orderItemsCount = selectedOrder?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const orderSubtotal = selectedOrder?.subtotal ?? selectedOrder?.items.reduce((sum, item) => sum + item.price * item.quantity, 0) ?? 0;
   const orderDeliveryFee = selectedOrder?.delivery_fee ?? Math.max((selectedOrder?.total || 0) - orderSubtotal, 0);
@@ -368,10 +360,7 @@ export default function AdminOrdersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement des commandes...</p>
-        </div>
+        <div className="w-full max-w-5xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><AdminSkeleton className="h-28" /><AdminSkeleton className="h-28" /><AdminSkeleton className="h-28" /></div><AdminSkeleton className="h-72" /></div>
       </div>
     );
   }
@@ -393,7 +382,7 @@ export default function AdminOrdersPage() {
             className="bg-amber-500 text-[#0A0A0A] hover:bg-amber-400 font-bebas uppercase tracking-wider shadow-lg flex items-center gap-2 border border-amber-300/30"
           >
             <Zap size={18} className="fill-current animate-pulse" />
-            ⚡ Recovery Matrix (Rattrapage WhatsApp)
+            Ajouter une commande WhatsApp
           </AdminButton>
           <AdminButton
             variant="secondary"
@@ -411,12 +400,20 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
+      <AdminConfirmDialog isOpen={pendingDeletion !== null} title="Supprimer cette commande ?" description={`La commande ${pendingDeletion?.order_number || ''} et son historique seront supprimés définitivement. Cette action est irréversible.`} loading={pendingDeletion ? savingOrderId === pendingDeletion.id : false} onCancel={() => setPendingDeletion(null)} onConfirm={handleConfirmDeletion} />
+
       {syncFeedback && (
         <div className="rounded-xl border border-brand-gold/20 bg-brand-gold/10 px-4 py-3 text-sm text-brand-text flex items-center gap-2">
           <RefreshCw size={16} className="text-brand-gold" />
           <p>{syncFeedback}</p>
         </div>
       )}
+
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button type="button" onClick={() => setStatusFilter('EN ATTENTE')} className="text-left rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-all hover:border-amber-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-amber-600">À confirmer</p><p className="font-bebas text-3xl text-brand-text mt-2">{pendingConfirmationCount}</p><p className="text-xs text-brand-text-muted mt-1">Traiter les nouvelles ventes</p></button>
+        <button type="button" onClick={() => setStatusFilter('CONFIRMÉE')} className="text-left rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 transition-all hover:border-blue-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-blue-600">À expédier</p><p className="font-bebas text-3xl text-brand-text mt-2">{readyToShipCount}</p><p className="text-xs text-brand-text-muted mt-1">Préparer les livraisons</p></button>
+        <button type="button" onClick={handlePendingOrdersSync} className="text-left rounded-2xl border border-brand-gold/25 bg-brand-gold/5 p-4 transition-all hover:border-brand-gold"><p className="text-xs font-semibold uppercase tracking-wider text-brand-gold">À synchroniser</p><p className="font-bebas text-3xl text-brand-text mt-2">{pendingSyncCount}</p><p className="text-xs text-brand-text-muted mt-1">Sécuriser les commandes</p></button>
+      </section>
 
       <div className="flex flex-col lg:flex-row gap-4">
         <AdminSearch
@@ -802,7 +799,7 @@ export default function AdminOrdersPage() {
       <AdminModal
         isOpen={isRecoveryModalOpen}
         onClose={() => setIsRecoveryModalOpen(false)}
-        title="⚡ Recovery Matrix — Re-synchronisation Express WhatsApp"
+        title="Ajouter une commande reçue sur WhatsApp"
       >
         <form onSubmit={handleRecoverySubmit} className="space-y-6">
           {recoverySuccess && (
@@ -819,8 +816,8 @@ export default function AdminOrdersPage() {
           )}
 
           <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl text-sm text-brand-text-muted space-y-1">
-            <p className="font-bebas text-lg text-amber-500 uppercase tracking-wider">Objectif Métier : Zéro Perte de Données</p>
-            <p>Si une commande passée par un client sur la vitrine n&apos;est pas apparue ici (coupure réseau, erreur Supabase), copiez simplement le message reçu sur votre WhatsApp et collez-le ci-dessous. Le système recréera et synchronisera la commande instantanément !</p>
+            <p className="font-bebas text-lg text-amber-500 uppercase tracking-wider">Ajouter une vente reçue sur WhatsApp</p>
+            <p>Vous avez reçu une commande directement sur WhatsApp ? Collez son message ici pour l’ajouter au suivi de votre boutique. Nous détectons automatiquement les informations principales.</p>
           </div>
 
           <AdminTextarea

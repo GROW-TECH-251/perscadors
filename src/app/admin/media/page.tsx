@@ -6,10 +6,11 @@
 
 'use client';
 
+import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminModal } from '@/admin/components';
+import { AdminCard, AdminButton, AdminInput, AdminModal, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { Film, Image as ImageIcon, Plus, Trash2, Eye, EyeOff, Upload, CheckCircle2, AlertCircle, Link as LinkIcon, Sparkles } from 'lucide-react';
 import { fetchSiteAssets, uploadSiteAssetMedia, upsertSiteAsset, deleteSiteAsset, toggleSiteAssetActive } from '@/services/mediaService';
 import type { SiteAsset, SiteAssetSection, SiteAssetType } from '@/admin/types';
@@ -31,6 +32,7 @@ export default function AdminMediaPage() {
   const router = useRouter();
   const [assets, setAssets] = useState<SiteAsset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<SiteAssetSection>('hero');
   
   // Modale d'upload / création
@@ -67,6 +69,8 @@ export default function AdminMediaPage() {
     }, 0);
     return () => clearTimeout(timer);
   }, [loadAssets]);
+
+  useSiteAssetsRealtime(loadAssets);
 
   // Purge du toast après 4s
   useEffect(() => {
@@ -108,10 +112,7 @@ export default function AdminMediaPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer définitivement ce média du site ?')) {
-      return;
-    }
-
+    setPendingDeleteId(null);
     setProcessingId(id);
     try {
       const res = await deleteSiteAsset(id);
@@ -230,10 +231,7 @@ export default function AdminMediaPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement du gestionnaire de médias...</p>
-        </div>
+        <div className="w-full max-w-6xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="flex gap-3"><AdminSkeleton className="h-16 w-36" /><AdminSkeleton className="h-16 w-36" /><AdminSkeleton className="h-16 w-36" /></div><div className="grid grid-cols-1 md:grid-cols-3 gap-5"><AdminSkeleton className="h-72" /><AdminSkeleton className="h-72" /><AdminSkeleton className="h-72" /></div></div>
       </div>
     );
   }
@@ -241,6 +239,8 @@ export default function AdminMediaPage() {
   return (
     <div className="space-y-8 relative">
       {/* Toast de retours (UX Non-Technique) */}
+      <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer ce média ?" description="Ce visuel sera retiré de la bibliothèque et pourra ne plus apparaître sur la vitrine. Cette action est irréversible." loading={pendingDeleteId ? processingId === pendingDeleteId : false} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId && handleDelete(pendingDeleteId)} />
+
       {toastMessage && (
         <div className="fixed top-24 right-6 z-50 animate-slide-up-fade flex items-center gap-3 px-5 py-4 rounded-2xl bg-[#0A0A0A]/95 border border-brand-gold/20 shadow-2xl backdrop-blur-md">
           {toastMessage.type === 'success' ? (
@@ -256,11 +256,11 @@ export default function AdminMediaPage() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between border-b border-brand-gold/10 pb-6">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-gold/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold border border-brand-gold/20 shadow-sm">
-            <Sparkles size={12} className="animate-pulse" /> Universal Media Dashboard • Pilotage Global
+            <Sparkles size={12} className="animate-pulse" /> Bibliothèque visuelle de la boutique
           </span>
-          <h1 className="font-bebas text-4xl tracking-wider text-brand-text uppercase mt-3">Gestion Dynamique des Médias</h1>
+          <h1 className="font-bebas text-4xl tracking-wider text-brand-text uppercase mt-3">Médias & visuels</h1>
           <p className="text-brand-text-muted mt-1 text-base">
-            Uploade, remplace et organise l&apos;intégralité des photos, vidéos et embeds de ta vitrine sans toucher au code.
+            Choisissez où vos photos et vidéos apparaissent, puis remplacez-les en toute simplicité.
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
@@ -275,7 +275,7 @@ export default function AdminMediaPage() {
       {/* Grille de Catégories (Sections Médias) */}
       <div className="space-y-3">
         <label className="font-bebas text-xl text-brand-gold uppercase tracking-wider block">
-          1. Sélectionne la zone média à administrer :
+          Choisissez l&apos;emplacement à personnaliser :
         </label>
         <div className="flex gap-2.5 overflow-x-auto pb-3 scrollbar-none">
           {SECTIONS_CONFIG.map((section) => {
@@ -415,7 +415,7 @@ export default function AdminMediaPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(asset.id)}
+                          onClick={() => setPendingDeleteId(asset.id)}
                           disabled={isProcessing}
                           className="p-2.5 bg-red-950/80 text-red-400 hover:bg-red-600 hover:text-white rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm opacity-0 group-hover/media:opacity-100"
                           title="Supprimer définitivement"

@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
 import { Package, Plus, Edit, Trash2, Download, Check, X, Eye, EyeOff } from 'lucide-react';
 import { fetchAdminProducts, deleteProduct, updateProduct } from '@/services/productService';
 import type { AdminProduct } from '@/admin/types';
@@ -18,13 +18,15 @@ export default function AdminProductsPage() {
   const router = useRouter();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'visible' | 'hidden' | 'low-stock'>('all');
+  const [filter, setFilter] = useState<'all' | 'visible' | 'hidden' | 'low-stock' | 'incomplete'>('all');
 
   // États pour l'édition rapide en ligne du prix (Quick Inline Editing)
   const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
   const [tempPrice, setTempPrice] = useState<number>(0);
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -46,20 +48,17 @@ export default function AdminProductsPage() {
   }, [loadProducts]);
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
-      return;
-    }
-
+    setPendingDeleteId(null);
     try {
       const result = await deleteProduct(id);
       if (result.error) {
-        alert(result.error);
+        setToast({ message: result.error, variant: 'error' });
         return;
       }
       await loadProducts();
     } catch (error: unknown) {
       console.error('Erreur suppression produit:', error);
-      alert('Erreur lors de la suppression');
+      setToast({ message: 'Impossible de supprimer ce produit pour le moment.', variant: 'error' });
     }
   };
 
@@ -78,7 +77,7 @@ export default function AdminProductsPage() {
       await updateProduct(id, { visible: nextVisible });
     } catch (err: unknown) {
       console.error('Erreur bascule visibilité:', err);
-      alert('Erreur lors de la mise à jour de la visibilité');
+      setToast({ message: 'Erreur lors de la mise à jour de la visibilité', variant: 'error' });
       await loadProducts(); // Rollback en cas d'erreur
     } finally {
       setSavingId(null);
@@ -96,7 +95,7 @@ export default function AdminProductsPage() {
       await updateProduct(id, { price: tempPrice });
     } catch (err: unknown) {
       console.error('Erreur sauvegarde prix:', err);
-      alert('Erreur lors de la sauvegarde du prix');
+      setToast({ message: 'Erreur lors de la sauvegarde du prix', variant: 'error' });
       await loadProducts();
     } finally {
       setSavingId(null);
@@ -118,7 +117,7 @@ export default function AdminProductsPage() {
       await updateProduct(id, { outOfStockSizes: updatedOutOfStock });
     } catch (err: unknown) {
       console.error('Erreur bascule stock taille:', err);
-      alert('Erreur lors de la mise à jour du stock pour cette taille');
+      setToast({ message: 'Erreur lors de la mise à jour du stock pour cette taille', variant: 'error' });
       await loadProducts();
     } finally {
       setSavingId(null);
@@ -131,23 +130,30 @@ export default function AdminProductsPage() {
       filter === 'all' ||
       (filter === 'visible' && product.visible) ||
       (filter === 'hidden' && !product.visible) ||
-      (filter === 'low-stock' && (product.stock || 0) <= 5);
+      (filter === 'low-stock' && (product.stock || 0) <= 5) ||
+      (filter === 'incomplete' && (!product.image_url || product.sizes.length === 0 || product.stock <= 0));
     return matchesSearch && matchesFilter;
   });
+
+  const visibleProductsCount = products.filter((product) => product.visible).length;
+  const hiddenProductsCount = products.filter((product) => !product.visible).length;
+  const lowStockProductsCount = products.filter((product) => (product.stock || 0) <= 5).length;
+  const incompleteProductsCount = products.filter((product) => !product.image_url || product.sizes.length === 0 || product.stock <= 0).length;
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-          <p className="text-brand-text-muted">Chargement des produits...</p>
-        </div>
+        <div className="w-full max-w-6xl space-y-5"><AdminSkeleton className="h-12 w-1/3" /><div className="grid grid-cols-2 lg:grid-cols-4 gap-4"><AdminSkeleton className="h-24" /><AdminSkeleton className="h-24" /><AdminSkeleton className="h-24" /><AdminSkeleton className="h-24" /></div><div className="grid grid-cols-1 md:grid-cols-3 gap-5"><AdminSkeleton className="h-80" /><AdminSkeleton className="h-80" /><AdminSkeleton className="h-80" /></div></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer cette produit ?" description="Cette action est irréversible. Vérifiez que cet élément ne doit plus apparaître dans votre boutique." loading={savingId === pendingDeleteId} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId !== null && handleDelete(pendingDeleteId)} />
+      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
@@ -170,6 +176,13 @@ export default function AdminProductsPage() {
           </AdminButton>
         </div>
       </div>
+
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button type="button" onClick={() => setFilter('visible')} className="text-left rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 transition-all hover:border-emerald-500/60"><p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">En vente</p><p className="font-bebas text-3xl text-brand-text mt-2">{visibleProductsCount}</p><p className="text-xs text-brand-text-muted mt-1">Produits visibles</p></button>
+        <button type="button" onClick={() => setFilter('hidden')} className="text-left rounded-2xl border border-brand-gold/20 bg-brand-gold/5 p-4 transition-all hover:border-brand-gold"><p className="text-[11px] font-semibold uppercase tracking-wider text-brand-gold">Masqués</p><p className="font-bebas text-3xl text-brand-text mt-2">{hiddenProductsCount}</p><p className="text-xs text-brand-text-muted mt-1">À remettre en vente</p></button>
+        <button type="button" onClick={() => setFilter('low-stock')} className="text-left rounded-2xl border border-red-500/20 bg-red-500/5 p-4 transition-all hover:border-red-500/60"><p className="text-[11px] font-semibold uppercase tracking-wider text-red-600">Stock faible</p><p className="font-bebas text-3xl text-brand-text mt-2">{lowStockProductsCount}</p><p className="text-xs text-brand-text-muted mt-1">Risque de rupture</p></button>
+        <button type="button" onClick={() => setFilter('incomplete')} className="text-left rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600">À compléter</p><p className="font-bebas text-3xl text-brand-text mt-2">{incompleteProductsCount}</p><p className="text-xs text-brand-text-muted mt-1">Image, taille ou stock</p></button>
+      </section>
 
       <div className="flex flex-col sm:flex-row gap-4">
         <AdminSearch
@@ -198,6 +211,18 @@ export default function AdminProductsPage() {
             }`}
           >
             Visibles
+          </button>
+          <button
+            onClick={() => setFilter('hidden')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${filter === 'hidden' ? 'bg-brand-gold text-[#0A0A0A]' : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'}`}
+          >
+            Masqués
+          </button>
+          <button
+            onClick={() => setFilter('incomplete')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${filter === 'incomplete' ? 'bg-brand-gold text-[#0A0A0A]' : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'}`}
+          >
+            À compléter
           </button>
           <button
             onClick={() => setFilter('low-stock')}
@@ -295,7 +320,7 @@ export default function AdminProductsPage() {
                       {product.visible ? <Eye size={18} /> : <EyeOff size={18} />}
                     </button>
                     <button
-                      onClick={() => handleDelete(product.id)}
+                      onClick={() => setPendingDeleteId(product.id)}
                       className="p-2.5 bg-red-950/80 text-red-400 hover:bg-red-600 hover:text-white rounded-full shadow-lg transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-sm opacity-0 group-hover/card:opacity-100"
                       type="button"
                       aria-label="Supprimer"
