@@ -8,6 +8,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { fetchActiveAssetBySection } from '@/services/mediaService';
+import { fetchShopSettings } from '@/services/settingsService';
+import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import { Search, ShoppingBag, Menu, X } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -19,18 +21,17 @@ export const Navbar: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [logoUrl, setLogoUrl] = useState('/images/LOGOSITE/logo.png');
+  const [realtimeVersion, setRealtimeVersion] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
-
-  const [realtimeVersion, setRealtimeVersion] = useState(0);
 
   useEffect(() => {
     const mountedTimer = setTimeout(async () => {
       setIsMounted(true);
-      const activeLogo = await fetchActiveAssetBySection('logo');
-      if (activeLogo && activeLogo.url) {
-        setLogoUrl(activeLogo.url);
-      }
+      const [settings, activeLogo] = await Promise.all([fetchShopSettings(), fetchActiveAssetBySection('logo')]);
+      // Un logo défini dans Réglages est prioritaire sur la bibliothèque médias.
+      if (settings?.logo_url) setLogoUrl(settings.logo_url);
+      else if (activeLogo?.url) setLogoUrl(activeLogo.url);
     }, 0);
 
     const handleScroll = () => {
@@ -49,6 +50,7 @@ export const Navbar: React.FC = () => {
   }, [realtimeVersion]);
 
   useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
+  useSiteAssetsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
   const navLinks = useMemo(() => {
     const categoryLinks = categories.slice(0, 4).map((category) => ({

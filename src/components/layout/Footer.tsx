@@ -1,5 +1,6 @@
 'use client';
 
+import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -11,7 +12,6 @@ import type { ShopSettings } from '@/admin/types';
 export const Footer: React.FC = () => {
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
   const [logoUrl, setLogoUrl] = useState('/images/LOGOSITE/logo.png');
-
   const [realtimeVersion, setRealtimeVersion] = useState(0);
 
   useEffect(() => {
@@ -21,16 +21,14 @@ export const Footer: React.FC = () => {
         fetchActiveAssetBySection('logo')
       ]);
       if (data) setSettings(data);
-      if (activeLogo && activeLogo.url) {
-        setLogoUrl(activeLogo.url);
-      } else if (data?.logo_url) {
-        setLogoUrl(data.logo_url);
-      }
+      if (data?.logo_url) setLogoUrl(data.logo_url);
+      else if (activeLogo?.url) setLogoUrl(activeLogo.url);
     }
     loadFooter();
   }, [realtimeVersion]);
 
   useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
+  useSiteAssetsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
   return (
     <footer className="bg-[#0A0A0A] text-[#888880] border-t border-brand-gold/20 pt-16 pb-8 px-4 sm:px-6 lg:px-8">
