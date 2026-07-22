@@ -7,7 +7,7 @@ import { requireSupabase, supabase } from '@/lib/supabase';
 import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData, FAQItem } from '@/admin/types';
 
-const SETTINGS_ROW_ID = 1;
+const SETTINGS_ROW_ID = true;
 const SETTINGS_CACHE_KEY = '__PERSCADORS_SETTINGS_PERSISTENCE__';
 
 const DEFAULT_DELIVERY_ZONES: DeliveryZone[] = [

@@ -30,7 +30,7 @@ alter table public.shop_settings
   add column if not exists updated_at timestamptz not null default now();
 
 insert into public.shop_settings (id)
-values (1)
+values (true)
 on conflict (id) do nothing;
 
 commit;
