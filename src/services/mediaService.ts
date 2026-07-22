@@ -12,7 +12,8 @@ export const BUCKETS = {
   BRAND_ASSETS: 'brand-assets',
   CONTENT_IMAGES: 'content-images',
   OUTFITS_COLLECTION: 'outfits-collection',
-  SITE_ASSETS: 'site-assets'
+  // Bucket réellement présent dans Supabase (audité le 22/07/2026).
+  SITE_ASSETS: 'site-media'
 } as const;
 
 const STORAGE_KEY = '__PERSCADORS_SITE_ASSETS_CACHE__';
@@ -387,7 +388,11 @@ export async function fetchSiteAssets(): Promise<SiteAsset[]> {
       return assets;
     }
 
-    console.error('Erreur lecture site_assets Supabase:', error);
+    // Une table vide est un état valide lors de la première configuration :
+    // on utilise les médias par défaut sans provoquer d'erreur Runtime Next.js.
+    if (error) {
+      console.error('Erreur lecture site_assets Supabase:', error);
+    }
   }
 
   if (typeof window !== 'undefined') {
