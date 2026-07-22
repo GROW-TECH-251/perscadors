@@ -5,6 +5,7 @@
 
 import { requireSupabase, supabase } from '@/lib/supabase';
 import { fetchAdminOrders, normalizeCustomerPhone } from '@/services/orderService';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { AdminOrder, CustomerSummary, CustomerMeta, CustomerSegment, ApiResponse } from '@/admin/types';
 
 export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
@@ -14,7 +15,7 @@ export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
   ]);
 
   if (customerMetaError && customerMetaError.code !== 'PGRST205') {
-    console.error('Erreur fetch customer_meta:', customerMetaError);
+    logSupabaseWarning('customerService', customerMetaError);
   }
 
   // Les notes et tags sont les seules données client persistées indépendamment des commandes.
@@ -156,7 +157,7 @@ export async function upsertCustomerMeta(
       .single();
 
     if (error) {
-      console.error('Erreur sauvegarde métadonnées client:', error);
+      logSupabaseWarning('customerService', error);
       return { data: null, error: 'Impossible d’enregistrer la fiche client pour le moment.' };
     }
 
@@ -178,7 +179,7 @@ export async function upsertCustomerMeta(
     .single();
 
   if (error) {
-    console.error('Erreur création métadonnées client:', error);
+    logSupabaseWarning('customerService', error);
     return { data: null, error: 'Impossible d’enregistrer la fiche client pour le moment.' };
   }
 
@@ -188,29 +189,23 @@ export async function upsertCustomerMeta(
 export async function deleteCustomer(phone: string): Promise<ApiResponse<boolean>> {
   const normalizedPhone = normalizeCustomerPhone(phone);
   if (!normalizedPhone) return { data: null, error: 'Numéro de téléphone client invalide.' };
+  if (!supabase) return { data: null, error: 'Suppression indisponible sans connexion à la boutique.' };
 
-  // Seules les commandes locales en attente sont concernées ; les statistiques client
-  // sont toujours recalculées à partir des commandes disponibles.
+  const db = requireSupabase();
+  const { error } = await db.rpc('delete_customer_data', { target_phone: normalizedPhone });
+  if (error) {
+    logSupabaseWarning('customerService', error.message || 'erreur inconnue');
+    return { data: null, error: 'Impossible de supprimer ce client pour le moment.' };
+  }
+
+  // Le cache pending_sync n'est modifié qu'après succès serveur.
   if (typeof window !== 'undefined') {
     try {
       const savedOrders = JSON.parse(window.localStorage.getItem('__PERSCADORS_ORDERS_CACHE__') || '[]');
       window.localStorage.setItem('__PERSCADORS_ORDERS_CACHE__', JSON.stringify(
         savedOrders.filter((order: { client_phone?: string }) => normalizeCustomerPhone(order.client_phone || '') !== normalizedPhone)
       ));
-    } catch {
-      // Ignorer silencieusement
-    }
-  }
-
-  if (!supabase) return { data: true, error: null };
-
-  const db = requireSupabase();
-  const { error: metaError } = await db.from('customer_meta').delete().eq('phone', normalizedPhone);
-  const { error: ordersError } = await db.from('orders').delete().eq('client_phone', normalizedPhone);
-
-  if (metaError || ordersError) {
-    console.error('Erreur suppression client:', metaError || ordersError);
-    return { data: null, error: 'Impossible de supprimer ce client pour le moment.' };
+    } catch { /* cache non critique */ }
   }
 
   return { data: true, error: null };

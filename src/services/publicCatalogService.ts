@@ -208,15 +208,9 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
     return getFallbackCatalogSnapshot();
   }
 
-  let normalizedProducts = ((productsResponse.data || []) as AdminProduct[]).map(normalizeAdminProduct);
-  const fallbackProductsList = normalizeFallbackProducts();
-
-  // CADRE FINAL : Fusion parfaite du catalogue du repo si Supabase est incomplet
-  if (normalizedProducts.length < fallbackProductsList.length) {
-    const existingNames = new Set(normalizedProducts.map((p) => p.name));
-    const missingProducts = fallbackProductsList.filter((p) => !existingNames.has(p.name));
-    normalizedProducts = [...normalizedProducts, ...missingProducts];
-  }
+  // Si Supabase répond, son état visible est définitif : ne jamais réinjecter
+  // les produits statiques cachés ou supprimés par l’administration.
+  const normalizedProducts = ((productsResponse.data || []) as AdminProduct[]).map(normalizeAdminProduct);
 
   const normalizedCategories = categoriesResponse.error
     ? buildCategoriesFromProducts(normalizedProducts)
@@ -243,14 +237,9 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
       };
     });
 
-    // Fusion des outfits manquants du repo
-    if (normalizedOutfits.length < fallbackOutfits.length) {
-      const existingOutfitNames = new Set(normalizedOutfits.map((o) => o.name));
-      const missingOutfits = fallbackOutfits.filter((o) => !existingOutfitNames.has(o.name));
-      normalizedOutfits = [...normalizedOutfits, ...missingOutfits];
-    }
   } else {
-    normalizedOutfits = fallbackOutfits;
+    // Une réponse Supabase vide signifie qu'aucun look visible n'est publié.
+    normalizedOutfits = [];
   }
 
   return {
