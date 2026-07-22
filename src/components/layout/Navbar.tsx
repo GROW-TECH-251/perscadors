@@ -22,6 +22,8 @@ export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
 
+  const [realtimeVersion, setRealtimeVersion] = useState(0);
+
   useEffect(() => {
     const mountedTimer = setTimeout(async () => {
       setIsMounted(true);
@@ -44,9 +46,9 @@ export const Navbar: React.FC = () => {
       clearTimeout(mountedTimer);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [realtimeVersion]);
 
-  useShopSettingsRealtime(() => { window.location.reload(); });
+  useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
   const navLinks = useMemo(() => {
     const categoryLinks = categories.slice(0, 4).map((category) => ({

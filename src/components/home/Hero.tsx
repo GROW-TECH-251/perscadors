@@ -14,6 +14,8 @@ export const Hero: React.FC = () => {
   const [mediaType, setMediaType] = useState<'video' | 'image'>('video');
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
 
+  const [realtimeVersion, setRealtimeVersion] = useState(0);
+
   useEffect(() => {
     async function loadHero() {
       const [settingsData, assetData] = await Promise.all([
@@ -41,10 +43,10 @@ export const Hero: React.FC = () => {
       return () => clearTimeout(timer);
     }
     loadHero();
-  }, []);
+  }, [realtimeVersion]);
 
-  useShopSettingsRealtime(() => { window.location.reload(); });
-  useSiteAssetsRealtime(() => { window.location.reload(); });
+  useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
+  useSiteAssetsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
   return (
     <section

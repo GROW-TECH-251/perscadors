@@ -12,6 +12,8 @@ export const Footer: React.FC = () => {
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
   const [logoUrl, setLogoUrl] = useState('/images/LOGOSITE/logo.png');
 
+  const [realtimeVersion, setRealtimeVersion] = useState(0);
+
   useEffect(() => {
     async function loadFooter() {
       const [data, activeLogo] = await Promise.all([
@@ -26,9 +28,9 @@ export const Footer: React.FC = () => {
       }
     }
     loadFooter();
-  }, []);
+  }, [realtimeVersion]);
 
-  useShopSettingsRealtime(() => { window.location.reload(); });
+  useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
   return (
     <footer className="bg-[#0A0A0A] text-[#888880] border-t border-brand-gold/20 pt-16 pb-8 px-4 sm:px-6 lg:px-8">

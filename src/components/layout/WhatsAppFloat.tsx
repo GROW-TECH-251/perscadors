@@ -9,15 +9,17 @@ import type { ShopSettings } from '@/admin/types';
 export const WhatsAppFloat: React.FC = () => {
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
 
+  const [realtimeVersion, setRealtimeVersion] = useState(0);
+
   useEffect(() => {
     async function loadWhatsAppFloat() {
       const data = await fetchShopSettings();
       if (data) setSettings(data);
     }
     loadWhatsAppFloat();
-  }, []);
+  }, [realtimeVersion]);
 
-  useShopSettingsRealtime(() => { window.location.reload(); });
+  useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
   return (
     <a
