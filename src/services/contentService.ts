@@ -37,7 +37,7 @@ export async function fetchContentPosts(): Promise<ContentPost[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Erreur fetch content posts:', error);
+    console.warn('Erreur fetch content posts:', error);
     return [];
   }
 
@@ -54,7 +54,7 @@ export async function fetchContentPostById(id: string): Promise<ContentPost | nu
     .single();
 
   if (error || !data) {
-    console.error('Erreur fetch content post:', error);
+    console.warn('Erreur fetch content post:', error);
     return null;
   }
 
@@ -71,7 +71,7 @@ export async function fetchPublishedPosts(): Promise<ContentPost[]> {
     .order('published_at', { ascending: false });
 
   if (error) {
-    console.error('Erreur fetch posts publiés:', error);
+    console.warn('Erreur fetch posts publiés:', error);
     return [];
   }
 
@@ -88,7 +88,7 @@ export async function fetchPostsByType(type: ContentPostType): Promise<ContentPo
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Erreur fetch posts par type:', error);
+    console.warn('Erreur fetch posts par type:', error);
     return [];
   }
 
@@ -119,7 +119,7 @@ export async function createContentPost(postData: ContentPostFormData): Promise<
     .single();
 
   if (error) {
-    console.error('Erreur création content post:', error);
+    console.warn('Erreur création content post:', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -161,7 +161,7 @@ export async function updateContentPost(
     .single();
 
   if (error) {
-    console.error('Erreur mise à jour content post:', error);
+    console.warn('Erreur mise à jour content post:', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -188,7 +188,7 @@ export async function deleteContentPost(id: string): Promise<ApiResponse<boolean
     .eq('id', id);
 
   if (error) {
-    console.error('Erreur suppression content post:', error);
+    console.warn('Erreur suppression content post:', error);
     return { data: false, error: USER_ERROR_MSG };
   }
 
@@ -203,7 +203,7 @@ export async function getTotalPostsCount(): Promise<number> {
     .select('*', { count: 'exact', head: true });
 
   if (error) {
-    console.error('Erreur count posts:', error);
+    console.warn('Erreur count posts:', error);
     return 0;
   }
 
@@ -219,7 +219,7 @@ export async function getPublishedPostsCount(): Promise<number> {
     .eq('status', 'published');
 
   if (error) {
-    console.error('Erreur count posts publiés:', error);
+    console.warn('Erreur count posts publiés:', error);
     return 0;
   }
 
