@@ -5,6 +5,7 @@
 
 import { requireSupabase, supabase } from '@/lib/supabase';
 import { fetchAdminOrders, normalizeCustomerPhone } from '@/services/orderService';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { AdminOrder, CustomerSummary, CustomerMeta, CustomerSegment, ApiResponse } from '@/admin/types';
 
 export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
@@ -14,7 +15,7 @@ export async function fetchCustomerSummaries(): Promise<CustomerSummary[]> {
   ]);
 
   if (customerMetaError && customerMetaError.code !== 'PGRST205') {
-    console.warn('Erreur fetch customer_meta:', customerMetaError);
+    logSupabaseWarning('customerService', customerMetaError);
   }
 
   // Les notes et tags sont les seules données client persistées indépendamment des commandes.
@@ -142,7 +143,7 @@ export async function upsertCustomerMeta(
       .single();
 
     if (error) {
-      console.warn('Erreur sauvegarde métadonnées client:', error);
+      logSupabaseWarning('customerService', error);
       return { data: null, error: 'Impossible d’enregistrer la fiche client pour le moment.' };
     }
 
@@ -164,7 +165,7 @@ export async function upsertCustomerMeta(
     .single();
 
   if (error) {
-    console.warn('Erreur création métadonnées client:', error);
+    logSupabaseWarning('customerService', error);
     return { data: null, error: 'Impossible d’enregistrer la fiche client pour le moment.' };
   }
 
@@ -179,7 +180,7 @@ export async function deleteCustomer(phone: string): Promise<ApiResponse<boolean
   const db = requireSupabase();
   const { error } = await db.rpc('delete_customer_data', { target_phone: normalizedPhone });
   if (error) {
-    console.warn('Suppression client refusée:', error.message || 'erreur inconnue');
+    logSupabaseWarning('customerService', error.message || 'erreur inconnue');
     return { data: null, error: 'Impossible de supprimer ce client pour le moment.' };
   }
 

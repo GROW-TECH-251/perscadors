@@ -4,6 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { ContentPost, ContentPostType, ApiResponse } from '@/admin/types';
 
 export interface ContentPostFormData {
@@ -37,7 +38,7 @@ export async function fetchContentPosts(): Promise<ContentPost[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.warn('Erreur fetch content posts:', error);
+    logSupabaseWarning('contentService', error);
     return [];
   }
 
@@ -54,7 +55,7 @@ export async function fetchContentPostById(id: string): Promise<ContentPost | nu
     .single();
 
   if (error || !data) {
-    console.warn('Erreur fetch content post:', error);
+    logSupabaseWarning('contentService', error);
     return null;
   }
 
@@ -71,7 +72,7 @@ export async function fetchPublishedPosts(): Promise<ContentPost[]> {
     .order('published_at', { ascending: false });
 
   if (error) {
-    console.warn('Erreur fetch posts publiés:', error);
+    logSupabaseWarning('contentService', error);
     return [];
   }
 
@@ -88,7 +89,7 @@ export async function fetchPostsByType(type: ContentPostType): Promise<ContentPo
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.warn('Erreur fetch posts par type:', error);
+    logSupabaseWarning('contentService', error);
     return [];
   }
 
@@ -119,7 +120,7 @@ export async function createContentPost(postData: ContentPostFormData): Promise<
     .single();
 
   if (error) {
-    console.warn('Erreur création content post:', error);
+    logSupabaseWarning('contentService', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -161,7 +162,7 @@ export async function updateContentPost(
     .single();
 
   if (error) {
-    console.warn('Erreur mise à jour content post:', error);
+    logSupabaseWarning('contentService', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -188,7 +189,7 @@ export async function deleteContentPost(id: string): Promise<ApiResponse<boolean
     .eq('id', id);
 
   if (error) {
-    console.warn('Erreur suppression content post:', error);
+    logSupabaseWarning('contentService', error);
     return { data: false, error: USER_ERROR_MSG };
   }
 
@@ -203,7 +204,7 @@ export async function getTotalPostsCount(): Promise<number> {
     .select('*', { count: 'exact', head: true });
 
   if (error) {
-    console.warn('Erreur count posts:', error);
+    logSupabaseWarning('contentService', error);
     return 0;
   }
 
@@ -219,7 +220,7 @@ export async function getPublishedPostsCount(): Promise<number> {
     .eq('status', 'published');
 
   if (error) {
-    console.warn('Erreur count posts publiés:', error);
+    logSupabaseWarning('contentService', error);
     return 0;
   }
 

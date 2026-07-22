@@ -4,6 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { AdminOutfit, OutfitFormData, ApiResponse } from '@/admin/types';
 
 const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
@@ -21,7 +22,7 @@ export async function fetchAdminOutfits(): Promise<AdminOutfit[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.warn('Lecture HP Looks Supabase refusée:', error.message || 'erreur inconnue');
+    logSupabaseWarning('outfitService', error.message || 'erreur inconnue');
     return [];
   }
 

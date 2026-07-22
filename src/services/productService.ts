@@ -4,6 +4,7 @@
 // ============================================
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { AdminProduct, ProductFormData, ApiResponse } from '@/admin/types';
 
 const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
@@ -22,7 +23,7 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.warn('Lecture produits Supabase refusée:', error.message || 'erreur inconnue');
+    logSupabaseWarning('productService', error.message || 'erreur inconnue');
     return [];
   }
 

@@ -4,6 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse, OrderItem, OrderCreationResult } from '@/admin/types';
 
 export interface PublicCheckoutOrderItem {
@@ -158,7 +159,7 @@ export async function fetchAdminOrders(): Promise<AdminOrder[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Erreur critique de lecture des commandes Supabase:', error);
+    logSupabaseWarning('orderService', error);
     // Ne jamais mélanger un cache historique avec les données globales : seul le retry local reste visible.
     return pendingLocalOrders;
   }
@@ -359,7 +360,7 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
     .single();
 
   if (error) {
-    console.error('Erreur de persistance de commande Supabase:', error);
+    logSupabaseWarning('orderService', error);
     // La commande locale reste dans la file pending_sync ; le détail technique ne sort pas du service.
     return {
       data: newOrder,
@@ -432,7 +433,7 @@ export async function updateOrderStatus(
     .single();
 
   if (error) {
-    console.error('Erreur mise à jour statut commande:', error);
+    logSupabaseWarning('orderService', error);
     return { data: updatedOrder, error: null };
   }
 
@@ -471,7 +472,7 @@ export async function updateOrder(
     .single();
 
   if (error) {
-    console.error('Erreur mise à jour commande:', error);
+    logSupabaseWarning('orderService', error);
     return { data: updatedOrder, error: null };
   }
 
@@ -499,7 +500,7 @@ export async function deleteOrder(id: number | string): Promise<ApiResponse<bool
     .eq('id', Number(id));
 
   if (error) {
-    console.error('Erreur suppression commande:', error);
+    logSupabaseWarning('orderService', error);
     return { data: true, error: null };
   }
 
