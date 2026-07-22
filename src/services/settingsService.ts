@@ -231,7 +231,7 @@ export async function fetchShopSettings(): Promise<ShopSettings | null> {
       return settings;
     }
 
-    console.error('Erreur chargement réglages Supabase:', error);
+    console.warn('Lecture réglages Supabase indisponible:', error?.message || 'erreur inconnue');
   }
 
   // Hors ligne ou en cas d'échec temporaire seulement : session, puis cache navigateur.
@@ -263,12 +263,11 @@ export async function upsertShopSettings(
     .single();
 
   if (error) {
-    // Les valeurs restent disponibles localement, mais le commerçant ne voit jamais le détail technique.
-    console.error('Erreur sauvegarde réglages Supabase:', error);
-    setSettingsFallback(nextSettings);
+    // Ne jamais présenter une modification locale comme une sauvegarde partagée.
+    console.warn('Sauvegarde réglages Supabase refusée:', error.message || 'erreur inconnue');
     return {
-      data: nextSettings,
-      error: 'Réglages conservés sur cet appareil. La synchronisation avec la boutique est à réessayer.'
+      data: null,
+      error: 'Impossible d’enregistrer les réglages sur la boutique pour le moment.'
     };
   }
 

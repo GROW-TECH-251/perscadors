@@ -481,12 +481,9 @@ export async function upsertSiteAsset(asset: Partial<SiteAsset>): Promise<ApiRes
     nextAssets = [...currentAssets, updatedAsset];
   }
 
-  // Persistance locale immédiate pour synchronisation temps réel de la vitrine
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
-  }
-
   if (!isSupabaseConfigured || !supabase) {
+    // Hors ligne uniquement : le cache garde une modification pending locale.
+    if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
     return { data: updatedAsset, error: null };
   }
 
@@ -498,10 +495,11 @@ export async function upsertSiteAsset(asset: Partial<SiteAsset>): Promise<ApiRes
 
   if (error) {
     // Interception silencieuse si RLS ou table manquante, le localStorage garantit la synchro
-    console.error('Erreur Supabase site_assets upsert (interceptée):', error.message);
+    console.warn('Écriture site_assets Supabase refusée:', error.message || 'erreur inconnue');
     return { data: null, error: 'Impossible d’enregistrer le média sur le serveur.' };
   }
 
+  if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
   return { data: data as SiteAsset, error: null };
 }
 
@@ -510,9 +508,6 @@ export async function deleteSiteAsset(id: string): Promise<ApiResponse<boolean>>
   const target = currentAssets.find((a) => a.id === id);
 
   const nextAssets = currentAssets.filter((a) => a.id !== id);
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
-  }
 
   if (target && target.storage_path && !target.is_social_url) {
     await deleteImage(BUCKETS.SITE_ASSETS, target.storage_path);
@@ -528,10 +523,11 @@ export async function deleteSiteAsset(id: string): Promise<ApiResponse<boolean>>
     .eq('id', id);
 
   if (error) {
-    console.error('Erreur Supabase site_assets delete (interceptée):', error.message);
+    console.warn('Suppression site_assets Supabase refusée:', error.message || 'erreur inconnue');
     return { data: false, error: 'Impossible de supprimer le média sur le serveur.' };
   }
 
+  if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAssets));
   return { data: true, error: null };
 }
 
