@@ -4,6 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData, FAQItem } from '@/admin/types';
 
 const SETTINGS_ROW_ID = 1;
@@ -263,11 +264,8 @@ export async function upsertShopSettings(
 
   if (error) {
     // Ne jamais présenter une modification locale comme une sauvegarde partagée.
-    console.warn('Sauvegarde réglages Supabase refusée:', error.message || 'erreur inconnue');
-    return {
-      data: null,
-      error: 'Impossible d’enregistrer les réglages sur la boutique pour le moment.'
-    };
+    const normalized = logSupabaseWarning('shop_settings', error);
+    return { data: null, error: normalized.userMessage };
   }
 
   const persistedSettings = normalizeShopSettings(data as Partial<ShopSettings>);

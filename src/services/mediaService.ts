@@ -5,6 +5,7 @@
 // Upload, suppression, synchronisation temps réel et gestion hybride des assets du site
 
 import { requireSupabase, supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { ApiResponse, SiteAsset, SiteAssetSection, SiteAssetType } from '@/admin/types';
 
 export const BUCKETS = {
@@ -182,8 +183,8 @@ export async function uploadImage(
       });
 
     if (error) {
-      console.warn('Upload Storage refusé:', error.message || 'erreur inconnue');
-      return { data: null, error: 'Impossible d’envoyer le fichier sur le serveur.' };
+      const normalized = logSupabaseWarning('storage', error);
+      return { data: null, error: normalized.userMessage };
     }
 
     const { data: urlData } = db.storage
@@ -192,8 +193,8 @@ export async function uploadImage(
 
     return { data: urlData.publicUrl, error: null };
   } catch (err: unknown) {
-    console.warn('Upload Storage interrompu:', err);
-    return { data: null, error: 'Impossible d’envoyer le fichier sur le serveur.' };
+    const normalized = logSupabaseWarning('storage', err);
+    return { data: null, error: normalized.userMessage };
   }
 }
 
