@@ -19,7 +19,7 @@ export async function fetchCategories(): Promise<AdminCategory[]> {
     .order('position', { ascending: true });
 
   if (error) {
-    console.error('Erreur fetch catégories:', error);
+    console.warn('Erreur fetch catégories:', error);
     return [];
   }
 
@@ -36,7 +36,7 @@ export async function fetchCategoryById(id: number | string): Promise<AdminCateg
     .single();
 
   if (error || !data) {
-    console.error('Erreur fetch catégorie:', error);
+    console.warn('Erreur fetch catégorie:', error);
     return null;
   }
 
@@ -53,7 +53,7 @@ export async function fetchCategoryBySlug(slug: string): Promise<AdminCategory |
     .single();
 
   if (error || !data) {
-    console.error('Erreur fetch catégorie par slug:', error);
+    console.warn('Erreur fetch catégorie par slug:', error);
     return null;
   }
 
@@ -70,7 +70,7 @@ export async function fetchVisibleCategories(): Promise<AdminCategory[]> {
     .order('position', { ascending: true });
 
   if (error) {
-    console.error('Erreur fetch catégories visibles:', error);
+    console.warn('Erreur fetch catégories visibles:', error);
     return [];
   }
 
@@ -93,7 +93,7 @@ export async function createCategory(categoryData: CategoryFormData): Promise<Ap
     .single();
 
   if (error) {
-    console.error('Erreur création catégorie:', error);
+    console.warn('Erreur création catégorie:', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -117,7 +117,7 @@ export async function updateCategory(
     .single();
 
   if (error) {
-    console.error('Erreur mise à jour catégorie:', error);
+    console.warn('Erreur mise à jour catégorie:', error);
     return { data: null, error: USER_ERROR_MSG };
   }
 
@@ -133,7 +133,7 @@ export async function deleteCategory(id: number | string): Promise<ApiResponse<b
     .eq('id', Number(id));
 
   if (error) {
-    console.error('Erreur suppression catégorie:', error);
+    console.warn('Erreur suppression catégorie:', error);
     return { data: false, error: USER_ERROR_MSG };
   }
 
@@ -153,7 +153,7 @@ export async function reorderCategories(categoryIds: (number | string)[]): Promi
     .upsert(updates);
 
   if (error) {
-    console.error('Erreur réordonnancement catégories:', error);
+    console.warn('Erreur réordonnancement catégories:', error);
     return { data: false, error: USER_ERROR_MSG };
   }
 
