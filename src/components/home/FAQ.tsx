@@ -1,5 +1,6 @@
 'use client';
 
+import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useEffect, useState } from 'react';
 import { Plus, Minus } from 'lucide-react';
 import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
@@ -18,6 +19,8 @@ export const FAQ: React.FC = () => {
     }
     loadFAQ();
   }, []);
+
+  useShopSettingsRealtime(() => { window.location.reload(); });
 
   const toggleFAQ = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);

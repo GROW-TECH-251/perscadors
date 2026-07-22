@@ -1,5 +1,6 @@
 'use client';
 
+import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -26,6 +27,8 @@ export const Footer: React.FC = () => {
     }
     loadFooter();
   }, []);
+
+  useShopSettingsRealtime(() => { window.location.reload(); });
 
   return (
     <footer className="bg-[#0A0A0A] text-[#888880] border-t border-brand-gold/20 pt-16 pb-8 px-4 sm:px-6 lg:px-8">

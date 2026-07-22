@@ -1,5 +1,6 @@
 'use client';
 
+import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useEffect, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
@@ -15,6 +16,8 @@ export const WhatsAppFloat: React.FC = () => {
     }
     loadWhatsAppFloat();
   }, []);
+
+  useShopSettingsRealtime(() => { window.location.reload(); });
 
   return (
     <a
