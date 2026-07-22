@@ -35,7 +35,9 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      process.env.NODE_ENV === 'production'
+        ? "script-src 'self' 'unsafe-inline'"
+        : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline' https:",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https:",
@@ -85,19 +87,6 @@ const nextConfig: NextConfig = {
           {
             key: 'Cache-Control',
             value: 'public, max-age=31536000, must-revalidate',
-          },
-        ],
-      },
-      {
-        source: '/:path*.mp4',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, must-revalidate',
-          },
-          {
-            key: 'Accept-Ranges',
-            value: 'bytes',
           },
         ],
       },
