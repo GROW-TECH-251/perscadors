@@ -14,8 +14,6 @@ export const Testimonials: React.FC = () => {
   const [testimonialAssets, setTestimonialAssets] = useState<SiteAsset[]>([]);
   const [tiktokAssets, setTiktokAssets] = useState<SiteAsset[]>([]);
 
-  const [realtimeVersion, setRealtimeVersion] = useState(0);
-
   useEffect(() => {
     async function loadTestimonials() {
       const [data, testimData, tiktokData] = await Promise.all([
@@ -28,10 +26,10 @@ export const Testimonials: React.FC = () => {
       if (tiktokData && tiktokData.length > 0) setTiktokAssets(tiktokData);
     }
     loadTestimonials();
-  }, [realtimeVersion]);
+  }, []);
 
-  useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
-  useSiteAssetsRealtime(() => { setRealtimeVersion((version) => version + 1); });
+  useShopSettingsRealtime(() => { window.location.reload(); });
+  useSiteAssetsRealtime(() => { window.location.reload(); });
 
   const data = settings.testimonials_json;
 
@@ -102,7 +100,7 @@ export const Testimonials: React.FC = () => {
                     controls
                     preload="metadata"
                     playsInline
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain bg-black"
                   />
                 </div>
 

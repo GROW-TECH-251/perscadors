@@ -373,7 +373,7 @@ export default function AdminMediaPage() {
                             muted
                             playsInline
                             onError={() => setToastMessage({ type: 'error', text: `La vidéo « ${asset.title} » ne peut pas être lue par ce navigateur. Utilisez MP4 H.264.` })}
-                            className="w-full h-full object-cover opacity-90 group-hover/media:opacity-100 transition-opacity"
+                            className="w-full h-full object-contain bg-black opacity-90 group-hover/media:opacity-100 transition-opacity"
                           />
                         )
                       ) : (
@@ -532,7 +532,7 @@ export default function AdminMediaPage() {
                   <div className="space-y-4 pointer-events-none relative z-10">
                     {selectedFile?.type.startsWith('video/') ? (
                       <div className="w-full max-w-xs aspect-[16/10] mx-auto bg-black rounded-2xl overflow-hidden border border-brand-gold/20 shadow">
-                        <video src={filePreview} controls preload="metadata" muted playsInline onError={() => setToastMessage({ type: 'success', text: 'Prévisualisation locale indisponible. Cloudinary optimisera la vidéo après upload.' })} className="w-full h-full object-cover" />
+                        <video src={filePreview} controls preload="metadata" muted playsInline onError={() => setToastMessage({ type: 'success', text: 'Prévisualisation locale indisponible. Cloudinary optimisera la vidéo après upload.' })} className="w-full h-full object-contain bg-black" />
                       </div>
                     ) : (
                       <div className="relative w-full max-w-xs aspect-[16/10] mx-auto bg-black rounded-2xl overflow-hidden border border-brand-gold/20 shadow">

@@ -61,7 +61,7 @@ export const Hero: React.FC = () => {
           muted
           playsInline
           preload="metadata"
-          className="absolute inset-0 w-full h-full object-cover opacity-65"
+          className="absolute inset-0 w-full h-full object-contain bg-black opacity-65"
         >
           <source src={mediaUrl} type="video/mp4" />
           Your browser does not support the video tag.
