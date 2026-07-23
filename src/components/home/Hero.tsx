@@ -1,12 +1,8 @@
 'use client';
 
-<<<<<<< HEAD
 import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
-import React, { useState, useEffect } from 'react';
-=======
 import React, { useState, useEffect, useRef, useCallback } from 'react';
->>>>>>> 3d79deb (description des changements)
 import Link from 'next/link';
 import Image from 'next/image';
 import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
@@ -96,11 +92,8 @@ export const Hero: React.FC = () => {
       {/* Video — mounted lazily after page is interactive */}
       {showVideo && (
         <video
-<<<<<<< HEAD
-          onError={() => { setMediaUrl(HERO_FALLBACK_IMAGE); setMediaType('image'); }}
-=======
           ref={videoRef}
->>>>>>> 3d79deb (description des changements)
+          onError={() => { setMediaUrl(HERO_FALLBACK_IMAGE); setMediaType('image'); }}
           autoPlay
           loop
           muted
