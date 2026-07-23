@@ -13,6 +13,20 @@ begin
   end if;
 end $$;
 
+-- Une identité ajoutée à une table existante démarre souvent à 1 :
+-- réaligner sa séquence sur les HP Looks déjà présents évite outfits_pkey duplicate.
+do $$
+declare sequence_name text;
+begin
+  select pg_get_serial_sequence('public.outfits', 'id') into sequence_name;
+  if sequence_name is not null then
+    execute format(
+      'select setval(%L, coalesce((select max(id) from public.outfits), 0) + 1, false)',
+      sequence_name
+    );
+  end if;
+end $$;
+
 create or replace function public.recalculate_outfit_price(product_ids_input jsonb)
 returns numeric
 language sql
