@@ -1,9 +1,8 @@
 -- Perscadors — HP Looks : identité et prix automatique
+-- product_ids est JSONB dans la base réelle (et non integer[]).
 
 begin;
 
--- La table historique utilisait id integer primary key sans génération automatique.
--- Cela faisait échouer createOutfit() lorsque l'admin ne fournissait pas d'id.
 do $$
 begin
   if exists (
@@ -14,15 +13,19 @@ begin
   end if;
 end $$;
 
-create or replace function public.recalculate_outfit_price(product_ids_input integer[])
+create or replace function public.recalculate_outfit_price(product_ids_input jsonb)
 returns numeric
 language sql
 stable
 set search_path = public
 as $$
-  select coalesce(sum(price), 0)
-  from public.products
-  where id = any(coalesce(product_ids_input, '{}'::integer[]));
+  select coalesce(sum(p.price), 0)
+  from public.products p
+  where p.id in (
+    select value::integer
+    from jsonb_array_elements_text(coalesce(product_ids_input, '[]'::jsonb))
+    where value ~ '^[0-9]+$'
+  );
 $$;
 
 create or replace function public.set_outfit_price()
@@ -43,7 +46,6 @@ create trigger outfits_recalculate_price
 before insert or update of product_ids on public.outfits
 for each row execute function public.set_outfit_price();
 
--- Si le prix d'un produit change, chaque look contenant ce produit est recalculé.
 create or replace function public.refresh_outfit_prices_for_product()
 returns trigger
 language plpgsql
@@ -53,7 +55,7 @@ as $$
 begin
   update public.outfits
   set custom_price = public.recalculate_outfit_price(product_ids), updated_at = now()
-  where old.id = any(product_ids);
+  where product_ids ? old.id::text;
   return new;
 end;
 $$;
@@ -63,7 +65,6 @@ create trigger products_refresh_outfit_prices
 after update of price on public.products
 for each row execute function public.refresh_outfit_prices_for_product();
 
--- Aligne les looks existants.
 update public.outfits
 set custom_price = public.recalculate_outfit_price(product_ids), updated_at = now();
 
