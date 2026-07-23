@@ -8,6 +8,7 @@ import { PublicLayout } from '@/components/layout/PublicLayout';
 import { useCatalog } from '@/context/CatalogContext';
 import { Product, Size } from '@/types';
 import { SlidersHorizontal, ArrowLeft } from 'lucide-react';
+import { normalizeProductAttribute, normalizeSize } from '@/utils/normalizeProductAttribute';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -20,16 +21,16 @@ export default function CategoryPage() {
   const activeCategory = useMemo(() => categories.find((category) => category.slug === slug), [categories, slug]);
   const categoryTitle = activeCategory?.name || slug.replace(/-/g, ' ');
 
-  const [selectedSizes, setSelectedSizes] = useState<Size[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
   const uniqueSizes = useMemo(
-    () => Array.from(new Set(rawProducts.flatMap((product) => product.sizes))).sort(),
+    () => Array.from(new Map(rawProducts.flatMap((product) => product.sizes.map((size) => [normalizeSize(size), size] as const))).values()).sort(),
     [rawProducts]
   );
   const uniqueColors = useMemo(
-    () => Array.from(new Set(rawProducts.flatMap((product) => product.colors))).sort(),
+    () => Array.from(new Map(rawProducts.flatMap((product) => product.colors.map((color) => [normalizeProductAttribute(color), color.trim().replace(/\s+/g, ' ')] as const))).values()).sort(),
     [rawProducts]
   );
 
@@ -37,23 +38,23 @@ export default function CategoryPage() {
     let result = [...rawProducts];
 
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+      const query = normalizeProductAttribute(searchQuery);
       result = products.filter(
         (product) =>
-          product.name.toLowerCase().includes(query) ||
-          product.description.toLowerCase().includes(query)
+          normalizeProductAttribute(product.name).includes(query) ||
+          normalizeProductAttribute(product.description).includes(query)
       );
     }
 
     if (selectedSizes.length > 0) {
       result = result.filter((product) =>
-        product.sizes.some((size) => selectedSizes.includes(size))
+        product.sizes.some((size) => selectedSizes.includes(normalizeSize(size)))
       );
     }
 
     if (selectedColors.length > 0) {
       result = result.filter((product) =>
-        product.colors.some((color) => selectedColors.includes(color))
+        product.colors.some((color) => selectedColors.includes(normalizeProductAttribute(color)))
       );
     }
 
@@ -61,18 +62,20 @@ export default function CategoryPage() {
   }, [products, rawProducts, searchQuery, selectedSizes, selectedColors]);
 
   const toggleSize = (size: Size) => {
+    const normalizedSize = normalizeSize(size);
     setSelectedSizes((currentSizes) =>
-      currentSizes.includes(size)
-        ? currentSizes.filter((currentSize) => currentSize !== size)
-        : [...currentSizes, size]
+      currentSizes.includes(normalizedSize)
+        ? currentSizes.filter((currentSize) => currentSize !== normalizedSize)
+        : [...currentSizes, normalizedSize]
     );
   };
 
   const toggleColor = (color: string) => {
+    const normalizedColor = normalizeProductAttribute(color);
     setSelectedColors((currentColors) =>
-      currentColors.includes(color)
-        ? currentColors.filter((currentColor) => currentColor !== color)
-        : [...currentColors, color]
+      currentColors.includes(normalizedColor)
+        ? currentColors.filter((currentColor) => currentColor !== normalizedColor)
+        : [...currentColors, normalizedColor]
     );
   };
 
@@ -127,7 +130,7 @@ export default function CategoryPage() {
               <h3 className="font-bebas text-lg tracking-wider text-brand-text-muted uppercase">Tailles</h3>
               <div className="flex flex-wrap gap-2">
                 {uniqueSizes.map((size) => {
-                  const isSelected = selectedSizes.includes(size);
+                  const isSelected = selectedSizes.includes(normalizeSize(size));
                   return (
                     <button
                       key={size}
@@ -149,7 +152,7 @@ export default function CategoryPage() {
               <h3 className="font-bebas text-lg tracking-wider text-brand-text-muted uppercase">Couleurs</h3>
               <div className="flex flex-wrap gap-2">
                 {uniqueColors.map((color) => {
-                  const isSelected = selectedColors.includes(color);
+                  const isSelected = selectedColors.includes(normalizeProductAttribute(color));
                   return (
                     <button
                       key={color}
@@ -271,7 +274,7 @@ export default function CategoryPage() {
                   <h3 className="font-bebas text-lg tracking-wider text-brand-text-muted uppercase">Tailles</h3>
                   <div className="flex flex-wrap gap-2">
                     {uniqueSizes.map((size) => {
-                      const isSelected = selectedSizes.includes(size);
+                      const isSelected = selectedSizes.includes(normalizeSize(size));
                       return (
                         <button
                           key={size}
@@ -293,7 +296,7 @@ export default function CategoryPage() {
                   <h3 className="font-bebas text-lg tracking-wider text-brand-text-muted uppercase">Couleurs</h3>
                   <div className="flex flex-wrap gap-2">
                     {uniqueColors.map((color) => {
-                      const isSelected = selectedColors.includes(color);
+                      const isSelected = selectedColors.includes(normalizeProductAttribute(color));
                       return (
                         <button
                           key={color}
