@@ -25,7 +25,12 @@ export async function uploadCloudinaryVideo(file: File, folder: string): Promise
     const upload = await fetch(`https://api.cloudinary.com/v1_1/${signature.cloudName}/video/upload`, { method: 'POST', body: form });
     const result = await upload.json() as { secure_url?: string; public_id?: string; eager?: Array<{ secure_url?: string }>; error?: { message?: string } };
     if (!upload.ok || !result.secure_url) return { url: '', publicId: '', error: result.error?.message || 'Transcodage vidéo impossible.' };
-    return { url: result.eager?.[0]?.secure_url || result.secure_url, publicId: result.public_id || '' };
+    // URL de livraison déterministe : Cloudinary applique H.264/AAC/MP4 à la lecture,
+    // même si la prévisualisation de l'original local était impossible.
+    if (!result.public_id) return { url: '', publicId: '', error: 'Cloudinary n’a pas retourné d’identifiant vidéo.' };
+    const encodedPublicId = result.public_id.split('/').map(encodeURIComponent).join('/');
+    const deliveryUrl = `https://res.cloudinary.com/${signature.cloudName}/video/upload/f_mp4,vc_h264,ac_aac,q_auto/${encodedPublicId}.mp4`;
+    return { url: deliveryUrl, publicId: result.public_id };
   } catch {
     return { url: '', publicId: '', error: 'Connexion Cloudinary indisponible.' };
   }
