@@ -67,7 +67,8 @@ export async function createOutfit(formData: OutfitFormData): Promise<ApiRespons
     .single();
 
   if (error) {
-    return { data: null, error: USER_ERROR_MSG };
+    const normalized = logSupabaseWarning('outfit_mutation', error);
+    return { data: null, error: normalized.userMessage };
   }
 
   return { data: data as AdminOutfit, error: null };
@@ -94,7 +95,8 @@ export async function updateOutfit(
     .single();
 
   if (error) {
-    return { data: null, error: USER_ERROR_MSG };
+    const normalized = logSupabaseWarning('outfit_mutation', error);
+    return { data: null, error: normalized.userMessage };
   }
 
   return { data: data as AdminOutfit, error: null };
@@ -113,7 +115,8 @@ export async function deleteOutfit(id: number | string): Promise<ApiResponse<boo
     .eq('id', Number(id));
 
   if (error) {
-    return { data: false, error: USER_ERROR_MSG };
+    const normalized = logSupabaseWarning('outfit_delete', error);
+    return { data: false, error: normalized.userMessage };
   }
 
   return { data: true, error: null };
