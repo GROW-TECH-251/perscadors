@@ -7,8 +7,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import { fetchActiveAssetBySection } from '@/services/mediaService';
-const HERO_FALLBACK_IMAGE = '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0036.jpg';
-
 import type { ShopSettings } from '@/admin/types';
 
 export const Hero: React.FC = () => {
@@ -57,7 +55,7 @@ export const Hero: React.FC = () => {
       {/* Background Flexible (Vidéo ou Image selon le choix du client en admin) */}
       {mediaUrl && mediaType === 'video' ? (
         <video
-          onError={() => { setMediaUrl(HERO_FALLBACK_IMAGE); setMediaType('image'); }}
+          onError={() => { setMediaUrl(''); }}
           autoPlay
           loop
           muted

@@ -70,7 +70,8 @@ export default function AdminHpbPage() {
       setOutfits((currentOutfits) =>
         currentOutfits.map((o) => (o.id === id ? { ...o, visible: nextVisible } : o))
       );
-      await updateOutfit(id, { visible: nextVisible });
+      const result = await updateOutfit(id, { visible: nextVisible });
+      if (result.error) throw new Error(result.error);
     } catch (error: unknown) {
       console.error('Erreur bascule visibilité outfit:', error);
       setToast({ message: 'Impossible de mettre à jour la visibilité du look.', variant: 'error' });
@@ -90,7 +91,8 @@ export default function AdminHpbPage() {
       setOutfits((currentOutfits) =>
         currentOutfits.map((o) => (o.id === outfitId ? { ...o, product_ids: updatedIds } : o))
       );
-      await updateOutfit(outfitId, { product_ids: updatedIds });
+      const result = await updateOutfit(outfitId, { product_ids: updatedIds });
+      if (result.error) throw new Error(result.error);
     } catch (error: unknown) {
       console.error('Erreur retrait produit outfit:', error);
       setToast({ message: 'Impossible de retirer cette pièce du look.', variant: 'error' });
@@ -103,7 +105,8 @@ export default function AdminHpbPage() {
   const handleDelete = async (id: number) => {
     setPendingDeleteId(null);
     try {
-      await deleteOutfit(id);
+      const result = await deleteOutfit(id);
+      if (result.error) throw new Error(result.error);
       await loadData();
     } catch (error: unknown) {
       console.error('Erreur suppression outfit:', error);
@@ -183,14 +186,16 @@ export default function AdminHpbPage() {
         visible: editingOutfit ? editingOutfit.visible : true
       };
 
-      if (editingOutfit?.id) {
-        await updateOutfit(editingOutfit.id, payload);
-      } else {
-        await createOutfit(payload);
+      const result = editingOutfit?.id
+        ? await updateOutfit(editingOutfit.id, payload)
+        : await createOutfit(payload);
+      if (result.error || !result.data) {
+        setToast({ message: result.error || 'Impossible d’enregistrer ce look sur le serveur.', variant: 'error' });
+        return;
       }
-
       await loadData();
       setIsModalOpen(false);
+      setToast({ message: editingOutfit ? 'HP Look mis à jour.' : 'HP Look créé et synchronisé.', variant: 'success' });
     } catch (error: unknown) {
       console.error('Erreur sauvegarde outfit:', error);
       setToast({ message: 'Impossible d’enregistrer ce look pour le moment.', variant: 'error' });
