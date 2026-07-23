@@ -55,6 +55,9 @@ export async function createProduct(formData: ProductFormData): Promise<ApiRespo
     .from('products')
     .insert([{
       ...formData,
+      images: formData.images?.length ? formData.images : (formData.image_url ? [formData.image_url] : []),
+      outOfStockSizes: formData.outOfStockSizes || [],
+      outOfStockColors: formData.outOfStockColors || [],
       demand: formData.demand || 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -63,7 +66,8 @@ export async function createProduct(formData: ProductFormData): Promise<ApiRespo
     .single();
 
   if (error) {
-    return { data: null, error: USER_ERROR_MSG };
+    const normalized = logSupabaseWarning('product_create', error);
+    return { data: null, error: normalized.userMessage };
   }
 
   return { data: data as AdminProduct, error: null };

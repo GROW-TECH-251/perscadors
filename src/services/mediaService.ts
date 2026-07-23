@@ -6,6 +6,7 @@
 
 import { requireSupabase, supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { logSupabaseWarning } from '@/lib/supabaseErrors';
+import { deleteCloudinaryVideo, uploadCloudinaryVideo } from '@/services/cloudinaryVideoService';
 import type { ApiResponse, SiteAsset, SiteAssetSection, SiteAssetType } from '@/admin/types';
 
 export const BUCKETS = {
@@ -431,20 +432,26 @@ export async function uploadSiteAssetMedia(
   const isVideo = file.type.startsWith('video/') || file.name.match(/\.(mp4|mov|webm)$/i);
   const assetType: SiteAssetType = isVideo ? 'video' : 'image';
 
-  const uploadResult = await uploadImage(BUCKETS.SITE_ASSETS, file, storagePath);
+  if (assetType === 'video') {
+    const cloudinaryResult = await uploadCloudinaryVideo(file, `perscadors/${safeSection}`);
+    if (cloudinaryResult.error || !cloudinaryResult.url) {
+      return { data: null, error: cloudinaryResult.error || 'Transcodage vidéo impossible.' };
+    }
+    return {
+      data: {
+        url: cloudinaryResult.url,
+        storage_path: `cloudinary:${cloudinaryResult.publicId}`,
+        type: 'video'
+      },
+      error: null
+    };
+  }
 
+  const uploadResult = await uploadImage(BUCKETS.SITE_ASSETS, file, storagePath);
   if (uploadResult.error || !uploadResult.data) {
     return { data: null, error: uploadResult.error || 'Erreur d’upload du média' };
   }
-
-  return {
-    data: {
-      url: uploadResult.data,
-      storage_path: storagePath,
-      type: assetType
-    },
-    error: null
-  };
+  return { data: { url: uploadResult.data, storage_path: storagePath, type: assetType }, error: null };
 }
 
 export async function upsertSiteAsset(asset: Partial<SiteAsset>): Promise<ApiResponse<SiteAsset>> {
@@ -524,7 +531,13 @@ export async function deleteSiteAsset(id: string): Promise<ApiResponse<boolean>>
   const nextAssets = currentAssets.filter((a) => a.id !== id);
 
   if (target && target.storage_path && !target.is_social_url) {
-    await deleteImage(BUCKETS.SITE_ASSETS, target.storage_path);
+    const cloudinaryPublicId = target.storage_path.startsWith('cloudinary:')
+      ? target.storage_path.slice('cloudinary:'.length)
+      : null;
+    const deletionError = cloudinaryPublicId
+      ? await deleteCloudinaryVideo(cloudinaryPublicId)
+      : (await deleteImage(BUCKETS.SITE_ASSETS, target.storage_path)).error;
+    if (deletionError) return { data: false, error: deletionError };
   }
 
   if (!isSupabaseConfigured || !supabase) {

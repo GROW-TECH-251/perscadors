@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useCatalogRealtime } from '@/hooks/useCatalogRealtime';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { CatalogCategory, Outfit, Product } from '@/types';
 import {
@@ -30,27 +31,21 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [catalog, setCatalog] = useState(fallbackSnapshot);
 
+  const loadCatalog = useCallback(async () => {
+    const snapshot = await fetchPublicCatalogSnapshot();
+    setCatalog(snapshot);
+  }, []);
+
   useEffect(() => {
     if (pathname.startsWith('/admin')) {
       return;
     }
 
-    let cancelled = false;
+    const timer = window.setTimeout(() => { void loadCatalog(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [pathname, loadCatalog]);
 
-    const loadCatalog = async () => {
-      const snapshot = await fetchPublicCatalogSnapshot();
-
-      if (!cancelled) {
-        setCatalog(snapshot);
-      }
-    };
-
-    void loadCatalog();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname]);
+  useCatalogRealtime(() => { if (!pathname.startsWith('/admin')) void loadCatalog(); });
 
   const value = useMemo<CatalogContextValue>(() => ({
     products: catalog.products,
