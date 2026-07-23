@@ -1,8 +1,12 @@
 'use client';
 
+<<<<<<< HEAD
 import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useState, useEffect } from 'react';
+=======
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+>>>>>>> 3d79deb (description des changements)
 import Link from 'next/link';
 import Image from 'next/image';
 import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
@@ -15,6 +19,9 @@ export const Hero: React.FC = () => {
   const [mediaUrl, setMediaUrl] = useState<string>('');
   const [mediaType, setMediaType] = useState<'video' | 'image'>('video');
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
+  const [videoReady, setVideoReady] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const [realtimeVersion, setRealtimeVersion] = useState(0);
 
@@ -50,25 +57,67 @@ export const Hero: React.FC = () => {
   useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
   useSiteAssetsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
+  useEffect(() => {
+    if (!mediaUrl) return;
+
+    const ric = (callback: IdleRequestCallback) => {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(callback, { timeout: 2000 });
+      } else {
+        setTimeout(callback, 150);
+      }
+    };
+
+    const idleHandle = ric(() => {
+      setMounted(true);
+    });
+
+    return () => {
+      if ('cancelIdleCallback' in window && typeof idleHandle === 'number') {
+        window.cancelIdleCallback(idleHandle);
+      }
+    };
+  }, [mediaUrl]);
+
+  const handleVideoCanPlay = useCallback(() => {
+    setVideoReady(true);
+  }, []);
+
+  const showVideo = mounted && mediaUrl && mediaType === 'video';
+  const showImage = mediaUrl && mediaType === 'image';
+
   return (
     <section
       className="relative w-full h-[calc(100vh-80px)] min-h-[700px] flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]"
     >
-      {/* Background Flexible (Vidéo ou Image selon le choix du client en admin) */}
-      {mediaUrl && mediaType === 'video' ? (
+      {/* Placeholder always visible — dark gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#1a1510] to-[#0a0a0a]" />
+
+      {/* Video — mounted lazily after page is interactive */}
+      {showVideo && (
         <video
+<<<<<<< HEAD
           onError={() => { setMediaUrl(HERO_FALLBACK_IMAGE); setMediaType('image'); }}
+=======
+          ref={videoRef}
+>>>>>>> 3d79deb (description des changements)
           autoPlay
           loop
           muted
           playsInline
           preload="metadata"
-          className="absolute inset-0 w-full h-full object-cover opacity-65"
+          onCanPlay={handleVideoCanPlay}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+            videoReady ? 'opacity-65' : 'opacity-0'
+          }`}
         >
           <source src={mediaUrl} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
-      ) : mediaUrl && mediaType === 'image' ? (
+      )}
+
+      {/* Image fallback */}
+      {showImage && (
         <Image
           src={mediaUrl}
           alt={settings.hero_title}
@@ -77,7 +126,7 @@ export const Hero: React.FC = () => {
           className="absolute inset-0 object-cover opacity-65"
           priority
         />
-      ) : null}
+      )}
 
       {/* Luxury Golden Overlay - Enhanced premium depth */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-black/42 to-black/65 z-10" />
