@@ -83,7 +83,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" data-scroll-behavior="smooth" className={`${barlow.variable} ${bebasNeue.variable} h-full antialiased scroll-smooth`}>
+    <html lang="fr" data-scroll-behavior="smooth" suppressHydrationWarning className={`${barlow.variable} ${bebasNeue.variable} h-full antialiased scroll-smooth`}>
       <head>
         <link rel="canonical" href="https://perscadors.vercel.app" />
       </head>
