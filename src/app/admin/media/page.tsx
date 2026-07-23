@@ -194,8 +194,7 @@ export default function AdminMediaPage() {
       if (!isSocialUrl && selectedFile) {
         const uploadRes = await uploadSiteAssetMedia(selectedSection, selectedFile);
         if (uploadRes.error || !uploadRes.data) {
-          setToastMessage({ type: 'error', text: 'Erreur d’upload du fichier. Veuillez réessayer.' });
-          setUploading(false);
+          setToastMessage({ type: 'error', text: uploadRes.error || 'Erreur d’upload du fichier. Veuillez réessayer.' });
           return;
         }
         finalUrl = uploadRes.data.url;

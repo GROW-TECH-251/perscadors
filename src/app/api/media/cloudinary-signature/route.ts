@@ -3,7 +3,9 @@ import { cloudinary } from '@/lib/cloudinary';
 
 export async function POST(request: Request) {
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    return NextResponse.json({ error: 'Cloudinary n’est pas configuré côté serveur.' }, { status: 503 });
+    return NextResponse.json({
+      error: 'Cloudinary n’est pas configuré dans les variables serveur locales.'
+    }, { status: 503 });
   }
   const { folder } = await request.json() as { folder?: string };
   const timestamp = Math.floor(Date.now() / 1000);
