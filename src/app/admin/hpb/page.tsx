@@ -29,7 +29,6 @@ export default function AdminHpbPage() {
   const [editingOutfit, setEditingOutfit] = useState<AdminOutfit | null>(null);
   const [name, setName] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [customPrice, setCustomPrice] = useState<number | ''>('');
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -122,13 +121,11 @@ export default function AdminHpbPage() {
       setEditingOutfit(outfit);
       setName(outfit.name);
       setImageUrl(outfit.image_url);
-      setCustomPrice(outfit.custom_price ?? '');
       setSelectedProductIds(outfit.product_ids || []);
     } else {
       setEditingOutfit(null);
       setName('');
       setImageUrl('');
-      setCustomPrice('');
       setSelectedProductIds([]);
     }
     setPickerSearch('');
@@ -181,7 +178,7 @@ export default function AdminHpbPage() {
       const payload = {
         name: name.trim(),
         image_url: imageUrl,
-        custom_price: customPrice === '' ? null : Number(customPrice),
+        custom_price: null, // Le trigger Supabase calcule toujours le total depuis product_ids.
         product_ids: selectedProductIds,
         visible: editingOutfit ? editingOutfit.visible : true
       };
@@ -462,13 +459,10 @@ export default function AdminHpbPage() {
               placeholder="Ex: Cargo Explorer 2026"
               required
             />
-            <AdminInput
-              label="Prix Global Personnalisé (FCFA - Optionnel)"
-              value={customPrice}
-              onChange={(value) => setCustomPrice(value ? Number(value) : '')}
-              type="number"
-              placeholder="Laisser vide pour faire la somme des pièces"
-            />
+            <div className="rounded-xl border border-brand-gold/15 bg-brand-bg p-3">
+              <p className="text-sm font-medium text-brand-text">Prix calculé automatiquement</p>
+              <p className="mt-1 text-xs text-brand-text-muted">Le total est recalculé depuis les produits associés. Aucun prix manuel n’est nécessaire.</p>
+            </div>
           </div>
 
           <div className="space-y-2">
