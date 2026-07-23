@@ -76,6 +76,7 @@ export const Testimonials: React.FC = () => {
                   src={data.screenshot_url || '/images/Temoignages/photos/témoignageclient.jpeg'}
                   alt="Témoignage Poyor Poyor"
                   fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
                   className="object-contain"
                 />
               </div>
