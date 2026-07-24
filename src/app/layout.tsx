@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import type { Metadata } from 'next';
+import { createClient } from '@supabase/supabase-js';
 import { Barlow, Bebas_Neue } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
@@ -27,55 +28,29 @@ const bebasNeue = Bebas_Neue({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL('https://perscadors.vercel.app'),
-  title: {
-    default: 'HP Collection | Boutique E-commerce Streetwear Premium',
-    template: '%s | HP Collection Cotonou'
-  },
-  description: 'Boutique premium de mode streetwear par l\'influenceur Vioutou à Cotonou, Bénin. Baskets, complets, jeans oversize et claquettes VIP. Commandes instantanées via WhatsApp avec livraison express.',
-  keywords: ['streetwear', 'mode', 'bénin', 'vioutou', 'baskets', 'complets', 'jean oversize', 'cotonou', 'vêtements premium', 'hp collection', 'prêt-à-porter'],
-  authors: [{ name: 'Vioutou (HP Collection)', url: 'https://perscadors.vercel.app' }],
-  creator: 'HP Collection / Perscadors Digital Agency',
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-  openGraph: {
-    title: 'HP Collection | Boutique E-commerce Streetwear Premium',
-    description: 'Boutique premium de mode streetwear par l\'influenceur Vioutou à Cotonou, Bénin. Baskets, complets, jeans oversize et claquettes VIP. Commandes instantanées via WhatsApp avec livraison express.',
-    url: 'https://perscadors.vercel.app',
-    siteName: 'HP Collection Bénin',
-    images: [
-      {
-        url: '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0036.jpg?v=20260630',
-        width: 1200,
-        height: 630,
-        alt: 'HP Collection — Boutique Streetwear Premium à Cotonou',
-      },
-    ],
-    locale: 'fr_BJ',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'HP Collection | Boutique E-commerce Streetwear Premium',
-    description: 'Boutique premium de mode streetwear par l\'influenceur Vioutou à Cotonou, Bénin. Commandes instantanées via WhatsApp avec livraison express.',
-    images: ['/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0036.jpg?v=20260630'],
-  },
-  icons: {
-    icon: '/images/LOGOSITE/logo.png?v=20260630',
-    shortcut: '/images/LOGOSITE/logo.png?v=20260630',
-    apple: '/images/LOGOSITE/logo.png?v=20260630',
-  },
-};
+const FALLBACK_TITLE = 'HP Collection | Boutique E-commerce Streetwear Premium';
+const FALLBACK_DESCRIPTION = 'Boutique premium de mode streetwear par l\'influenceur Vioutou à Cotonou, Bénin. Commandes instantanées via WhatsApp.';
+const FALLBACK_IMAGE = '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0036.jpg';
+
+export async function generateMetadata(): Promise<Metadata> {
+  let title = FALLBACK_TITLE;
+  let description = FALLBACK_DESCRIPTION;
+  let image = FALLBACK_IMAGE;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (url && key) {
+    const client = createClient(url, key, { auth: { persistSession: false } });
+    const [settingsResponse, bannerResponse] = await Promise.all([
+      client.from('shop_settings').select('social_title,social_description,social_image_url').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+      client.from('site_assets').select('url').eq('section', 'ambience').eq('active', true).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+    ]);
+    const data = settingsResponse.data;
+    if (data) { title = data.social_title || title; description = data.social_description || description; image = data.social_image_url || bannerResponse.data?.url || image; }
+    else if (bannerResponse.data?.url) image = bannerResponse.data.url;
+  }
+  return { metadataBase: new URL('https://perscadors.vercel.app'), title, description, robots: { index: true, follow: true }, openGraph: { title, description, url: 'https://perscadors.vercel.app', siteName: 'HP Collection Bénin', images: [{ url: image, width: 1200, height: 630, alt: title }], locale: 'fr_BJ', type: 'website' }, twitter: { card: 'summary_large_image', title, description, images: [image] }, icons: { icon: '/images/LOGOSITE/logo.png', shortcut: '/images/LOGOSITE/logo.png', apple: '/images/LOGOSITE/logo.png' } };
+}
+
 
 export default function RootLayout({
   children,

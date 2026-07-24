@@ -69,6 +69,9 @@ export function getDefaultShopSettings(): ShopSettings {
     hero_video_url: '/images/ARRIEREPLAN/7679830-uhd_4096_2160_25fps.mp4',
     footer_description: 'La marque de mode streetwear premium au Bénin. Statut, style, modernité et une élégance sans compromis.',
     floating_whatsapp_text: 'Bonjour Vioutou ! Je viens du site HP Collection et j\'aimerais discuter de vos outfits.',
+    social_title: 'HP Collection | Boutique Streetwear Premium',
+    social_description: 'Découvrez la sélection streetwear premium HP Collection.',
+    social_image_url: '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0036.jpg',
     testimonials_json: DEFAULT_TESTIMONIALS,
     faq_json: DEFAULT_FAQ,
     updated_at: getCurrentIsoDate()
@@ -181,6 +184,9 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
     hero_video_url: rawSettings?.hero_video_url || defaults.hero_video_url,
     footer_description: rawSettings?.footer_description || defaults.footer_description,
     floating_whatsapp_text: rawSettings?.floating_whatsapp_text || defaults.floating_whatsapp_text,
+    social_title: rawSettings?.social_title || defaults.social_title,
+    social_description: rawSettings?.social_description || defaults.social_description,
+    social_image_url: rawSettings?.social_image_url || defaults.social_image_url,
     testimonials_json: normalizeTestimonials(rawSettings?.testimonials_json),
     faq_json: normalizeFAQ(rawSettings?.faq_json),
     updated_at: rawSettings?.updated_at || defaults.updated_at

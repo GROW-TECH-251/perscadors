@@ -417,6 +417,14 @@ export default function AdminSettingsPage() {
             </div>
           </AdminCard>
 
+          <AdminCard className="space-y-4">
+            <div><h2 className="font-bebas text-xl uppercase tracking-wider text-brand-text">Image et texte de partage</h2><p className="text-sm text-brand-text-muted">Utilisés par WhatsApp, Facebook, Messenger, Discord, Twitter et les autres réseaux.</p></div>
+            <AdminInput label="Titre de partage" value={settings.social_title || ''} onChange={(value) => setSettings((current) => ({ ...current, social_title: value }))} />
+            <AdminTextarea label="Description de partage" value={settings.social_description || ''} onChange={(value) => setSettings((current) => ({ ...current, social_description: value }))} rows={3} />
+            <p className="rounded-xl border border-brand-gold/15 bg-brand-bg p-3 text-sm text-brand-text-muted">L’image de partage est uploadée depuis Médias → Bannière de partage. Aucune URL n’est nécessaire.</p>
+            <AdminButton type="button" variant="secondary" size="sm" onClick={() => router.push('/admin/media')}>Gérer la bannière de partage</AdminButton>
+          </AdminCard>
+
           <AdminCard className="space-y-6">
             <div className="flex items-center gap-3 border-b border-brand-gold/15 pb-4">
               <Star size={24} className="text-brand-gold" />

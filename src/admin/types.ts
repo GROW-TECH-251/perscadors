@@ -239,6 +239,9 @@ export interface ShopSettings {
   hero_video_url: string;
   footer_description: string;
   floating_whatsapp_text: string;
+  social_title?: string;
+  social_description?: string;
+  social_image_url?: string;
   testimonials_json: TestimonialsData;
   faq_json: FAQItem[];
   updated_at: string;
