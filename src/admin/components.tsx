@@ -36,20 +36,17 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Dashboard', icon: 'home' },
   { id: 'orders', label: 'Commandes', icon: 'cart' },
   { id: 'products', label: 'Produits', icon: 'package' },
-  { id: 'stockAlerts', label: 'Alertes Stock', icon: 'alerts' },
+  { id: 'stockAlerts', label: 'Stock', icon: 'alerts' },
   { id: 'customers', label: 'Clients', icon: 'users' },
-  { id: 'analytics', label: 'Analytics', icon: 'analytics' },
-  { id: 'categories', label: 'Catégories', icon: 'categories' },
   { id: 'hpb', label: 'HP Looks', icon: 'hpb' },
-  { id: 'content', label: 'Contenu', icon: 'content' },
-  { id: 'media', label: 'Gestion Médias', icon: 'media' },
+  { id: 'media', label: 'Médias', icon: 'media' },
   { id: 'settings', label: 'Réglages', icon: 'settings' },
   { id: 'qa', label: 'Santé boutique', icon: 'qa' }
 ];
 
 const NAVIGATION_GROUPS = [
-  { label: 'Piloter', items: ['home', 'orders', 'customers', 'stockAlerts', 'analytics'] },
-  { label: 'Vendre', items: ['products', 'categories', 'hpb', 'content', 'media'] },
+  { label: 'Piloter', items: ['home', 'orders', 'customers', 'stockAlerts'] },
+  { label: 'Vendre', items: ['products', 'hpb', 'media'] },
   { label: 'Configurer', items: ['settings', 'qa'] }
 ] as const;
 
