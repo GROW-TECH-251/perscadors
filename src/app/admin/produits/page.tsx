@@ -13,6 +13,7 @@ import { Package, Plus, Edit, Trash2, Download, Check, X, Eye, EyeOff } from 'lu
 import { fetchAdminProducts, deleteProduct, updateProduct } from '@/services/productService';
 import { createCategory, deleteCategory, fetchCategories, updateCategory } from '@/services/categoryService';
 import type { AdminProduct, AdminCategory } from '@/admin/types';
+import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
 import { exportProductsToCsv } from '@/utils/exportCsv';
 
 export default function AdminProductsPage() {
@@ -51,6 +52,13 @@ export default function AdminProductsPage() {
     };
     init();
   }, [loadProducts]);
+
+  const shareProductStatus = async (product: AdminProduct) => {
+    const url = product.image_url || product.images?.[0];
+    if (!url) { setToast({ message: 'Ce produit ne possède pas encore d’image à partager.', variant: 'error' }); return; }
+    const result = await shareMediaToWhatsAppStatus(url, product.name);
+    setToast({ message: result.message || 'Choisissez WhatsApp puis Statut pour publier le média.', variant: result.shared ? 'success' : 'info' });
+  };
 
   const handleDelete = async (id: number) => {
     setPendingDeleteId(null);
@@ -472,16 +480,19 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  {/* Actions d'édition complète */}
-                  <div className="pt-2 border-t border-brand-gold/10">
+                  {/* Actions commerciales et édition */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-brand-gold/10">
+                    <AdminButton variant="success" size="sm" className="justify-center" onClick={() => shareProductStatus(product)}>
+                      Statut WhatsApp
+                    </AdminButton>
                     <AdminButton
                       variant="secondary"
                       size="sm"
-                      className="w-full justify-center gap-2"
+                      className="justify-center gap-2"
                       onClick={() => router.push(`/admin/produits/${product.id}`)}
                     >
                       <Edit size={14} />
-                      Édition complète de la fiche
+                      Modifier
                     </AdminButton>
                   </div>
                 </div>
