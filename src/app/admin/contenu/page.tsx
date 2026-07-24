@@ -18,6 +18,7 @@ import {
   updateContentPost,
   type ContentPostFormData
 } from '@/services/contentService';
+import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadContentImage } from '@/services/mediaService';
 import type { ContentPost, ContentPostType } from '@/admin/types';
 
@@ -311,6 +312,12 @@ export default function AdminContentPage() {
     }
   };
 
+  const shareContentStatus = async (post: ContentPost) => {
+    if (!post.image_url) { setToast({ message: 'Cette annonce ne possède pas encore de média à partager.', variant: 'error' }); return; }
+    const result = await shareMediaToWhatsAppStatus(post.image_url, post.title);
+    setToast({ message: result.message || 'Choisissez WhatsApp puis Statut pour publier le média.', variant: result.shared ? 'success' : 'info' });
+  };
+
   const handleQuickToggleStatus = async (post: ContentPost) => {
     const nextStatus: ContentPost['status'] = post.status === 'published' ? 'draft' : 'published';
 
@@ -570,6 +577,9 @@ ${post.content}`);
                 </div>
 
                 <div className="flex gap-2 flex-wrap pt-3 border-t border-brand-gold/10">
+                  <AdminButton variant="secondary" size="sm" onClick={() => shareContentStatus(post)}>
+                    Statut WhatsApp
+                  </AdminButton>
                   <AdminButton variant="secondary" size="sm" onClick={() => handleEditMode(post)}>
                     <Edit size={14} />
                     Modifier
