@@ -253,7 +253,6 @@ export default function EditProductPage() {
               )}
             </div>
 
-            <AdminInput label="URL de l'image" value={formData.image_url} onChange={(value) => setFormData({ ...formData, image_url: value })} placeholder="/images/ARTICLES/..." />
 
             {formData.image_url && (
               <div className="mt-4 relative aspect-square bg-brand-bg rounded-lg overflow-hidden max-w-xs">
