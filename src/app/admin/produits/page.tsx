@@ -14,6 +14,10 @@ import { fetchAdminProducts, deleteProduct, updateProduct } from '@/services/pro
 import { createCategory, deleteCategory, fetchCategories, updateCategory } from '@/services/categoryService';
 import type { AdminProduct, AdminCategory } from '@/admin/types';
 import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
+import { WhatsAppRecipientDialog } from '@/components/admin/WhatsAppRecipientDialog';
+import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
+import { openWhatsApp } from '@/services/whatsappService';
+import type { CustomerSummary } from '@/admin/types';
 import { exportProductsToCsv } from '@/utils/exportCsv';
 
 export default function AdminProductsPage() {
@@ -28,6 +32,8 @@ export default function AdminProductsPage() {
   const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
   const [tempPrice, setTempPrice] = useState<number>(0);
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [pendingShareProduct, setPendingShareProduct] = useState<AdminProduct | null>(null);
+  const [settings, setSettings] = useState(getDefaultShopSettings());
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -58,6 +64,21 @@ export default function AdminProductsPage() {
     if (!url) { setToast({ message: 'Ce produit ne possède pas encore d’image à partager.', variant: 'error' }); return; }
     const result = await shareMediaToWhatsAppStatus(url, product.name);
     setToast({ message: result.message || 'Choisissez WhatsApp puis Statut pour publier le média.', variant: result.shared ? 'success' : 'info' });
+  };
+
+  const sendProductToCustomer = async (customer: CustomerSummary) => {
+    if (!pendingShareProduct) return;
+    const currentSettings = await fetchShopSettings() || settings;
+    setSettings(currentSettings);
+    const message = formatWhatsAppMessage(currentSettings.product_share_template, {
+      shopName: currentSettings.shop_name,
+      clientName: customer.name,
+      productName: pendingShareProduct.name,
+      productPrice: `${pendingShareProduct.price.toLocaleString()} FCFA`
+    });
+    openWhatsApp(message, customer.phone);
+    setToast({ message: `Message produit préparé pour ${customer.name}.`, variant: 'success' });
+    setPendingShareProduct(null);
   };
 
   const handleDelete = async (id: number) => {
@@ -187,6 +208,7 @@ export default function AdminProductsPage() {
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <WhatsAppRecipientDialog isOpen={pendingShareProduct !== null} title={`Envoyer ${pendingShareProduct?.name || 'le produit'} à un client`} onClose={() => setPendingShareProduct(null)} onSelect={sendProductToCustomer} />
       <AdminModal isOpen={categoriesOpen} onClose={() => setCategoriesOpen(false)} title="Catégories du catalogue">
         <div className="space-y-4">
           <div className="flex gap-2"><AdminInput label="Nouvelle catégorie" value={newCategoryName} onChange={setNewCategoryName} placeholder="Ex : Baskets" /><AdminButton type="button" variant="primary" loading={categorySaving} onClick={addCategory}>Ajouter</AdminButton></div>
@@ -485,6 +507,9 @@ export default function AdminProductsPage() {
                     <AdminButton variant="success" size="sm" className="justify-center" onClick={() => shareProductStatus(product)}>
                       Statut WhatsApp
                     </AdminButton>
+                  <AdminButton variant="secondary" size="sm" className="justify-center" onClick={() => setPendingShareProduct(product)}>
+                    Envoyer client
+                  </AdminButton>
                     <AdminButton
                       variant="secondary"
                       size="sm"
