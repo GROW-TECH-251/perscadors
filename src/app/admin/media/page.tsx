@@ -16,16 +16,10 @@ import { fetchSiteAssets, uploadSiteAssetMedia, upsertSiteAsset, deleteSiteAsset
 import type { SiteAsset, SiteAssetSection, SiteAssetType } from '@/admin/types';
 
 const SECTIONS_CONFIG: { id: SiteAssetSection; label: string; description: string; hybrid: boolean }[] = [
-  { id: 'hero', label: 'Héros (Hero Media)', description: 'Média d\'accueil en arrière-plan (Vidéo MP4 ou Bannière Image)', hybrid: false },
-  { id: 'logo', label: 'Logos (Navbar & Footer)', description: 'Logos officiels de la boutique (PNG, WEBP, JPG)', hybrid: false },
-  { id: 'testimonials', label: 'Vidéos Témoignages', description: 'Preuve sociale vidéo (Clients VIP & Avis)', hybrid: true },
-  { id: 'ambience', label: 'Bannières & Ambiance', description: 'Photos de transition et bannières d\'ambiance urbaine', hybrid: false },
-  { id: 'tiktok', label: 'TikTok Embeds', description: 'Vidéos TikTok virales de Vioutou (URL ou Upload MP4)', hybrid: true },
-  { id: 'reels', label: 'Instagram Reels', description: 'Reels Instagram & FB (Envers du décor & Drops)', hybrid: true },
-  { id: 'sections', label: 'Photos Sections', description: 'Photos descriptives des sections du catalogue', hybrid: false },
-  { id: 'thumbnails', label: 'Miniatures & Covers', description: 'Couvertures et miniatures d\'articles premium', hybrid: false },
-  { id: 'backgrounds', label: 'Arrière-plans', description: 'Fonds d\'ambiance (Backgrounds globaux)', hybrid: false },
-  { id: 'galleries', label: 'Galeries Streetwear', description: 'Carrousels et galeries de shooting', hybrid: false }
+  { id: 'hero', label: 'Accueil (Hero)', description: 'Vidéo principale ou image de remplacement de la page d’accueil.', hybrid: false },
+  { id: 'logo', label: 'Logo', description: 'Logo utilisé dans la navigation et le pied de page.', hybrid: false },
+  { id: 'testimonials', label: 'Témoignages', description: 'Image et vidéos qui rassurent les futurs clients.', hybrid: true },
+  { id: 'ambience', label: 'Bannière de partage', description: 'Image principale pour les aperçus et communications.', hybrid: false }
 ];
 
 export default function AdminMediaPage() {
