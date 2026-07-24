@@ -232,6 +232,10 @@ export interface ShopSettings {
   story_share_template: string;
   vip_magic_template: string;
   driver_dispatch_template: string;
+  product_share_template: string;
+  outfit_share_template: string;
+  content_share_template: string;
+  customer_relaunch_template: string;
   customer_segmentation: CustomerSegmentationSettings;
   logo_url: string | null;
   hero_title: string;

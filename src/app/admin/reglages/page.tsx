@@ -675,6 +675,15 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="space-y-6 pt-4 border-t border-brand-gold/10">
+            <div className="space-y-4 rounded-2xl border border-brand-gold/15 bg-brand-bg p-4">
+              <h3 className="font-bebas text-lg text-brand-text uppercase">Messages commerciaux WhatsApp</h3>
+              <p className="text-xs text-brand-text-muted">Ces messages sont utilisés pour envoyer un produit, un look, une annonce ou une relance à un client.</p>
+              <AdminTextarea label="Produit client" value={settings.product_share_template} onChange={(value) => setSettings((current) => ({ ...current, product_share_template: value }))} rows={4} />
+              <AdminTextarea label="HP Look client" value={settings.outfit_share_template} onChange={(value) => setSettings((current) => ({ ...current, outfit_share_template: value }))} rows={4} />
+              <AdminTextarea label="Annonce client" value={settings.content_share_template} onChange={(value) => setSettings((current) => ({ ...current, content_share_template: value }))} rows={4} />
+              <AdminTextarea label="Relance client" value={settings.customer_relaunch_template} onChange={(value) => setSettings((current) => ({ ...current, customer_relaunch_template: value }))} rows={4} />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-brand-gold font-bebas text-lg uppercase tracking-wider">
                 <Share2 size={18} /> Template : Partage en Story WhatsApp
