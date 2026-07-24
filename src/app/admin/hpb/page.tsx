@@ -12,6 +12,7 @@ import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, Admin
 import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle } from 'lucide-react';
 import { fetchAdminOutfits, createOutfit, updateOutfit, deleteOutfit } from '@/services/outfitService';
 import { fetchAdminProducts } from '@/services/productService';
+import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
 import { uploadOutfitImage } from '@/services/mediaService';
 import type { AdminOutfit, AdminProduct } from '@/admin/types';
 
@@ -99,6 +100,12 @@ export default function AdminHpbPage() {
     } finally {
       setSavingId(null);
     }
+  };
+
+  const shareOutfitStatus = async (outfit: AdminOutfit) => {
+    if (!outfit.image_url) { setToast({ message: 'Ce HP Look ne possède pas encore d’image à partager.', variant: 'error' }); return; }
+    const result = await shareMediaToWhatsAppStatus(outfit.image_url, outfit.name);
+    setToast({ message: result.message || 'Choisissez WhatsApp puis Statut pour publier le look.', variant: result.shared ? 'success' : 'info' });
   };
 
   const handleDelete = async (id: number) => {
@@ -420,8 +427,11 @@ export default function AdminHpbPage() {
                 <div className="p-5 pt-0 bg-brand-bg-alt relative z-20">
                   <div className="pt-3 border-t border-brand-gold/10">
                     <div className="grid grid-cols-2 gap-2 mb-2">
+                      <AdminButton variant="secondary" size="sm" className="justify-center" onClick={() => shareOutfitStatus(outfit)}>
+                        Statut WhatsApp
+                      </AdminButton>
                       <AdminButton variant="success" size="sm" className="justify-center gap-1" disabled={attachedProducts.length === 0} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('✨ ' + outfit.name + '\n\nLook complet : ' + displayPrice.toLocaleString() + ' FCFA\n' + attachedProducts.map((product) => '• ' + product.name).join('\n') + '\n\nÉcrivez-nous pour réserver votre taille !')}`, '_blank')}>
-                        <MessageCircle size={14} /> Partager
+                        <MessageCircle size={14} /> Envoyer client
                       </AdminButton>
                       <AdminButton variant="secondary" size="sm" className="justify-center" onClick={() => handleOpenModal(outfit)}>
                         <Edit size={14} /> Modifier
