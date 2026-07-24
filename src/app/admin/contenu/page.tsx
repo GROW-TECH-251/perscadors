@@ -23,8 +23,7 @@ import type { ContentPost, ContentPostType } from '@/admin/types';
 
 const STATUS_OPTIONS: Array<{ value: ContentPost['status']; label: string }> = [
   { value: 'draft', label: 'Brouillon' },
-  { value: 'published', label: 'Publié' },
-  { value: 'scheduled', label: 'Planifié' }
+  { value: 'published', label: 'Publié' }
 ];
 
 const CATEGORY_OPTIONS: Array<{ value: ContentPostType; label: string }> = [
@@ -372,13 +371,13 @@ ${post.content}`);
             Storytelling boutique
           </span>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Promotions & annonces</h1>
-          <p className="text-brand-text-muted mt-1">{posts.length} contenus dynamiques</p>
+          <p className="text-brand-text-muted mt-1">{posts.length} promotions et annonces</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
           <AdminButton variant="primary" onClick={handleCreateMode}>
             <Plus size={18} />
-            Nouveau contenu
+            Nouvelle annonce
           </AdminButton>
         </div>
       </div>
@@ -387,7 +386,7 @@ ${post.content}`);
         <AdminCard>
           <div className="flex items-center justify-between mb-6 border-b border-brand-gold/15 pb-4">
             <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">
-              {editingPostId ? 'Modifier le contenu' : 'Nouveau contenu'}
+              {editingPostId ? 'Modifier l’annonce' : 'Nouvelle annonce'}
             </h2>
             <AdminButton variant="secondary" size="sm" onClick={resetForm}>Fermer</AdminButton>
           </div>
@@ -423,20 +422,6 @@ ${post.content}`);
                 options={STATUS_OPTIONS}
                 required
               />
-              {formData.status === 'scheduled' && (
-                <div className="space-y-1">
-                  <label htmlFor="scheduled-at-input" className="block text-sm font-medium text-brand-text">Date et heure de publication</label>
-                  <input
-                    id="scheduled-at-input"
-                    type="datetime-local"
-                    value={formData.scheduled_at}
-                    onChange={(e) => setFormData((currentData) => ({ ...currentData, scheduled_at: e.target.value }))}
-                    aria-label="Date et heure de publication"
-                    title="Date et heure de publication"
-                    className="w-full px-4 py-2.5 bg-brand-bg border border-brand-gold/20 rounded-xl focus:outline-none focus:border-brand-gold text-brand-text"
-                  />
-                </div>
-              )}
             </div>
 
             <AdminTextarea
