@@ -329,6 +329,17 @@ export default function AdminContentPage() {
     }
   };
 
+  const copyWhatsAppMessage = async (post: ContentPost) => {
+    try {
+      await navigator.clipboard.writeText(`${post.title}
+
+${post.content}`);
+      setToast({ message: 'Message prêt à coller dans WhatsApp.', variant: 'success' });
+    } catch {
+      setToast({ message: 'Impossible de copier le message.', variant: 'error' });
+    }
+  };
+
   const filteredPosts = useMemo(() => {
     return posts.filter((post) => {
       const matchesSearch =
@@ -360,7 +371,7 @@ export default function AdminContentPage() {
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
             Storytelling boutique
           </span>
-          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Contenu</h1>
+          <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Promotions & annonces</h1>
           <p className="text-brand-text-muted mt-1">{posts.length} contenus dynamiques</p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -522,7 +533,7 @@ export default function AdminContentPage() {
         <AdminEmptyState
           icon={<FileText size={48} />}
           title="Aucun contenu"
-          description="Créez votre premier post dynamique pour alimenter la vitrine."
+          description="Créez une promotion, un arrivage ou une annonce prête à partager."
           action={
             <AdminButton variant="primary" onClick={handleCreateMode}>
               <Plus size={20} />
@@ -577,6 +588,9 @@ export default function AdminContentPage() {
                   <AdminButton variant="secondary" size="sm" onClick={() => handleEditMode(post)}>
                     <Edit size={14} />
                     Modifier
+                  </AdminButton>
+                  <AdminButton variant="secondary" size="sm" onClick={() => copyWhatsAppMessage(post)}>
+                    <Send size={14} /> WhatsApp
                   </AdminButton>
                   <AdminButton
                     variant={post.status === 'published' ? 'secondary' : 'success'}
