@@ -150,20 +150,7 @@ export default function AdminStockPage() {
         <button type="button" onClick={() => setFilter('healthy')} className="text-left rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Catalogue disponible</p><p className="font-bebas text-3xl text-brand-text mt-2">{healthyStockProducts.length}</p><p className="text-sm text-brand-text-muted mt-1">Produits prêts à vendre</p></button>
       </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <AdminCard className="border-l-4 border-l-red-500">
-          <p className="text-sm uppercase tracking-wider text-brand-text-muted mb-2">Ruptures</p>
-          <p className="font-bebas text-4xl text-brand-text">{outOfStockProducts.length}</p>
-        </AdminCard>
-        <AdminCard className="border-l-4 border-l-yellow-500">
-          <p className="text-sm uppercase tracking-wider text-brand-text-muted mb-2">Stock critique</p>
-          <p className="font-bebas text-4xl text-brand-text">{criticalStockProducts.length}</p>
-        </AdminCard>
-        <AdminCard className="border-l-4 border-l-green-500">
-          <p className="text-sm uppercase tracking-wider text-brand-text-muted mb-2">Stock sain</p>
-          <p className="font-bebas text-4xl text-brand-text">{healthyStockProducts.length}</p>
-        </AdminCard>
-      </div>
+
 
       <div className="flex flex-col lg:flex-row gap-4">
         <AdminSearch
