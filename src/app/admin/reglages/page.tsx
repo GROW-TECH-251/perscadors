@@ -409,12 +409,11 @@ export default function AdminSettingsPage() {
                 onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, hero_subtitle: value }))}
                 rows={3}
               />
-              <AdminInput
-                label="URL de la vidéo d'arrière-plan"
-                value={settings.hero_video_url}
-                onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, hero_video_url: value }))}
-                placeholder="/images/ARRIEREPLAN/..."
-              />
+              <div className="rounded-xl border border-brand-gold/15 bg-brand-bg p-4">
+                <p className="font-medium text-brand-text">Vidéo Hero</p>
+                <p className="mt-1 text-sm text-brand-text-muted">La vidéo est gérée par upload dans Médias. Aucune URL n’est nécessaire.</p>
+                <AdminButton type="button" variant="secondary" size="sm" className="mt-3" onClick={() => router.push('/admin/media')}>Gérer la vidéo Hero</AdminButton>
+              </div>
             </div>
           </AdminCard>
 
@@ -487,11 +486,9 @@ export default function AdminSettingsPage() {
                       value={vid.title}
                       onChange={(value) => handleVideoChange(index, 'title', value)}
                     />
-                    <AdminInput
-                      label="URL de la vidéo (MP4)"
-                      value={vid.src}
-                      onChange={(value) => handleVideoChange(index, 'src', value)}
-                    />
+                    <div className="rounded-xl border border-brand-gold/15 bg-brand-bg p-3 text-sm text-brand-text-muted">
+                      Les fichiers témoignages sont gérés dans Médias par upload direct.
+                    </div>
                   </div>
                   <AdminInput
                     label="Description rapide"
