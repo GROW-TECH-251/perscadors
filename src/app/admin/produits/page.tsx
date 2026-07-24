@@ -8,10 +8,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
+import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminToast, AdminSkeleton, AdminConfirmDialog, AdminModal, AdminInput } from '@/admin/components';
 import { Package, Plus, Edit, Trash2, Download, Check, X, Eye, EyeOff } from 'lucide-react';
 import { fetchAdminProducts, deleteProduct, updateProduct } from '@/services/productService';
-import type { AdminProduct } from '@/admin/types';
+import { createCategory, deleteCategory, fetchCategories, updateCategory } from '@/services/categoryService';
+import type { AdminProduct, AdminCategory } from '@/admin/types';
 import { exportProductsToCsv } from '@/utils/exportCsv';
 
 export default function AdminProductsPage() {
@@ -27,6 +28,10 @@ export default function AdminProductsPage() {
   const [tempPrice, setTempPrice] = useState<number>(0);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categorySaving, setCategorySaving] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -148,12 +153,42 @@ export default function AdminProductsPage() {
     );
   }
 
+  const loadCategories = async () => setCategories(await fetchCategories());
+  const openCategories = async () => { await loadCategories(); setCategoriesOpen(true); };
+  const addCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    setCategorySaving(true);
+    const slug = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const result = await createCategory({ name, category: slug, description: '', image_url: null, visible: true, position: categories.length + 1 });
+    setCategorySaving(false);
+    if (result.error) { setToast({ message: result.error, variant: 'error' }); return; }
+    setNewCategoryName(''); await loadCategories(); setToast({ message: 'Catégorie créée.', variant: 'success' });
+  };
+  const toggleCategory = async (category: AdminCategory) => {
+    const result = await updateCategory(category.id, { visible: !category.visible });
+    if (result.error) { setToast({ message: result.error, variant: 'error' }); return; }
+    await loadCategories();
+  };
+  const removeCategory = async (category: AdminCategory) => {
+    const result = await deleteCategory(category.id);
+    if (result.error) { setToast({ message: result.error, variant: 'error' }); return; }
+    await loadCategories(); setToast({ message: 'Catégorie supprimée.', variant: 'success' });
+  };
+
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
-      <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer cette produit ?" description="Cette action est irréversible. Vérifiez que cet élément ne doit plus apparaître dans votre boutique." loading={savingId === pendingDeleteId} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId !== null && handleDelete(pendingDeleteId)} />
-      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <AdminModal isOpen={categoriesOpen} onClose={() => setCategoriesOpen(false)} title="Catégories du catalogue">
+        <div className="space-y-4">
+          <div className="flex gap-2"><AdminInput label="Nouvelle catégorie" value={newCategoryName} onChange={setNewCategoryName} placeholder="Ex : Baskets" /><AdminButton type="button" variant="primary" loading={categorySaving} onClick={addCategory}>Ajouter</AdminButton></div>
+          <p className="text-sm text-brand-text-muted">Les catégories restent secondaires : elles servent à organiser le catalogue public.</p>
+          {categories.map((category) => <div key={category.id} className="flex items-center justify-between rounded-xl border border-brand-gold/10 p-3"><div><p className="font-medium text-brand-text">{category.name}</p><p className="text-xs text-brand-text-muted">{category.visible ? 'Visible' : 'Masquée'}</p></div><div className="flex gap-2"><AdminButton type="button" size="sm" variant="secondary" onClick={() => toggleCategory(category)}>{category.visible ? 'Masquer' : 'Afficher'}</AdminButton><AdminButton type="button" size="sm" variant="danger" onClick={() => removeCategory(category)}>Supprimer</AdminButton></div></div>)}
+        </div>
+      </AdminModal>
 
+      <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer cette produit ?" description="Cette action est irréversible. Vérifiez que cet élément ne doit plus apparaître dans votre boutique." loading={savingId === pendingDeleteId} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId !== null && handleDelete(pendingDeleteId)} />
+      
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <span className="inline-flex items-center rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">
@@ -166,7 +201,7 @@ export default function AdminProductsPage() {
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>
             Retour
           </AdminButton>
-          <AdminButton variant="secondary" onClick={() => router.push('/admin/categories')}>
+          <AdminButton variant="secondary" onClick={openCategories}>
             Catégories
           </AdminButton>
           <AdminButton variant="primary" onClick={() => router.push('/admin/produits/nouveau')}>
