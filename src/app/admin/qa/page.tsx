@@ -8,13 +8,11 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSkeleton, AdminToast, AdminConfirmDialog } from '@/admin/components';
-import { CheckSquare, Square, RefreshCw, Save, AlertTriangle, Package, ShoppingCart, FileText, Tag, Users } from 'lucide-react';
+import { CheckSquare, Square, RefreshCw, Save, AlertTriangle, Package, ShoppingCart, FileText } from 'lucide-react';
 import { fetchAdminProducts } from '@/services/productService';
 import { fetchAdminOrders } from '@/services/orderService';
-import { fetchCategories } from '@/services/categoryService';
-import { fetchCustomerSummaries } from '@/services/customerService';
 import { fetchContentPosts } from '@/services/contentService';
-import type { AdminOrder, AdminProduct, ContentPost, CustomerSummary, AdminCategory } from '@/admin/types';
+import type { AdminOrder, AdminProduct, ContentPost } from '@/admin/types';
 
 interface ManualChecklistItem {
   id: string;
@@ -67,8 +65,6 @@ export default function AdminQaPage() {
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
-  const [categories, setCategories] = useState<AdminCategory[]>([]);
-  const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [contentPosts, setContentPosts] = useState<ContentPost[]>([]);
   const [pendingReset, setPendingReset] = useState(false);
   const [manualChecklist, setManualChecklist] = useState<ManualChecklistItem[]>(readStoredChecklist);
@@ -76,18 +72,14 @@ export default function AdminQaPage() {
   const loadQaData = useCallback(async () => {
     setLoading(true);
     try {
-      const [productsData, ordersData, categoriesData, customersData, contentData] = await Promise.all([
+      const [productsData, ordersData, contentData] = await Promise.all([
         fetchAdminProducts(),
         fetchAdminOrders(),
-        fetchCategories(),
-        fetchCustomerSummaries(),
         fetchContentPosts()
       ]);
 
       setProducts(productsData);
       setOrders(ordersData);
-      setCategories(categoriesData);
-      setCustomers(customersData);
       setContentPosts(contentData);
     } catch (error: unknown) {
       console.error('Erreur chargement QA:', error);
@@ -103,20 +95,19 @@ export default function AdminQaPage() {
     init();
   }, [loadQaData]);
 
-  const productsWithoutImage = useMemo(() => products.filter((product) => !product.image_url), [products]);
+  const incompleteProducts = useMemo(() => products.filter((product) => !product.image_url || product.sizes.length === 0 || product.stock <= 0), [products]);
   const lowStockProducts = useMemo(() => products.filter((product) => product.stock > 0 && product.stock <= 5), [products]);
-  const hiddenCategories = useMemo(() => categories.filter((category) => !category.visible), [categories]);
   const pendingOrders = useMemo(() => orders.filter((order) => order.status === 'EN ATTENTE'), [orders]);
   const publishedContent = useMemo(() => contentPosts.filter((post) => post.status === 'published'), [contentPosts]);
 
   const auditMetrics = useMemo<QaAuditMetric[]>(() => {
     return [
       {
-        id: 'products-images',
-        label: 'Produits sans image',
-        value: String(productsWithoutImage.length),
-        status: productsWithoutImage.length === 0 ? 'success' : 'warning',
-        hint: productsWithoutImage.length === 0 ? 'Tous les produits visibles ont une image.' : 'Ajoute une image aux produits incomplets.',
+        id: 'products-incomplete',
+        label: 'Produits à compléter',
+        value: String(incompleteProducts.length),
+        status: incompleteProducts.length === 0 ? 'success' : 'warning',
+        hint: incompleteProducts.length === 0 ? 'Catalogue prêt à vendre.' : 'Ajoutez image, taille ou stock avant de vendre.',
         icon: <Package size={18} />
       },
       {
@@ -136,14 +127,6 @@ export default function AdminQaPage() {
         icon: <ShoppingCart size={18} />
       },
       {
-        id: 'categories-hidden',
-        label: 'Collections masquées',
-        value: String(hiddenCategories.length),
-        status: hiddenCategories.length === 0 ? 'success' : 'warning',
-        hint: hiddenCategories.length === 0 ? 'Toutes les collections sont visibles.' : 'Assure-toi que les collections masquées sont volontaires.',
-        icon: <Tag size={18} />
-      },
-      {
         id: 'content-published',
         label: 'Contenus publiés',
         value: String(publishedContent.length),
@@ -151,21 +134,13 @@ export default function AdminQaPage() {
         hint: publishedContent.length > 0 ? 'Le storytelling de la boutique est actif.' : 'Publie un contenu pour animer la vitrine.',
         icon: <FileText size={18} />
       },
-      {
-        id: 'customers-known',
-        label: 'Clients suivis',
-        value: String(customers.length),
-        status: customers.length > 0 ? 'success' : 'warning',
-        hint: customers.length > 0 ? 'La base clients est disponible pour le CRM.' : 'Aucun client n’a encore été agrégé.',
-        icon: <Users size={18} />
-      }
     ];
-  }, [customers.length, hiddenCategories.length, lowStockProducts.length, pendingOrders.length, productsWithoutImage.length, publishedContent.length]);
+  }, [lowStockProducts.length, pendingOrders.length, incompleteProducts.length, publishedContent.length]);
 
   const criticalMetrics = auditMetrics.filter((metric) => metric.status === 'danger').length;
   const warningMetrics = auditMetrics.filter((metric) => metric.status === 'warning').length;
   const healthScore = Math.max(0, 100 - criticalMetrics * 25 - warningMetrics * 8);
-  const metricLinks: Record<string, string> = { 'products-images': '/admin/produits', 'stock-critical': '/admin/stock', 'orders-pending': '/admin/commandes', 'categories-hidden': '/admin/categories', 'content-published': '/admin/contenu', 'customers-known': '/admin/clients' };
+  const metricLinks: Record<string, string> = { 'products-incomplete': '/admin/produits', 'stock-critical': '/admin/stock', 'orders-pending': '/admin/commandes', 'categories-hidden': '/admin/categories', 'content-published': '/admin/contenu', 'customers-known': '/admin/clients' };
 
   const manualProgress = Math.round((manualChecklist.filter((item) => item.checked).length / manualChecklist.length) * 100);
   const groupedChecklist = useMemo(() => {
