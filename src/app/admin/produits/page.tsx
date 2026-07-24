@@ -166,6 +166,9 @@ export default function AdminProductsPage() {
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>
             Retour
           </AdminButton>
+          <AdminButton variant="secondary" onClick={() => router.push('/admin/categories')}>
+            Catégories
+          </AdminButton>
           <AdminButton variant="primary" onClick={() => router.push('/admin/produits/nouveau')}>
             <Plus size={20} />
             Nouveau produit
