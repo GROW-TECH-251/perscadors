@@ -10,8 +10,8 @@ import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AdminCard, AdminButton, AdminInput, AdminModal, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
-import { Film, Image as ImageIcon, Plus, Trash2, Eye, EyeOff, Upload, CheckCircle2, AlertCircle, Link as LinkIcon, Sparkles } from 'lucide-react';
+import { AdminCard, AdminButton, AdminInput, AdminModal, AdminSkeleton, AdminConfirmDialog, AdminToast } from '@/admin/components';
+import { Film, Image as ImageIcon, Plus, Trash2, Eye, EyeOff, Upload, Link as LinkIcon, Sparkles } from 'lucide-react';
 import { fetchSiteAssets, uploadSiteAssetMedia, upsertSiteAsset, deleteSiteAsset, toggleSiteAssetActive } from '@/services/mediaService';
 import type { SiteAsset, SiteAssetSection, SiteAssetType } from '@/admin/types';
 
@@ -42,7 +42,7 @@ export default function AdminMediaPage() {
   // États de chargement & retours utilisateurs
   const [uploading, setUploading] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ variant: 'success' | 'error'; text: string } | null>(null);
 
   const loadAssets = useCallback(async () => {
     setLoading(true);
@@ -51,7 +51,7 @@ export default function AdminMediaPage() {
       setAssets(data);
     } catch (err: unknown) {
       console.error('Erreur chargement media assets:', err);
-      setToastMessage({ type: 'error', text: 'Erreur lors du chargement des médias.' });
+      setToastMessage({ variant: 'error', text: 'Erreur lors du chargement des médias.' });
     } finally {
       setLoading(false);
     }
@@ -65,14 +65,6 @@ export default function AdminMediaPage() {
   }, [loadAssets]);
 
   useSiteAssetsRealtime(loadAssets);
-
-  // Purge du toast après 4s
-  useEffect(() => {
-    if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [toastMessage]);
 
   const currentSectionConfig = useMemo(() => {
     return SECTIONS_CONFIG.find((s) => s.id === selectedSection) || SECTIONS_CONFIG[0];
@@ -91,14 +83,14 @@ export default function AdminMediaPage() {
       setAssets((current) => current.map((a) => (a.id === id ? { ...a, active: nextActive } : a)));
       const res = await toggleSiteAssetActive(id, nextActive);
       if (res.error) {
-        setToastMessage({ type: 'error', text: 'Erreur de mise à jour. Contactez votre administrateur.' });
+        setToastMessage({ variant: 'error', text: 'Erreur de mise à jour. Contactez votre administrateur.' });
         await loadAssets();
       } else {
-        setToastMessage({ type: 'success', text: nextActive ? 'Média activé sur la vitrine !' : 'Média désactivé.' });
+        setToastMessage({ variant: 'success', text: nextActive ? 'Média activé sur la vitrine !' : 'Média désactivé.' });
       }
     } catch (err: unknown) {
       console.error('Erreur toggle active:', err);
-      setToastMessage({ type: 'error', text: 'Une erreur est survenue.' });
+      setToastMessage({ variant: 'error', text: 'Une erreur est survenue.' });
       await loadAssets();
     } finally {
       setProcessingId(null);
@@ -111,14 +103,14 @@ export default function AdminMediaPage() {
     try {
       const res = await deleteSiteAsset(id);
       if (res.error) {
-        setToastMessage({ type: 'error', text: 'Erreur de suppression. Contactez votre administrateur.' });
+        setToastMessage({ variant: 'error', text: 'Erreur de suppression. Contactez votre administrateur.' });
       } else {
-        setToastMessage({ type: 'success', text: 'Média supprimé avec succès.' });
+        setToastMessage({ variant: 'success', text: 'Média supprimé avec succès.' });
         setAssets((current) => current.filter((a) => a.id !== id));
       }
     } catch (err: unknown) {
       console.error('Erreur suppression:', err);
-      setToastMessage({ type: 'error', text: 'Erreur lors de la suppression.' });
+      setToastMessage({ variant: 'error', text: 'Erreur lors de la suppression.' });
     } finally {
       setProcessingId(null);
     }
@@ -142,7 +134,7 @@ export default function AdminMediaPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (selectedSection === 'hero' && file.type.startsWith('video/') && file.type !== 'video/mp4') {
-      setToastMessage({ type: 'error', text: 'Pour le Hero, utilisez une vidéo MP4 encodée en H.264.' });
+      setToastMessage({ variant: 'error', text: 'Pour le Hero, utilisez une vidéo MP4 encodée en H.264.' });
       e.target.value = '';
       return;
     }
@@ -165,17 +157,17 @@ export default function AdminMediaPage() {
     e.preventDefault();
 
     if (isSocialUrl && !socialUrl.trim()) {
-      setToastMessage({ type: 'error', text: 'Veuillez saisir une URL sociale valide (TikTok, Instagram, etc.).' });
+      setToastMessage({ variant: 'error', text: 'Veuillez saisir une URL sociale valide (TikTok, Instagram, etc.).' });
       return;
     }
 
     if (!isSocialUrl && !selectedFile) {
-      setToastMessage({ type: 'error', text: 'Veuillez sélectionner un fichier à uploader.' });
+      setToastMessage({ variant: 'error', text: 'Veuillez sélectionner un fichier à uploader.' });
       return;
     }
 
     if (!title.trim()) {
-      setToastMessage({ type: 'error', text: 'Le titre du média est requis.' });
+      setToastMessage({ variant: 'error', text: 'Le titre du média est requis.' });
       return;
     }
 
@@ -188,7 +180,7 @@ export default function AdminMediaPage() {
       if (!isSocialUrl && selectedFile) {
         const uploadRes = await uploadSiteAssetMedia(selectedSection, selectedFile);
         if (uploadRes.error || !uploadRes.data) {
-          setToastMessage({ type: 'error', text: uploadRes.error || 'Erreur d’upload du fichier. Veuillez réessayer.' });
+          setToastMessage({ variant: 'error', text: uploadRes.error || 'Erreur d’upload du fichier. Veuillez réessayer.' });
           return;
         }
         finalUrl = uploadRes.data.url;
@@ -212,15 +204,15 @@ export default function AdminMediaPage() {
       });
 
       if (res.error || !res.data) {
-        setToastMessage({ type: 'error', text: 'Erreur lors de l’enregistrement du média.' });
+        setToastMessage({ variant: 'error', text: 'Erreur lors de l’enregistrement du média.' });
       } else {
-        setToastMessage({ type: 'success', text: 'Média uploadé et synchronisé en direct sur le site !' });
+        setToastMessage({ variant: 'success', text: 'Média uploadé et synchronisé en direct sur le site !' });
         setAssets((current) => [...current, res.data!]);
         setIsModalOpen(false);
       }
     } catch (err: unknown) {
       console.error('Erreur submit media:', err);
-      setToastMessage({ type: 'error', text: 'Une erreur inattendue est survenue.' });
+      setToastMessage({ variant: 'error', text: 'Une erreur inattendue est survenue.' });
     } finally {
       setUploading(false);
     }
@@ -239,16 +231,7 @@ export default function AdminMediaPage() {
       {/* Toast de retours (UX Non-Technique) */}
       <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer ce média ?" description="Ce visuel sera retiré de la bibliothèque et pourra ne plus apparaître sur la vitrine. Cette action est irréversible." loading={pendingDeleteId ? processingId === pendingDeleteId : false} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId && handleDelete(pendingDeleteId)} />
 
-      {toastMessage && (
-        <div className="fixed top-24 right-6 z-50 animate-slide-up-fade flex items-center gap-3 px-5 py-4 rounded-2xl bg-[#0A0A0A]/95 border border-brand-gold/20 shadow-2xl backdrop-blur-md">
-          {toastMessage.type === 'success' ? (
-            <CheckCircle2 size={24} className="text-emerald-500 flex-shrink-0" />
-          ) : (
-            <AlertCircle size={24} className="text-red-500 flex-shrink-0" />
-          )}
-          <p className="font-bebas text-lg text-white tracking-wider uppercase">{toastMessage.text}</p>
-        </div>
-      )}
+      {toastMessage && <AdminToast message={toastMessage.text} variant={toastMessage.variant} onClose={() => setToastMessage(null)} />}
 
       {/* En-tête Principal */}
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between border-b border-brand-gold/10 pb-6">
@@ -366,7 +349,7 @@ export default function AdminMediaPage() {
                             preload="metadata"
                             muted
                             playsInline
-                            onError={() => setToastMessage({ type: 'error', text: `La vidéo « ${asset.title} » ne peut pas être lue par ce navigateur. Utilisez MP4 H.264.` })}
+                            onError={() => setToastMessage({ variant: 'error', text: `La vidéo « ${asset.title} » ne peut pas être lue par ce navigateur. Utilisez MP4 H.264.` })}
                             className="w-full h-full object-cover opacity-90 group-hover/media:opacity-100 transition-opacity"
                           />
                         )
@@ -526,7 +509,7 @@ export default function AdminMediaPage() {
                   <div className="space-y-4 pointer-events-none relative z-10">
                     {selectedFile?.type.startsWith('video/') ? (
                       <div className="w-full max-w-xs aspect-[16/10] mx-auto bg-black rounded-2xl overflow-hidden border border-brand-gold/20 shadow">
-                        <video src={filePreview} controls preload="metadata" muted playsInline onError={() => setToastMessage({ type: 'success', text: 'Prévisualisation locale indisponible. Cloudinary optimisera la vidéo après upload.' })} className="w-full h-full object-cover" />
+                        <video src={filePreview} controls preload="metadata" muted playsInline onError={() => setToastMessage({ variant: 'success', text: 'Prévisualisation locale indisponible. Cloudinary optimisera la vidéo après upload.' })} className="w-full h-full object-cover" />
                       </div>
                     ) : (
                       <div className="relative w-full max-w-xs aspect-[16/10] mx-auto bg-black rounded-2xl overflow-hidden border border-brand-gold/20 shadow">
