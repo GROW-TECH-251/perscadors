@@ -18,6 +18,10 @@ import {
   updateContentPost,
   type ContentPostFormData
 } from '@/services/contentService';
+import { WhatsAppRecipientDialog } from '@/components/admin/WhatsAppRecipientDialog';
+import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
+import { openWhatsApp } from '@/services/whatsappService';
+import type { CustomerSummary } from '@/admin/types';
 import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadContentImage } from '@/services/mediaService';
 import type { ContentPost, ContentPostType } from '@/admin/types';
@@ -91,6 +95,8 @@ export default function AdminContentPage() {
   const [pendingImageDeletion, setPendingImageDeletion] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
   const [pendingDeletePost, setPendingDeletePost] = useState<ContentPost | null>(null);
+  const [pendingSharePost, setPendingSharePost] = useState<ContentPost | null>(null);
+  const [settings, setSettings] = useState(getDefaultShopSettings());
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [uploadKey, setUploadKey] = useState(buildPostUploadKey());
   const [formData, setFormData] = useState<ContentFormState>({
@@ -318,6 +324,21 @@ export default function AdminContentPage() {
     setToast({ message: result.message || 'Choisissez WhatsApp puis Statut pour publier le média.', variant: result.shared ? 'success' : 'info' });
   };
 
+  const sendContentToCustomer = async (customer: CustomerSummary) => {
+    if (!pendingSharePost) return;
+    const currentSettings = await fetchShopSettings() || settings;
+    setSettings(currentSettings);
+    const message = formatWhatsAppMessage(currentSettings.content_share_template, {
+      shopName: currentSettings.shop_name,
+      clientName: customer.name,
+      contentTitle: pendingSharePost.title,
+      contentMessage: pendingSharePost.content
+    });
+    openWhatsApp(message, customer.phone);
+    setToast({ message: `Message préparé pour ${customer.name}.`, variant: 'success' });
+    setPendingSharePost(null);
+  };
+
   const handleQuickToggleStatus = async (post: ContentPost) => {
     const nextStatus: ContentPost['status'] = post.status === 'published' ? 'draft' : 'published';
 
@@ -369,6 +390,7 @@ ${post.content}`);
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <WhatsAppRecipientDialog isOpen={pendingSharePost !== null} title={`Envoyer ${pendingSharePost?.title || 'cette annonce'} à un client`} onClose={() => setPendingSharePost(null)} onSelect={sendContentToCustomer} />
       <AdminConfirmDialog isOpen={pendingImageDeletion} title="Supprimer cette image ?" description="Cette image sera retirée de la publication et supprimée du stockage. Cette action est irréversible." loading={deletingImage} onCancel={() => setPendingImageDeletion(false)} onConfirm={handleConfirmRemoveImage} />
       <AdminConfirmDialog isOpen={pendingDeletePost !== null} title="Supprimer cette publication ?" description={`La publication ${pendingDeletePost?.title || ''} sera retirée. Cette action est irréversible.`} loading={saving} onCancel={() => setPendingDeletePost(null)} onConfirm={() => pendingDeletePost && handleDelete(pendingDeletePost)} />
 
@@ -579,6 +601,9 @@ ${post.content}`);
                 <div className="flex gap-2 flex-wrap pt-3 border-t border-brand-gold/10">
                   <AdminButton variant="secondary" size="sm" onClick={() => shareContentStatus(post)}>
                     Statut WhatsApp
+                  </AdminButton>
+                  <AdminButton variant="secondary" size="sm" onClick={() => setPendingSharePost(post)}>
+                    Envoyer client
                   </AdminButton>
                   <AdminButton variant="secondary" size="sm" onClick={() => handleEditMode(post)}>
                     <Edit size={14} />
