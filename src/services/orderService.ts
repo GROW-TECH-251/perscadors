@@ -198,6 +198,7 @@ export async function syncPendingOrders(): Promise<PendingOrdersSyncResult> {
   const db = requireSupabase();
   let syncedCount = 0;
   let hasFailure = false;
+  let firstFailureMessage: string | null = null;
 
   for (const pendingOrder of pendingOrders) {
     const orderToSync: AdminOrder = {
@@ -253,8 +254,8 @@ export async function syncPendingOrders(): Promise<PendingOrdersSyncResult> {
       syncedCount += 1;
     } catch (error: unknown) {
       hasFailure = true;
-      // Le détail est disponible pour le développeur ; l'administration reçoit un message générique.
-      console.error(`Erreur de synchronisation de la commande ${orderToSync.order_number}:`, error);
+      const normalized = logSupabaseWarning(`order_sync:${orderToSync.order_number}`, error);
+      firstFailureMessage ||= normalized.userMessage;
     }
   }
 
@@ -262,7 +263,7 @@ export async function syncPendingOrders(): Promise<PendingOrdersSyncResult> {
   return {
     syncedCount,
     pendingCount: remainingPendingOrders.length,
-    error: hasFailure ? 'Certaines commandes restent en attente de synchronisation.' : null
+    error: hasFailure ? (firstFailureMessage || 'Certaines commandes restent en attente de synchronisation.') : null
   };
 }
 

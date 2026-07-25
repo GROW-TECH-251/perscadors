@@ -61,6 +61,10 @@ export function getDefaultShopSettings(): ShopSettings {
     order_delivered_template: 'Bonjour {clientName}, votre commande {orderId} a été livrée. Merci pour votre confiance !',
     story_share_template: '🔥 *BEST-SELLER {shopName}* 🔥\n\nDécouvrez notre pièce la plus prisée : *{productName}* à seulement *{productPrice}*.\n\n👑 _Vioutou t\'habille. Tu règnes._\n👉 Réservez votre taille directement ici : https://hpcollection.bj',
     vip_magic_template: '👑 *{shopName} — OFFRE SECRÈTE VIP* 👑\n\nSalut {clientName} ! Ça fait un moment qu\'on n\'a pas vu ton élégance dans nos commandes.\n\nVioutou t\'a sélectionné une pièce exclusive de notre nouvel arrivage avec un code promo secret : *{couponCode}* (-10% sur ton prochain panier).\n\n👉 Découvre les nouveautés ici : https://hpcollection.bj\n\n_Réponds directement à ce message pour réserver ta taille avant la rupture ! 🚀_',
+    product_share_template: 'Bonjour {clientName} 👋\n\n✨ {productName}\n💰 {productPrice}\n\nDis-moi si tu veux que je te réserve ta taille.',
+    outfit_share_template: 'Bonjour {clientName} 👋\n\n🔥 {lookName}\n💰 {lookPrice}\n\nJe peux te réserver les pièces disponibles si tu veux.',
+    content_share_template: 'Bonjour {clientName} 👋\n\n{contentTitle}\n\n{contentMessage}',
+    customer_relaunch_template: 'Bonjour {clientName} 👋\nOn a pensé à toi chez {shopName}. De nouvelles pièces sont disponibles cette semaine.',
     driver_dispatch_template: '🚀 *MISSION LIVRAISON {shopName}* 🚀\n\n📦 *Réf Commande :* {orderId}\n👤 *Client :* {clientName}\n📱 *Contact :* {clientPhone}\n📍 *Lieu de livraison :* {clientArea}\n\n🛒 *Articles à remettre au client :*\n{itemsList}\n\n💰 *Montant net à encaisser :* {orderTotal}\n\n_Merci de confirmer la bonne réception de cette mission et d\'entamer la livraison._',
     customer_segmentation: DEFAULT_SEGMENTATION,
     logo_url: '',
@@ -69,6 +73,9 @@ export function getDefaultShopSettings(): ShopSettings {
     hero_video_url: '/images/ARRIEREPLAN/7679830-uhd_4096_2160_25fps.mp4',
     footer_description: 'La marque de mode streetwear premium au Bénin. Statut, style, modernité et une élégance sans compromis.',
     floating_whatsapp_text: 'Bonjour Vioutou ! Je viens du site HP Collection et j\'aimerais discuter de vos outfits.',
+    social_title: 'HP Collection | Boutique Streetwear Premium',
+    social_description: 'Découvrez la sélection streetwear premium HP Collection.',
+    social_image_url: '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0036.jpg',
     testimonials_json: DEFAULT_TESTIMONIALS,
     faq_json: DEFAULT_FAQ,
     updated_at: getCurrentIsoDate()
@@ -174,6 +181,10 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
     story_share_template: normalizeTemplate(rawSettings?.story_share_template, defaults.story_share_template),
     vip_magic_template: normalizeTemplate(rawSettings?.vip_magic_template, defaults.vip_magic_template),
     driver_dispatch_template: normalizeTemplate(rawSettings?.driver_dispatch_template, defaults.driver_dispatch_template),
+    product_share_template: normalizeTemplate(rawSettings?.product_share_template, defaults.product_share_template),
+    outfit_share_template: normalizeTemplate(rawSettings?.outfit_share_template, defaults.outfit_share_template),
+    content_share_template: normalizeTemplate(rawSettings?.content_share_template, defaults.content_share_template),
+    customer_relaunch_template: normalizeTemplate(rawSettings?.customer_relaunch_template, defaults.customer_relaunch_template),
     customer_segmentation: normalizeSegmentation(rawSettings?.customer_segmentation),
     logo_url: rawSettings?.logo_url || '',
     hero_title: rawSettings?.hero_title || defaults.hero_title,
@@ -181,6 +192,9 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
     hero_video_url: rawSettings?.hero_video_url || defaults.hero_video_url,
     footer_description: rawSettings?.footer_description || defaults.footer_description,
     floating_whatsapp_text: rawSettings?.floating_whatsapp_text || defaults.floating_whatsapp_text,
+    social_title: rawSettings?.social_title || defaults.social_title,
+    social_description: rawSettings?.social_description || defaults.social_description,
+    social_image_url: rawSettings?.social_image_url || defaults.social_image_url,
     testimonials_json: normalizeTestimonials(rawSettings?.testimonials_json),
     faq_json: normalizeFAQ(rawSettings?.faq_json),
     updated_at: rawSettings?.updated_at || defaults.updated_at
@@ -342,6 +356,10 @@ export function formatWhatsAppMessage(
     orderId?: string;
     productName?: string;
     productPrice?: string;
+    lookName?: string;
+    lookPrice?: string;
+    contentTitle?: string;
+    contentMessage?: string;
     clientPhone?: string;
     clientArea?: string;
     itemsList?: string;
@@ -356,6 +374,10 @@ export function formatWhatsAppMessage(
   if (variables.orderId) message = message.replace(/{orderId}/g, variables.orderId);
   if (variables.productName) message = message.replace(/{productName}/g, variables.productName);
   if (variables.productPrice) message = message.replace(/{productPrice}/g, variables.productPrice);
+  if (variables.lookName) message = message.replace(/{lookName}/g, variables.lookName);
+  if (variables.lookPrice) message = message.replace(/{lookPrice}/g, variables.lookPrice);
+  if (variables.contentTitle) message = message.replace(/{contentTitle}/g, variables.contentTitle);
+  if (variables.contentMessage) message = message.replace(/{contentMessage}/g, variables.contentMessage);
   if (variables.clientPhone) message = message.replace(/{clientPhone}/g, variables.clientPhone);
   if (variables.clientArea) message = message.replace(/{clientArea}/g, variables.clientArea);
   if (variables.itemsList) message = message.replace(/{itemsList}/g, variables.itemsList);

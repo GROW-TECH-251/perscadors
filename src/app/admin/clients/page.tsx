@@ -9,7 +9,7 @@ import { useOrdersRealtime } from '@/hooks/useOrdersRealtime';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminModal, AdminInput, AdminTextarea, AdminBadge, AdminToast, AdminSkeleton, AdminConfirmDialog } from '@/admin/components';
-import { Users, Phone, MapPin, Tag, MessageCircle, Copy, Download, Eye, Save, Zap, Trash2 } from 'lucide-react';
+import { Users, MessageCircle, Copy, Download, Eye, Save, Zap, Trash2 } from 'lucide-react';
 import { fetchCustomerSummaries, upsertCustomerMeta, deleteCustomer } from '@/services/customerService';
 import { fetchOrdersByPhone } from '@/services/orderService';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
@@ -356,16 +356,7 @@ export default function AdminCustomersPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-brand-text-muted">
-                    <MapPin size={14} className="text-brand-gold" />
-                    <span>{customer.area}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-brand-text-muted">
-                    <Phone size={14} className="text-brand-gold" />
-                    <span>{customer.phone}</span>
-                  </div>
-                </div>
+
 
                 <div className="grid grid-cols-2 gap-3 text-sm mb-4 bg-brand-bg p-3 rounded-xl border border-brand-gold/10">
                   <div>
@@ -378,28 +369,13 @@ export default function AdminCustomersPage() {
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-brand-gold/10 mb-4 space-y-1">
-                  <p className="text-xs text-brand-text-muted">
-                    Dernière commande : {new Date(customer.lastOrderDate).toLocaleDateString('fr-FR')}
-                  </p>
-                  <p className="text-xs text-brand-text-muted">
-                    Statut : {customer.lastOrderStatus}
-                  </p>
-                </div>
-
-                {customer.tags && customer.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {customer.tags.slice(0, 3).map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2.5 py-1 bg-brand-bg text-brand-text text-xs rounded-lg border border-brand-gold/10 flex items-center gap-1.5"
-                      >
-                        <Tag size={12} className="text-brand-gold" />
-                        {tag}
-                      </span>
-                    ))}
+                <div className="mb-4 rounded-xl border border-brand-gold/10 bg-brand-bg px-3 py-2.5">
+                  <p className="text-[11px] uppercase tracking-wider text-brand-text-muted">Dernière commande</p>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span className="text-sm text-brand-text">{new Date(customer.lastOrderDate).toLocaleDateString('fr-FR')}</span>
+                    <AdminBadge variant={customer.lastOrderStatus === 'LIVRÉE' ? 'success' : customer.lastOrderStatus === 'EN ATTENTE' ? 'warning' : 'info'}>{customer.lastOrderStatus}</AdminBadge>
                   </div>
-                )}
+                </div>
 
                 {/* Levier 4 : Bouton de Relance Magique VIP (Seuil 50k) */}
                 <div className="space-y-2 pt-2 border-t border-brand-gold/10">

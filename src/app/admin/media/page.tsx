@@ -19,7 +19,7 @@ const SECTIONS_CONFIG: { id: SiteAssetSection; label: string; description: strin
   { id: 'hero', label: 'Accueil (Hero)', description: 'Vidéo principale ou image de remplacement de la page d’accueil.', hybrid: false },
   { id: 'logo', label: 'Logo', description: 'Logo utilisé dans la navigation et le pied de page.', hybrid: false },
   { id: 'testimonials', label: 'Témoignages', description: 'Image et vidéos qui rassurent les futurs clients.', hybrid: true },
-  { id: 'ambience', label: 'Bannière de partage', description: 'Image principale pour les aperçus et communications.', hybrid: false }
+  { id: 'ambience', label: 'Bannière de partage', description: 'Image utilisée pour les aperçus et communications.', hybrid: false }
 ];
 
 export default function AdminMediaPage() {
@@ -367,7 +367,7 @@ export default function AdminMediaPage() {
                             muted
                             playsInline
                             onError={() => setToastMessage({ type: 'error', text: `La vidéo « ${asset.title} » ne peut pas être lue par ce navigateur. Utilisez MP4 H.264.` })}
-                            className="w-full h-full object-contain bg-black opacity-90 group-hover/media:opacity-100 transition-opacity"
+                            className="w-full h-full object-cover opacity-90 group-hover/media:opacity-100 transition-opacity"
                           />
                         )
                       ) : (
@@ -526,7 +526,7 @@ export default function AdminMediaPage() {
                   <div className="space-y-4 pointer-events-none relative z-10">
                     {selectedFile?.type.startsWith('video/') ? (
                       <div className="w-full max-w-xs aspect-[16/10] mx-auto bg-black rounded-2xl overflow-hidden border border-brand-gold/20 shadow">
-                        <video src={filePreview} controls preload="metadata" muted playsInline onError={() => setToastMessage({ type: 'success', text: 'Prévisualisation locale indisponible. Cloudinary optimisera la vidéo après upload.' })} className="w-full h-full object-contain bg-black" />
+                        <video src={filePreview} controls preload="metadata" muted playsInline onError={() => setToastMessage({ type: 'success', text: 'Prévisualisation locale indisponible. Cloudinary optimisera la vidéo après upload.' })} className="w-full h-full object-cover" />
                       </div>
                     ) : (
                       <div className="relative w-full max-w-xs aspect-[16/10] mx-auto bg-black rounded-2xl overflow-hidden border border-brand-gold/20 shadow">

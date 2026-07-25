@@ -12,6 +12,11 @@ import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, Admin
 import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle } from 'lucide-react';
 import { fetchAdminOutfits, createOutfit, updateOutfit, deleteOutfit } from '@/services/outfitService';
 import { fetchAdminProducts } from '@/services/productService';
+import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
+import { WhatsAppRecipientDialog } from '@/components/admin/WhatsAppRecipientDialog';
+import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
+import { openWhatsApp } from '@/services/whatsappService';
+import type { CustomerSummary } from '@/admin/types';
 import { uploadOutfitImage } from '@/services/mediaService';
 import type { AdminOutfit, AdminProduct } from '@/admin/types';
 
@@ -20,6 +25,8 @@ export default function AdminHpbPage() {
   const [outfits, setOutfits] = useState<AdminOutfit[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingShareOutfit, setPendingShareOutfit] = useState<{ outfit: AdminOutfit; price: number } | null>(null);
+  const [settings, setSettings] = useState(getDefaultShopSettings());
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,6 +106,27 @@ export default function AdminHpbPage() {
     } finally {
       setSavingId(null);
     }
+  };
+
+  const shareOutfitStatus = async (outfit: AdminOutfit) => {
+    if (!outfit.image_url) { setToast({ message: 'Ce HP Look ne possède pas encore d’image à partager.', variant: 'error' }); return; }
+    const result = await shareMediaToWhatsAppStatus(outfit.image_url, outfit.name);
+    setToast({ message: result.message || 'Choisissez WhatsApp puis Statut pour publier le look.', variant: result.shared ? 'success' : 'info' });
+  };
+
+  const sendOutfitToCustomer = async (customer: CustomerSummary) => {
+    if (!pendingShareOutfit) return;
+    const currentSettings = await fetchShopSettings() || settings;
+    setSettings(currentSettings);
+    const message = formatWhatsAppMessage(currentSettings.outfit_share_template, {
+      shopName: currentSettings.shop_name,
+      clientName: customer.name,
+      lookName: pendingShareOutfit.outfit.name,
+      lookPrice: `${pendingShareOutfit.price.toLocaleString()} FCFA`
+    });
+    openWhatsApp(message, customer.phone);
+    setToast({ message: `Message HP Look préparé pour ${customer.name}.`, variant: 'success' });
+    setPendingShareOutfit(null);
   };
 
   const handleDelete = async (id: number) => {
@@ -228,6 +256,7 @@ export default function AdminHpbPage() {
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <WhatsAppRecipientDialog isOpen={pendingShareOutfit !== null} title={`Envoyer ${pendingShareOutfit?.outfit.name || 'le HP Look'} à un client`} onClose={() => setPendingShareOutfit(null)} onSelect={sendOutfitToCustomer} />
       <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer ce look ?" description="Ce look, son image et ses associations de produits seront retirés. Cette action est irréversible." loading={pendingDeleteId ? savingId === pendingDeleteId : false} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId !== null && handleDelete(pendingDeleteId)} />
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -420,8 +449,11 @@ export default function AdminHpbPage() {
                 <div className="p-5 pt-0 bg-brand-bg-alt relative z-20">
                   <div className="pt-3 border-t border-brand-gold/10">
                     <div className="grid grid-cols-2 gap-2 mb-2">
-                      <AdminButton variant="success" size="sm" className="justify-center gap-1" disabled={attachedProducts.length === 0} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('✨ ' + outfit.name + '\n\nLook complet : ' + displayPrice.toLocaleString() + ' FCFA\n' + attachedProducts.map((product) => '• ' + product.name).join('\n') + '\n\nÉcrivez-nous pour réserver votre taille !')}`, '_blank')}>
-                        <MessageCircle size={14} /> Partager
+                      <AdminButton variant="secondary" size="sm" className="justify-center" onClick={() => shareOutfitStatus(outfit)}>
+                        Statut WhatsApp
+                      </AdminButton>
+                      <AdminButton variant="success" size="sm" className="justify-center gap-1" disabled={attachedProducts.length === 0} onClick={() => setPendingShareOutfit({ outfit, price: displayPrice })}>
+                        <MessageCircle size={14} /> Envoyer client
                       </AdminButton>
                       <AdminButton variant="secondary" size="sm" className="justify-center" onClick={() => handleOpenModal(outfit)}>
                         <Edit size={14} /> Modifier
