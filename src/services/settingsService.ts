@@ -7,14 +7,14 @@ import { requireSupabase, supabase } from '@/lib/supabase';
 import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData, FAQItem } from '@/admin/types';
 
-const SETTINGS_ROW_ID = true;
+const SETTINGS_ROW_ID = 1;
 const SETTINGS_CACHE_KEY = '__PERSCADORS_SETTINGS_PERSISTENCE__';
 
 const DEFAULT_DELIVERY_ZONES: DeliveryZone[] = [
-  { id: 'cotonou', name: 'Cotonou', fee: 1000 },
-  { id: 'calavi', name: 'Abomey-Calavi', fee: 1500 },
-  { id: 'porto-novo', name: 'Porto-Novo', fee: 2000 },
-  { id: 'interieur', name: 'Intérieur du pays', fee: 3000 }
+  { id: 'cotonou', name: 'Cotonou', fee: 1000, freeThreshold: 50000 },
+  { id: 'calavi', name: 'Abomey-Calavi', fee: 1500, freeThreshold: 60000 },
+  { id: 'porto-novo', name: 'Porto-Novo', fee: 2000, freeThreshold: 70000 },
+  { id: 'interieur', name: 'Intérieur du pays', fee: 3000, freeThreshold: 100000 }
 ];
 
 const DEFAULT_SEGMENTATION: CustomerSegmentationSettings = {
@@ -54,17 +54,19 @@ export function getDefaultShopSettings(): ShopSettings {
     currency: 'FCFA',
     country: 'Bénin',
     delivery_zones: DEFAULT_DELIVERY_ZONES,
+    delivery_free_threshold: 50000,
     delivery_time: '24h/48h',
-    order_followup_template: 'Bonjour {clientName}, votre commande {orderId} est en attente de validation.',
-    order_confirmed_template: 'Bonjour {clientName}, votre commande {orderId} est confirmée. Nous vous contactons pour la livraison.',
-    order_delivered_template: 'Bonjour {clientName}, votre commande {orderId} a été livrée. Merci pour votre confiance !',
-    story_share_template: '🔥 *BEST-SELLER {shopName}* 🔥\n\nDécouvrez notre pièce la plus prisée : *{productName}* à seulement *{productPrice}*.\n\n👑 _Vioutou t\'habille. Tu règnes._\n👉 Réservez votre taille directement ici : https://hpcollection.bj',
-    vip_magic_template: '👑 *{shopName} — OFFRE SECRÈTE VIP* 👑\n\nSalut {clientName} ! Ça fait un moment qu\'on n\'a pas vu ton élégance dans nos commandes.\n\nVioutou t\'a sélectionné une pièce exclusive de notre nouvel arrivage avec un code promo secret : *{couponCode}* (-10% sur ton prochain panier).\n\n👉 Découvre les nouveautés ici : https://hpcollection.bj\n\n_Réponds directement à ce message pour réserver ta taille avant la rupture ! 🚀_',
-    product_share_template: 'Bonjour {clientName} 👋\n\n✨ {productName}\n💰 {productPrice}\n\nDis-moi si tu veux que je te réserve ta taille.',
-    outfit_share_template: 'Bonjour {clientName} 👋\n\n🔥 {lookName}\n💰 {lookPrice}\n\nJe peux te réserver les pièces disponibles si tu veux.',
-    content_share_template: 'Bonjour {clientName} 👋\n\n{contentTitle}\n\n{contentMessage}',
+    checkout_order_template: 'Bonjour 👋\n\nVoici une nouvelle commande à préparer\n\nRéférence : {orderId}\nClient : {clientName}\nTéléphone : {clientPhone}\nVille : {clientArea}\n\nArticles\n{itemsList}\nSous-total : {orderSubtotal}\nFrais de livraison : à confirmer\nTotal des articles : {orderTotal}\n\nMerci, on confirme les détails ensemble sur WhatsApp 🙂',
+    order_followup_template: 'Bonjour {clientName} 👋\n\nVotre commande {orderId} attend votre confirmation. Écrivez-nous si vous avez une question 🙂',
+    order_confirmed_template: 'Bonjour {clientName} 👋\n\nVotre commande {orderId} est confirmée. Nous vous écrivons bientôt pour organiser la livraison 🚚',
+    order_delivered_template: 'Bonjour {clientName} 👋\n\nVotre commande {orderId} a bien été livrée. Merci pour votre confiance 🙂',
+    story_share_template: '✨ {productName}\n\n{productPrice} chez {shopName}\n\nÉcrivez-nous pour réserver votre taille 🙂',
+    vip_magic_template: 'Bonjour {clientName} 👋\n\nDe nouvelles pièces viennent d’arriver chez {shopName}.\n\nPour vous, le code {couponCode} est disponible sur votre prochaine commande.\n\nDécouvrez-les ici : https://hpcollection.bj',
+    product_share_template: 'Bonjour {clientName} 👋\n\n✨ {productName}\nPrix : {productPrice}\n\nÉcrivez-moi si vous souhaitez réserver votre taille 🙂',
+    outfit_share_template: 'Bonjour {clientName} 👋\n\n✨ {lookName}\nPrix : {lookPrice}\n\nJe peux vous réserver les pièces disponibles si vous le souhaitez 🙂',
+    content_share_template: 'Bonjour {clientName} 👋\n\n{contentTitle}\n\n{contentMessage}\n\nÉcrivez-nous si vous souhaitez en savoir plus 🙂',
     customer_relaunch_template: 'Bonjour {clientName} 👋\nOn a pensé à toi chez {shopName}. De nouvelles pièces sont disponibles cette semaine.',
-    driver_dispatch_template: '🚀 *MISSION LIVRAISON {shopName}* 🚀\n\n📦 *Réf Commande :* {orderId}\n👤 *Client :* {clientName}\n📱 *Contact :* {clientPhone}\n📍 *Lieu de livraison :* {clientArea}\n\n🛒 *Articles à remettre au client :*\n{itemsList}\n\n💰 *Montant net à encaisser :* {orderTotal}\n\n_Merci de confirmer la bonne réception de cette mission et d\'entamer la livraison._',
+    driver_dispatch_template: 'Bonjour 👋\n\nLivraison à organiser pour {shopName}\n\nRéférence : {orderId}\nClient : {clientName}\nTéléphone : {clientPhone}\nVille : {clientArea}\n\nArticles\n{itemsList}\nMontant à encaisser : {orderTotal}\n\nMerci de confirmer la prise en charge 🙂',
     customer_segmentation: DEFAULT_SEGMENTATION,
     logo_url: '',
     hero_title: 'Vioutou t\'habille. Tu règnes.',
@@ -107,25 +109,18 @@ function normalizeDeliveryZones(value: unknown): DeliveryZone[] {
         return {
           id: `zone-${index + 1}`,
           name: zone,
-          fee: index === 0 ? 1000 : index === 1 ? 1500 : 2000
+          fee: index === 0 ? 1000 : index === 1 ? 1500 : 2000,
+          freeThreshold: 50000
         } satisfies DeliveryZone;
       }
 
       if (typeof zone === 'object') {
-        const candidate = zone as Partial<DeliveryZone> & { city?: string; label?: string };
-        const id = candidate.id || `zone-${index + 1}`;
-        const candidateName = candidate.name || candidate.city || candidate.label || '';
-        const hasTechnicalName = /^zone[-_\s]?\d+$/i.test(candidateName.trim());
-        const fallbackCity = DEFAULT_DELIVERY_ZONES.find((defaultZone) => defaultZone.id === id)?.name
-          || DEFAULT_DELIVERY_ZONES[index]?.name
-          || `Ville ${index + 1}`;
-
+        const candidate = zone as Partial<DeliveryZone>;
         return {
-          id,
-          // Les anciens enregistrements peuvent contenir city/label au lieu de name.
-          // Un identifiant technique (« zone-1 ») n'est jamais présenté au client.
-          name: !hasTechnicalName && candidateName.trim() ? candidateName.trim() : fallbackCity,
-          fee: Number(candidate.fee || 0)
+          id: candidate.id || `zone-${index + 1}`,
+          name: candidate.name || `Zone ${index + 1}`,
+          fee: Number(candidate.fee || 0),
+          freeThreshold: Number(candidate.freeThreshold || 0)
         } satisfies DeliveryZone;
       }
 
@@ -179,7 +174,9 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
     currency: rawSettings?.currency || defaults.currency,
     country: rawSettings?.country || defaults.country,
     delivery_zones: normalizeDeliveryZones(rawSettings?.delivery_zones),
+    delivery_free_threshold: Number(rawSettings?.delivery_free_threshold ?? defaults.delivery_free_threshold),
     delivery_time: rawSettings?.delivery_time || defaults.delivery_time,
+    checkout_order_template: normalizeTemplate(rawSettings?.checkout_order_template, defaults.checkout_order_template),
     order_followup_template: normalizeTemplate(rawSettings?.order_followup_template, defaults.order_followup_template),
     order_confirmed_template: normalizeTemplate(rawSettings?.order_confirmed_template, defaults.order_confirmed_template),
     order_delivered_template: normalizeTemplate(rawSettings?.order_delivered_template, defaults.order_delivered_template),
@@ -242,9 +239,8 @@ export async function fetchShopSettings(): Promise<ShopSettings | null> {
     const { data, error } = await supabase
       .from('shop_settings')
       .select('*')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .eq('id', SETTINGS_ROW_ID)
+      .single();
 
     if (!error && data) {
       const settings = normalizeShopSettings(data as Partial<ShopSettings>);
@@ -303,7 +299,14 @@ export async function updateDeliveryZones(
   return await upsertShopSettings({ delivery_zones: zones });
 }
 
+export async function updateFreeDeliveryThreshold(
+  threshold: number
+): Promise<ApiResponse<ShopSettings>> {
+  return await upsertShopSettings({ delivery_free_threshold: threshold });
+}
+
 export async function updateWhatsAppTemplates(templates: {
+  checkout_order_template?: string;
   order_followup_template?: string;
   order_confirmed_template?: string;
   order_delivered_template?: string;
@@ -329,12 +332,29 @@ export async function updateShopLogo(logoUrl: string): Promise<ApiResponse<ShopS
   return await upsertShopSettings({ logo_url: logoUrl });
 }
 
+export function calculateDeliveryFee(
+  zoneId: string,
+  subtotal: number,
+  settings?: ShopSettings | null
+): { fee: number; isFree: boolean } {
+  const deliveryZones = settings?.delivery_zones || DEFAULT_DELIVERY_ZONES;
+  const zone = deliveryZones.find((deliveryZone) => deliveryZone.id === zoneId);
+
+  if (!zone) {
+    return { fee: 0, isFree: false };
+  }
+
+  const isFree = subtotal >= zone.freeThreshold;
+  return { fee: isFree ? 0 : zone.fee, isFree };
+}
+
 export function formatWhatsAppMessage(
   template: string,
   variables: {
     shopName?: string;
     clientName?: string;
     orderId?: string;
+    orderSubtotal?: string;
     productName?: string;
     productPrice?: string;
     lookName?: string;
@@ -353,6 +373,7 @@ export function formatWhatsAppMessage(
   if (variables.shopName) message = message.replace(/{shopName}/g, variables.shopName);
   if (variables.clientName) message = message.replace(/{clientName}/g, variables.clientName);
   if (variables.orderId) message = message.replace(/{orderId}/g, variables.orderId);
+  if (variables.orderSubtotal) message = message.replace(/{orderSubtotal}/g, variables.orderSubtotal);
   if (variables.productName) message = message.replace(/{productName}/g, variables.productName);
   if (variables.productPrice) message = message.replace(/{productPrice}/g, variables.productPrice);
   if (variables.lookName) message = message.replace(/{lookName}/g, variables.lookName);
