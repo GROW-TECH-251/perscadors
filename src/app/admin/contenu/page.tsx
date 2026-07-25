@@ -18,13 +18,17 @@ import {
   updateContentPost,
   type ContentPostFormData
 } from '@/services/contentService';
+import { WhatsAppRecipientDialog } from '@/components/admin/WhatsAppRecipientDialog';
+import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
+import { openWhatsApp } from '@/services/whatsappService';
+import type { CustomerSummary } from '@/admin/types';
+import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadContentImage } from '@/services/mediaService';
 import type { ContentPost, ContentPostType } from '@/admin/types';
 
 const STATUS_OPTIONS: Array<{ value: ContentPost['status']; label: string }> = [
   { value: 'draft', label: 'Brouillon' },
-  { value: 'published', label: 'Publié' },
-  { value: 'scheduled', label: 'Planifié' }
+  { value: 'published', label: 'Publié' }
 ];
 
 const CATEGORY_OPTIONS: Array<{ value: ContentPostType; label: string }> = [
@@ -91,6 +95,8 @@ export default function AdminContentPage() {
   const [pendingImageDeletion, setPendingImageDeletion] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
   const [pendingDeletePost, setPendingDeletePost] = useState<ContentPost | null>(null);
+  const [pendingSharePost, setPendingSharePost] = useState<ContentPost | null>(null);
+  const [settings, setSettings] = useState(getDefaultShopSettings());
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [uploadKey, setUploadKey] = useState(buildPostUploadKey());
   const [formData, setFormData] = useState<ContentFormState>({
@@ -312,6 +318,27 @@ export default function AdminContentPage() {
     }
   };
 
+  const shareContentStatus = async (post: ContentPost) => {
+    if (!post.image_url) { setToast({ message: 'Cette annonce ne possède pas encore de média à partager.', variant: 'error' }); return; }
+    const result = await shareMediaToWhatsAppStatus(post.image_url, post.title);
+    setToast({ message: result.message || 'Choisissez WhatsApp puis Statut pour publier le média.', variant: result.shared ? 'success' : 'info' });
+  };
+
+  const sendContentToCustomer = async (customer: CustomerSummary) => {
+    if (!pendingSharePost) return;
+    const currentSettings = await fetchShopSettings() || settings;
+    setSettings(currentSettings);
+    const message = formatWhatsAppMessage(currentSettings.content_share_template, {
+      shopName: currentSettings.shop_name,
+      clientName: customer.name,
+      contentTitle: pendingSharePost.title,
+      contentMessage: pendingSharePost.content
+    });
+    openWhatsApp(message, customer.phone);
+    setToast({ message: `Message préparé pour ${customer.name}.`, variant: 'success' });
+    setPendingSharePost(null);
+  };
+
   const handleQuickToggleStatus = async (post: ContentPost) => {
     const nextStatus: ContentPost['status'] = post.status === 'published' ? 'draft' : 'published';
 
@@ -363,6 +390,7 @@ ${post.content}`);
   return (
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      <WhatsAppRecipientDialog isOpen={pendingSharePost !== null} title={`Envoyer ${pendingSharePost?.title || 'cette annonce'} à un client`} onClose={() => setPendingSharePost(null)} onSelect={sendContentToCustomer} />
       <AdminConfirmDialog isOpen={pendingImageDeletion} title="Supprimer cette image ?" description="Cette image sera retirée de la publication et supprimée du stockage. Cette action est irréversible." loading={deletingImage} onCancel={() => setPendingImageDeletion(false)} onConfirm={handleConfirmRemoveImage} />
       <AdminConfirmDialog isOpen={pendingDeletePost !== null} title="Supprimer cette publication ?" description={`La publication ${pendingDeletePost?.title || ''} sera retirée. Cette action est irréversible.`} loading={saving} onCancel={() => setPendingDeletePost(null)} onConfirm={() => pendingDeletePost && handleDelete(pendingDeletePost)} />
 
@@ -372,13 +400,13 @@ ${post.content}`);
             Storytelling boutique
           </span>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase mt-3">Promotions & annonces</h1>
-          <p className="text-brand-text-muted mt-1">{posts.length} contenus dynamiques</p>
+          <p className="text-brand-text-muted mt-1">{posts.length} promotions et annonces</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
           <AdminButton variant="primary" onClick={handleCreateMode}>
             <Plus size={18} />
-            Nouveau contenu
+            Nouvelle annonce
           </AdminButton>
         </div>
       </div>
@@ -387,7 +415,7 @@ ${post.content}`);
         <AdminCard>
           <div className="flex items-center justify-between mb-6 border-b border-brand-gold/15 pb-4">
             <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">
-              {editingPostId ? 'Modifier le contenu' : 'Nouveau contenu'}
+              {editingPostId ? 'Modifier l’annonce' : 'Nouvelle annonce'}
             </h2>
             <AdminButton variant="secondary" size="sm" onClick={resetForm}>Fermer</AdminButton>
           </div>
@@ -423,20 +451,6 @@ ${post.content}`);
                 options={STATUS_OPTIONS}
                 required
               />
-              {formData.status === 'scheduled' && (
-                <div className="space-y-1">
-                  <label htmlFor="scheduled-at-input" className="block text-sm font-medium text-brand-text">Date et heure de publication</label>
-                  <input
-                    id="scheduled-at-input"
-                    type="datetime-local"
-                    value={formData.scheduled_at}
-                    onChange={(e) => setFormData((currentData) => ({ ...currentData, scheduled_at: e.target.value }))}
-                    aria-label="Date et heure de publication"
-                    title="Date et heure de publication"
-                    className="w-full px-4 py-2.5 bg-brand-bg border border-brand-gold/20 rounded-xl focus:outline-none focus:border-brand-gold text-brand-text"
-                  />
-                </div>
-              )}
             </div>
 
             <AdminTextarea
@@ -585,6 +599,12 @@ ${post.content}`);
                 </div>
 
                 <div className="flex gap-2 flex-wrap pt-3 border-t border-brand-gold/10">
+                  <AdminButton variant="secondary" size="sm" onClick={() => shareContentStatus(post)}>
+                    Statut WhatsApp
+                  </AdminButton>
+                  <AdminButton variant="secondary" size="sm" onClick={() => setPendingSharePost(post)}>
+                    Envoyer client
+                  </AdminButton>
                   <AdminButton variant="secondary" size="sm" onClick={() => handleEditMode(post)}>
                     <Edit size={14} />
                     Modifier

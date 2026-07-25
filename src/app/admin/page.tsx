@@ -357,38 +357,6 @@ export default function AdminDashboardPage() {
         </AdminCard>
       </div>
 
-      {stats.pendingOrders > 0 || stats.lowStockProducts > 0 ? (
-        <AdminCard className="border-l-4 border-l-yellow-500 bg-yellow-50">
-          <div className="flex items-start gap-4">
-            <AlertTriangle size={24} className="text-yellow-600 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="font-bebas text-lg text-brand-text uppercase mb-2">
-                Actions Requises
-              </h3>
-              <div className="space-y-2 text-sm text-brand-text-muted">
-                {stats.pendingOrders > 0 && (
-                  <p className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-yellow-500 rounded-full" />
-                    <strong>{stats.pendingOrders} commande(s)</strong> en attente de validation
-                    <AdminButton variant="secondary" size="sm" onClick={() => router.push('/admin/commandes')} className="ml-2">
-                      Voir
-                    </AdminButton>
-                  </p>
-                )}
-                {stats.lowStockProducts > 0 && (
-                  <p className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-red-500 rounded-full" />
-                    <strong>{stats.lowStockProducts} produit(s)</strong> en stock faible
-                    <AdminButton variant="secondary" size="sm" onClick={() => router.push('/admin/stock')} className="ml-2">
-                      Voir
-                    </AdminButton>
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </AdminCard>
-      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AdminCard>

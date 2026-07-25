@@ -232,6 +232,10 @@ export interface ShopSettings {
   story_share_template: string;
   vip_magic_template: string;
   driver_dispatch_template: string;
+  product_share_template: string;
+  outfit_share_template: string;
+  content_share_template: string;
+  customer_relaunch_template: string;
   customer_segmentation: CustomerSegmentationSettings;
   logo_url: string | null;
   hero_title: string;
@@ -239,6 +243,9 @@ export interface ShopSettings {
   hero_video_url: string;
   footer_description: string;
   floating_whatsapp_text: string;
+  social_title?: string;
+  social_description?: string;
+  social_image_url?: string;
   testimonials_json: TestimonialsData;
   faq_json: FAQItem[];
   updated_at: string;
