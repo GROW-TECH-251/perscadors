@@ -353,6 +353,10 @@ export function formatWhatsAppMessage(
     orderId?: string;
     productName?: string;
     productPrice?: string;
+    lookName?: string;
+    lookPrice?: string;
+    contentTitle?: string;
+    contentMessage?: string;
     clientPhone?: string;
     clientArea?: string;
     itemsList?: string;
@@ -367,6 +371,10 @@ export function formatWhatsAppMessage(
   if (variables.orderId) message = message.replace(/{orderId}/g, variables.orderId);
   if (variables.productName) message = message.replace(/{productName}/g, variables.productName);
   if (variables.productPrice) message = message.replace(/{productPrice}/g, variables.productPrice);
+  if (variables.lookName) message = message.replace(/{lookName}/g, variables.lookName);
+  if (variables.lookPrice) message = message.replace(/{lookPrice}/g, variables.lookPrice);
+  if (variables.contentTitle) message = message.replace(/{contentTitle}/g, variables.contentTitle);
+  if (variables.contentMessage) message = message.replace(/{contentMessage}/g, variables.contentMessage);
   if (variables.clientPhone) message = message.replace(/{clientPhone}/g, variables.clientPhone);
   if (variables.clientArea) message = message.replace(/{clientArea}/g, variables.clientArea);
   if (variables.itemsList) message = message.replace(/{itemsList}/g, variables.itemsList);
