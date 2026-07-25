@@ -455,9 +455,6 @@ export default function AdminHpbPage() {
                       <AdminButton variant="success" size="sm" className="justify-center gap-1" disabled={attachedProducts.length === 0} onClick={() => setPendingShareOutfit({ outfit, price: displayPrice })}>
                         <MessageCircle size={14} /> Envoyer client
                       </AdminButton>
-                      <AdminButton variant="secondary" size="sm" className="justify-center" onClick={() => handleOpenModal(outfit)}>
-                        <Edit size={14} /> Modifier
-                      </AdminButton>
                     </div>
                     <AdminButton
                       variant="secondary"
