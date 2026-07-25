@@ -7,14 +7,14 @@ import { requireSupabase, supabase } from '@/lib/supabase';
 import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData, FAQItem } from '@/admin/types';
 
-const SETTINGS_ROW_ID = 1;
+const SETTINGS_ROW_ID = true;
 const SETTINGS_CACHE_KEY = '__PERSCADORS_SETTINGS_PERSISTENCE__';
 
 const DEFAULT_DELIVERY_ZONES: DeliveryZone[] = [
-  { id: 'cotonou', name: 'Cotonou', fee: 1000, freeThreshold: 50000 },
-  { id: 'calavi', name: 'Abomey-Calavi', fee: 1500, freeThreshold: 60000 },
-  { id: 'porto-novo', name: 'Porto-Novo', fee: 2000, freeThreshold: 70000 },
-  { id: 'interieur', name: 'Intérieur du pays', fee: 3000, freeThreshold: 100000 }
+  { id: 'cotonou', name: 'Cotonou', fee: 1000 },
+  { id: 'calavi', name: 'Abomey-Calavi', fee: 1500 },
+  { id: 'porto-novo', name: 'Porto-Novo', fee: 2000 },
+  { id: 'interieur', name: 'Intérieur du pays', fee: 3000 }
 ];
 
 const DEFAULT_SEGMENTATION: CustomerSegmentationSettings = {
@@ -54,7 +54,6 @@ export function getDefaultShopSettings(): ShopSettings {
     currency: 'FCFA',
     country: 'Bénin',
     delivery_zones: DEFAULT_DELIVERY_ZONES,
-    delivery_free_threshold: 50000,
     delivery_time: '24h/48h',
     order_followup_template: 'Bonjour {clientName}, votre commande {orderId} est en attente de validation.',
     order_confirmed_template: 'Bonjour {clientName}, votre commande {orderId} est confirmée. Nous vous contactons pour la livraison.',
@@ -108,18 +107,25 @@ function normalizeDeliveryZones(value: unknown): DeliveryZone[] {
         return {
           id: `zone-${index + 1}`,
           name: zone,
-          fee: index === 0 ? 1000 : index === 1 ? 1500 : 2000,
-          freeThreshold: 50000
+          fee: index === 0 ? 1000 : index === 1 ? 1500 : 2000
         } satisfies DeliveryZone;
       }
 
       if (typeof zone === 'object') {
-        const candidate = zone as Partial<DeliveryZone>;
+        const candidate = zone as Partial<DeliveryZone> & { city?: string; label?: string };
+        const id = candidate.id || `zone-${index + 1}`;
+        const candidateName = candidate.name || candidate.city || candidate.label || '';
+        const hasTechnicalName = /^zone[-_\s]?\d+$/i.test(candidateName.trim());
+        const fallbackCity = DEFAULT_DELIVERY_ZONES.find((defaultZone) => defaultZone.id === id)?.name
+          || DEFAULT_DELIVERY_ZONES[index]?.name
+          || `Ville ${index + 1}`;
+
         return {
-          id: candidate.id || `zone-${index + 1}`,
-          name: candidate.name || `Zone ${index + 1}`,
-          fee: Number(candidate.fee || 0),
-          freeThreshold: Number(candidate.freeThreshold || 0)
+          id,
+          // Les anciens enregistrements peuvent contenir city/label au lieu de name.
+          // Un identifiant technique (« zone-1 ») n'est jamais présenté au client.
+          name: !hasTechnicalName && candidateName.trim() ? candidateName.trim() : fallbackCity,
+          fee: Number(candidate.fee || 0)
         } satisfies DeliveryZone;
       }
 
@@ -173,7 +179,6 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
     currency: rawSettings?.currency || defaults.currency,
     country: rawSettings?.country || defaults.country,
     delivery_zones: normalizeDeliveryZones(rawSettings?.delivery_zones),
-    delivery_free_threshold: Number(rawSettings?.delivery_free_threshold ?? defaults.delivery_free_threshold),
     delivery_time: rawSettings?.delivery_time || defaults.delivery_time,
     order_followup_template: normalizeTemplate(rawSettings?.order_followup_template, defaults.order_followup_template),
     order_confirmed_template: normalizeTemplate(rawSettings?.order_confirmed_template, defaults.order_confirmed_template),
@@ -237,8 +242,9 @@ export async function fetchShopSettings(): Promise<ShopSettings | null> {
     const { data, error } = await supabase
       .from('shop_settings')
       .select('*')
-      .eq('id', SETTINGS_ROW_ID)
-      .single();
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (!error && data) {
       const settings = normalizeShopSettings(data as Partial<ShopSettings>);
@@ -297,12 +303,6 @@ export async function updateDeliveryZones(
   return await upsertShopSettings({ delivery_zones: zones });
 }
 
-export async function updateFreeDeliveryThreshold(
-  threshold: number
-): Promise<ApiResponse<ShopSettings>> {
-  return await upsertShopSettings({ delivery_free_threshold: threshold });
-}
-
 export async function updateWhatsAppTemplates(templates: {
   order_followup_template?: string;
   order_confirmed_template?: string;
@@ -327,22 +327,6 @@ export async function updateCustomerSegmentation(segmentation: Partial<CustomerS
 
 export async function updateShopLogo(logoUrl: string): Promise<ApiResponse<ShopSettings>> {
   return await upsertShopSettings({ logo_url: logoUrl });
-}
-
-export function calculateDeliveryFee(
-  zoneId: string,
-  subtotal: number,
-  settings?: ShopSettings | null
-): { fee: number; isFree: boolean } {
-  const deliveryZones = settings?.delivery_zones || DEFAULT_DELIVERY_ZONES;
-  const zone = deliveryZones.find((deliveryZone) => deliveryZone.id === zoneId);
-
-  if (!zone) {
-    return { fee: 0, isFree: false };
-  }
-
-  const isFree = subtotal >= zone.freeThreshold;
-  return { fee: isFree ? 0 : zone.fee, isFree };
 }
 
 export function formatWhatsAppMessage(
