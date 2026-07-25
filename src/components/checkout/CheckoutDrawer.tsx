@@ -19,7 +19,7 @@ interface CheckoutDrawerProps {
 
 const STEP_LABELS: Array<{ step: CheckoutStep; title: string; icon: React.ReactNode }> = [
   { step: 1, title: 'Panier', icon: <ShoppingBag size={16} /> },
-  { step: 2, title: 'Livraison', icon: <Truck size={16} /> },
+  { step: 2, title: 'Coordonnées', icon: <Truck size={16} /> },
   { step: 3, title: 'Confirmation', icon: <ShieldCheck size={16} /> },
 ];
 

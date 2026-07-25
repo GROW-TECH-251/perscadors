@@ -18,10 +18,9 @@ import type { DeliveryZone, ShopSettings, TestimonialVideo, FAQItem } from '@/ad
 
 function createDeliveryZone(): DeliveryZone {
   return {
-    id: `zone-${Date.now()}`,
-    name: 'Nouvelle zone',
-    fee: 1000,
-    freeThreshold: 50000
+    id: `ville-${Date.now()}`,
+    name: 'Nouvelle ville',
+    fee: 1000
   };
 }
 
@@ -331,12 +330,6 @@ export default function AdminSettingsPage() {
               onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, delivery_time: value }))}
               placeholder="24h/48h"
             />
-            <AdminInput
-              label="Seuil livraison gratuite (FCFA)"
-              value={settings.delivery_free_threshold}
-              onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, delivery_free_threshold: Number(value) || 0 }))}
-              type="number"
-            />
           </div>
 
           <div className="mt-6 space-y-4">
@@ -597,10 +590,10 @@ export default function AdminSettingsPage() {
       {activeTab === 'delivery' && (
         <AdminCard>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">Zones de livraison</h2>
+            <h2 className="font-bebas text-xl tracking-wider text-brand-text uppercase">Villes de livraison</h2>
             <AdminButton variant="primary" size="sm" onClick={handleAddZone}>
               <Plus size={16} />
-              Ajouter une zone
+              Ajouter une ville
             </AdminButton>
           </div>
 
@@ -608,20 +601,20 @@ export default function AdminSettingsPage() {
             {settings.delivery_zones.map((zone, index) => (
               <div key={zone.id || index} className="p-4 bg-brand-bg rounded-xl border border-brand-gold/10 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-bebas text-lg text-brand-text uppercase">Zone #{index + 1}</h3>
+                  <h3 className="font-bebas text-lg text-brand-text uppercase">Ville #{index + 1}</h3>
                   <button
                     onClick={() => handleRemoveZone(index)}
                     className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
                     type="button"
-                    aria-label="Supprimer zone"
+                    aria-label="Supprimer ville"
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <AdminInput
-                    label="Nom de la zone"
+                    label="Nom de la ville"
                     value={zone.name}
                     onChange={(value) => handleZoneChange(index, 'name', value)}
                   />
@@ -629,12 +622,6 @@ export default function AdminSettingsPage() {
                     label="Frais de livraison (FCFA)"
                     value={zone.fee}
                     onChange={(value) => handleZoneChange(index, 'fee', Number(value) || 0)}
-                    type="number"
-                  />
-                  <AdminInput
-                    label="Gratuit à partir de (FCFA)"
-                    value={zone.freeThreshold}
-                    onChange={(value) => handleZoneChange(index, 'freeThreshold', Number(value) || 0)}
                     type="number"
                   />
                 </div>

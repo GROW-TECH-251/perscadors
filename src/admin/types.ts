@@ -191,7 +191,6 @@ export interface DeliveryZone {
   id: string;
   name: string;
   fee: number;
-  freeThreshold: number;
 }
 
 export interface CustomerSegmentationSettings {
@@ -224,7 +223,6 @@ export interface ShopSettings {
   currency: string;
   country: string;
   delivery_zones: DeliveryZone[];
-  delivery_free_threshold: number;
   delivery_time: string;
   order_followup_template: string;
   order_confirmed_template: string;
