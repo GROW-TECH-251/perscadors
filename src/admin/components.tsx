@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -722,15 +722,22 @@ export const AdminSkeleton: React.FC<{ className?: string }> = ({ className = ''
 export const AdminToast: React.FC<{
   message: string;
   variant?: 'success' | 'error' | 'info';
-  onClose?: () => void;
+  onClose: () => void;
 }> = ({ message, variant = 'info', onClose }) => {
+  const duration = variant === 'success' ? 4000 : variant === 'error' ? 6000 : 5000;
   const Icon = variant === 'success' ? CheckCircle2 : variant === 'error' ? AlertCircle : Info;
   const tone = variant === 'success' ? 'border-emerald-500/30 text-emerald-400' : variant === 'error' ? 'border-red-500/30 text-red-400' : 'border-brand-gold/25 text-brand-gold';
+
+  useEffect(() => {
+    const timer = window.setTimeout(onClose, duration);
+    return () => window.clearTimeout(timer);
+  }, [duration, message, onClose]);
+
   return (
-    <div role="status" className={`fixed right-5 top-5 z-[70] flex max-w-sm items-start gap-3 rounded-2xl border bg-[#0A0A0A]/95 p-4 shadow-2xl backdrop-blur ${tone}`}>
+    <div role="status" aria-live="polite" className={`fixed right-5 top-5 z-[70] flex max-w-sm items-start gap-3 rounded-2xl border bg-[#0A0A0A]/95 p-4 shadow-2xl backdrop-blur ${tone}`}>
       <Icon size={20} className="shrink-0" />
-      <p className="text-sm font-medium text-white">{message}</p>
-      {onClose && <button type="button" onClick={onClose} aria-label="Fermer la notification"><X size={16} /></button>}
+      <p className="flex-1 text-sm font-medium text-white">{message}</p>
+      <button type="button" onClick={onClose} className="shrink-0 rounded p-0.5 transition-colors hover:bg-white/10" aria-label="Fermer la notification" title="Fermer"><X size={16} /></button>
     </div>
   );
 };

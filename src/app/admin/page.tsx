@@ -102,6 +102,13 @@ export default function AdminDashboardPage() {
 
   useOrdersRealtime(() => { loadDashboardData(); });
 
+  // Notification d'information : fermeture automatique après 5 secondes.
+  useEffect(() => {
+    if (!storyToast) return;
+    const timer = window.setTimeout(() => setStoryToast(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [storyToast]);
+
   const handleDeleteProduct = async (productId: number) => {
     if (!window.confirm('Supprimer ce produit ?')) {
       return;
@@ -161,7 +168,6 @@ export default function AdminDashboardPage() {
 
         await navigator.share(shareData)
         setStoryToast(product.name);
-        setTimeout(() => setStoryToast(null), 6000);
         return;
       } catch (err: unknown) {
         console.log('Partage natif annulé ou non supporté, bascule sur presse-papier...', err);
@@ -180,7 +186,6 @@ export default function AdminDashboardPage() {
 
     // Afficher la notification Toast visuelle non bloquante
     setStoryToast(product.name);
-    setTimeout(() => setStoryToast(null), 7000);
   };
 
   const handleBroadcastVIP = (product: AdminProduct) => {
