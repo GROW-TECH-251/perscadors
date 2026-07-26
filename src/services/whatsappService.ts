@@ -28,28 +28,12 @@ export function buildWhatsAppMessage(params: {
   grandTotal: number;
 }): string {
   const { orderNumber, clientName, clientArea, items, subtotal, deliveryFee, grandTotal } = params;
+  const itemsList = items
+    .map((item) => `• ${item.product.name} — ${item.quantity} × ${(item.product.price * item.quantity).toLocaleString()} FCFA\n  ${item.selectedSize}, ${item.selectedColor}`)
+    .join('\n');
+  const deliveryLabel = deliveryFee > 0 ? `${deliveryFee.toLocaleString()} FCFA` : 'à confirmer';
 
-  let msg = `👑 *HP COLLECTION — COMMANDE #${orderNumber}*\n\n`;
-  msg += `👤 *Client :* ${clientName}\n`;
-  msg += `📍 *Zone :* ${clientArea}\n\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `🛒 *ARTICLES*\n\n`;
-
-  items.forEach((item, i) => {
-    msg += `*${i + 1}. ${item.product.name}*\n`;
-    msg += `   📏 Taille : ${item.selectedSize}\n`;
-    msg += `   🎨 Couleur : ${item.selectedColor}\n`;
-    msg += `   🔢 Qté : ${item.quantity}\n`;
-    msg += `   💰 ${(item.product.price * item.quantity).toLocaleString()} FCFA\n\n`;
-  });
-
-  msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `🧾 Sous-total : ${subtotal.toLocaleString()} FCFA\n`;
-  msg += `🚚 Livraison : ${deliveryFee === 0 ? 'À confirmer' : `${deliveryFee.toLocaleString()} FCFA`}\n`;
-  msg += `✅ *TOTAL : ${grandTotal.toLocaleString()} FCFA*\n\n`;
-  msg += `_Commande passée via hpcollection.bj_`;
-
-  return msg;
+  return `Bonjour 👋\n\nCommande ${orderNumber}\n\nClient : ${clientName}\nVille : ${clientArea}\n\nArticles\n${itemsList}\n\nSous-total : ${subtotal.toLocaleString()} FCFA\nFrais de livraison : ${deliveryLabel}\nTotal des articles : ${grandTotal.toLocaleString()} FCFA\n\nMerci, on confirme les détails ensemble sur WhatsApp 🙂`;
 }
 
 export function openWhatsApp(message: string, phoneDigits: string = '22967280018') {

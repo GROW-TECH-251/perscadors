@@ -637,12 +637,11 @@ export default function AdminSettingsPage() {
             <div className="flex items-center gap-3">
               <MessageCircle size={24} className="text-brand-gold" />
               <h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase">
-                Personnalisation WhatsApp & Effet IKEA
+                Messages WhatsApp
               </h2>
             </div>
             <p className="text-sm text-brand-text-muted mt-1">
-              Investis dans ton produit en rédigeant tes propres scripts de relance, de story et d&apos;expédition. 
-              Mets-y ta personnalité, ton vocabulaire et ton style pour marquer tes clients.
+              Écris des messages simples, chaleureux et fidèles à ta façon de parler. Ils restent modifiables à tout moment.
             </p>
           </div>
 
@@ -662,6 +661,13 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="space-y-6 pt-4 border-t border-brand-gold/10">
+            <div className="space-y-2 rounded-2xl border border-brand-gold/15 bg-brand-bg p-4">
+              <h3 className="font-bebas text-lg text-brand-text uppercase">Nouvelle commande</h3>
+              <p className="text-xs text-brand-text-muted">Ce message est préparé quand une commande est envoyée depuis le site.</p>
+              <p className="text-xs text-brand-text-muted">Balises : <code className="text-brand-gold">{"{orderId}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{clientPhone}"}</code>, <code className="text-brand-gold">{"{clientArea}"}</code>, <code className="text-brand-gold">{"{itemsList}"}</code>, <code className="text-brand-gold">{"{orderSubtotal}"}</code>, <code className="text-brand-gold">{"{orderTotal}"}</code></p>
+              <AdminTextarea label="Message de nouvelle commande" value={settings.checkout_order_template} onChange={(value) => setSettings((current) => ({ ...current, checkout_order_template: value }))} rows={9} />
+            </div>
+
             <div className="space-y-4 rounded-2xl border border-brand-gold/15 bg-brand-bg p-4">
               <h3 className="font-bebas text-lg text-brand-text uppercase">Messages commerciaux WhatsApp</h3>
               <p className="text-xs text-brand-text-muted">Ces messages sont utilisés pour envoyer un produit, un look, une annonce ou une relance à un client.</p>
@@ -673,7 +679,7 @@ export default function AdminSettingsPage() {
 
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-brand-gold font-bebas text-lg uppercase tracking-wider">
-                <Share2 size={18} /> Template : Partage en Story WhatsApp
+                <Share2 size={18} /> Message : Partage en Story WhatsApp
               </div>
               <p className="text-xs text-brand-text-muted">
                 Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{productName}"}</code>, <code className="text-brand-gold">{"{productPrice}"}</code>
@@ -682,13 +688,13 @@ export default function AdminSettingsPage() {
                 value={settings.story_share_template}
                 onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, story_share_template: value }))}
                 rows={4}
-                placeholder="Ex: 🔥 BEST-SELLER {shopName} 🔥..."
+                placeholder="Ex : ✨ {productName} chez {shopName}"
               />
             </div>
 
             <div className="space-y-2 pt-4 border-t border-brand-gold/10">
               <div className="flex items-center gap-2 text-brand-gold font-bebas text-lg uppercase tracking-wider">
-                <Zap size={18} /> Template : Relance Magique VIP (Clients dormants)
+                <Zap size={18} /> Message : Relance clients
               </div>
               <p className="text-xs text-brand-text-muted">
                 Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{couponCode}"}</code>
@@ -697,13 +703,13 @@ export default function AdminSettingsPage() {
                 value={settings.vip_magic_template}
                 onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, vip_magic_template: value }))}
                 rows={5}
-                placeholder="Ex: 👑 {shopName} — OFFRE SECRÈTE VIP 👑..."
+                placeholder="Ex : Bonjour {clientName} 👋"
               />
             </div>
 
             <div className="space-y-2 pt-4 border-t border-brand-gold/10">
               <div className="flex items-center gap-2 text-brand-gold font-bebas text-lg uppercase tracking-wider">
-                <Truck size={18} /> Template : Expédition au Livreur
+                <Truck size={18} /> Message : Livraison au livreur
               </div>
               <p className="text-xs text-brand-text-muted">
                 Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{orderId}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{clientPhone}"}</code>, <code className="text-brand-gold">{"{clientArea}"}</code>, <code className="text-brand-gold">{"{itemsList}"}</code>, <code className="text-brand-gold">{"{orderTotal}"}</code>
@@ -712,12 +718,12 @@ export default function AdminSettingsPage() {
                 value={settings.driver_dispatch_template}
                 onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, driver_dispatch_template: value }))}
                 rows={6}
-                placeholder="Ex: 🚀 MISSION LIVRAISON {shopName} 🚀..."
+                placeholder="Ex : Bonjour 👋"
               />
             </div>
 
             <div className="space-y-4 pt-4 border-t border-brand-gold/10">
-              <h3 className="font-bebas text-lg text-brand-text uppercase tracking-wider">Templates de suivi de commande standards</h3>
+              <h3 className="font-bebas text-lg text-brand-text uppercase tracking-wider">Messages de suivi de commande</h3>
               <p className="text-xs text-brand-text-muted">
                 Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{orderId}"}</code>
               </p>

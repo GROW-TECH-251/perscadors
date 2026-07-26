@@ -5,6 +5,7 @@
 
 import { requireSupabase, supabase } from '@/lib/supabase';
 import { logSupabaseWarning } from '@/lib/supabaseErrors';
+import { formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
 import type { AdminOrder, OrderStatus, OrderHistoryEntry, ApiResponse, OrderItem, OrderCreationResult } from '@/admin/types';
 
 export interface PublicCheckoutOrderItem {
@@ -121,26 +122,23 @@ function toDatabaseOrder(order: AdminOrder): Omit<AdminOrder, 'id'> {
   };
 }
 
-export function buildWhatsAppOrderMessage(payload: PublicCheckoutPayload): string {
-  let message = `🛒 *Nouvelle Commande HP Collection*\n\n`;
-  message += `Référence : *${payload.order_number}*\n`;
-  message += `Client : ${payload.client_name}\n`;
-  message += `Téléphone : ${payload.client_phone}\n`;
-  message += `Zone : ${payload.client_area}\n\n`;
+export function buildWhatsAppOrderMessage(
+  payload: PublicCheckoutPayload,
+  template: string = getDefaultShopSettings().checkout_order_template
+): string {
+  const itemsList = payload.items
+    .map((item) => `• ${item.name} — ${item.quantity} × ${(item.price * item.quantity).toLocaleString()} FCFA\n  ${item.size}, ${item.color}`)
+    .join('\n');
 
-  payload.items.forEach((item) => {
-    message += `• ${item.name}\n`;
-    message += `  Taille: ${item.size} | Couleur: ${item.color}\n`;
-    message += `  Quantité: ${item.quantity} | Prix: ${(item.price * item.quantity).toLocaleString()} FCFA\n\n`;
+  return formatWhatsAppMessage(template, {
+    orderId: payload.order_number,
+    clientName: payload.client_name,
+    clientPhone: payload.client_phone,
+    clientArea: payload.client_area,
+    itemsList,
+    orderSubtotal: `${payload.subtotal.toLocaleString()} FCFA`,
+    orderTotal: `${payload.total.toLocaleString()} FCFA`
   });
-
-  message += `━━━━━━━━━━━━━━━━\n`;
-  message += `Sous-total: ${payload.subtotal.toLocaleString()} FCFA\n`;
-  message += `Livraison: ${payload.delivery_fee.toLocaleString()} FCFA\n`;
-  message += `*TOTAL: ${payload.total.toLocaleString()} FCFA*\n\n`;
-  message += `_Votre commande a été préparée automatiquement et envoyée à Vioutou via WhatsApp pour validation finale et livraison._`;
-
-  return message;
 }
 
 export async function fetchAdminOrders(): Promise<AdminOrder[]> {
