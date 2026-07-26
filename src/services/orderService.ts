@@ -133,7 +133,7 @@ export function buildWhatsAppOrderMessage(
   return formatWhatsAppMessage(template, {
     orderId: payload.order_number,
     clientName: payload.client_name,
-    clientPhone: payload.client_phone,
+    clientPhone: payload.client_phone || 'Non renseigné',
     clientArea: payload.client_area,
     itemsList,
     orderSubtotal: `${payload.subtotal.toLocaleString()} FCFA`,
