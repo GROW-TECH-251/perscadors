@@ -40,13 +40,14 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       process.env.NODE_ENV === 'production'
-        ? "script-src 'self' 'unsafe-inline'"
-        : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+        ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com"
+        : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
       "style-src 'self' 'unsafe-inline' https:",
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob: https:",
       "font-src 'self' data: https:",
       "connect-src 'self' https: wss:",
+      "frame-src https://challenges.cloudflare.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self' https://wa.me https://api.whatsapp.com"
