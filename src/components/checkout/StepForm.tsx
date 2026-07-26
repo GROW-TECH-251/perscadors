@@ -7,8 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, MapPin, Phone, User, Loader2 } from 'lucide-react';
-import { getDefaultShopSettings } from '@/services/settingsService';
-import { supabase } from '@/lib/supabase';
+import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import type { CheckoutFormData } from '@/admin/types';
 
 interface StepFormProps {
@@ -28,34 +27,19 @@ export function StepForm({ defaultValues, onNext, onBack }: StepFormProps) {
   // Pôle 3 : Intégration dynamique des zones de livraison depuis Supabase
   useEffect(() => {
     async function loadDeliveryZones() {
-      if (!supabase) {
-        setIsLoadingZones(false);
-        return;
-      }
-
       try {
-        const { data, error } = await supabase
-          .from('shop_settings')
-          .select('delivery_zones')
-          .single();
+        // Le service normalise aussi les anciennes données (string, city, label),
+        // afin de n'afficher que des noms de villes compréhensibles.
+        const settings = await fetchShopSettings();
+        const cityNames = settings?.delivery_zones
+          .map((zone) => zone.name.trim())
+          .filter(Boolean);
 
-        if (!error && data?.delivery_zones && Array.isArray(data.delivery_zones)) {
-          // Gère à la fois le format d'objets DeliveryZone[] et de chaînes brutes string[]
-          const extractedZones = data.delivery_zones.map((item: unknown) => {
-            if (typeof item === 'string') {
-              return item;
-            }
-            if (item && typeof item === 'object' && 'name' in item && typeof (item as { name?: string }).name === 'string') {
-              return (item as { name: string }).name;
-            }
-            return 'Autre';
-          });
-          if (extractedZones.length > 0) {
-            setDeliveryZones(extractedZones);
-          }
+        if (cityNames && cityNames.length > 0) {
+          setDeliveryZones([...new Set(cityNames)]);
         }
       } catch (err: unknown) {
-        console.error('Erreur chargement des zones de livraison:', err);
+        console.error('Erreur chargement des villes de livraison:', err);
       } finally {
         setIsLoadingZones(false);
       }
@@ -90,7 +74,7 @@ export function StepForm({ defaultValues, onNext, onBack }: StepFormProps) {
     }
 
     if (!form.client_area.trim()) {
-      nextErrors.client_area = 'La zone de livraison est requise.';
+      nextErrors.client_area = 'La ville de livraison est requise.';
     }
 
     setErrors(nextErrors);
@@ -164,7 +148,7 @@ export function StepForm({ defaultValues, onNext, onBack }: StepFormProps) {
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand-text-muted">
               <MapPin size={14} className="text-brand-gold" />
-              Zone de livraison
+              Ville de livraison
             </label>
             {isLoadingZones && (
               <span className="inline-flex items-center gap-1 text-xs text-brand-gold animate-pulse">
@@ -173,7 +157,7 @@ export function StepForm({ defaultValues, onNext, onBack }: StepFormProps) {
             )}
           </div>
 
-          {/* Premium Interactive Delivery Zone Pills */}
+          {/* Choix rapide de ville */}
           <div className="flex flex-wrap gap-2">
             {deliveryZones.map((zone) => {
               const isActive = form.client_area === zone;
@@ -198,7 +182,7 @@ export function StepForm({ defaultValues, onNext, onBack }: StepFormProps) {
             type="text"
             value={form.client_area}
             onChange={(event) => handleFieldChange('client_area', event.target.value)}
-            placeholder="Ex: Cotonou, Agla ou autre précision"
+            placeholder="Ex : Cotonou, Agla ou autre précision"
             className={`w-full rounded-2xl border bg-brand-bg px-4 py-3 text-brand-text focus:outline-none focus:ring-2 transition-colors shadow-inner ${
               errors.client_area
                 ? 'border-red-500 focus:ring-red-500/30'

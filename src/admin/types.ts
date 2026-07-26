@@ -226,6 +226,7 @@ export interface ShopSettings {
   delivery_zones: DeliveryZone[];
   delivery_free_threshold: number;
   delivery_time: string;
+  checkout_order_template: string;
   order_followup_template: string;
   order_confirmed_template: string;
   order_delivered_template: string;

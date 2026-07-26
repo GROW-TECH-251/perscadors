@@ -8,6 +8,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, MessageCircle, ShieldCheck, Truck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import {
   buildWhatsAppOrderMessage,
   createOrderFromCart,
@@ -96,8 +97,13 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
       console.error('Erreur inattendue lors de la préparation de commande:', error);
     }
 
-    // L'envoi WhatsApp reste disponible même si la persistance serveur est indisponible.
-    const message = buildWhatsAppOrderMessage(orderPayload);
+    // Le message reste personnalisable depuis Réglages. En cas de réseau indisponible,
+    // le modèle par défaut garde la commande utilisable sans bloquer WhatsApp.
+    const shopSettings = await fetchShopSettings();
+    const message = buildWhatsAppOrderMessage(
+      orderPayload,
+      shopSettings?.checkout_order_template || getDefaultShopSettings().checkout_order_template
+    );
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${WHATSAPP_DIGITS}?text=${encodedMessage}`;
 
