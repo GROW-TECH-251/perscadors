@@ -522,7 +522,7 @@ export default function AdminSettingsPage() {
                 rows={3}
               />
               <AdminInput
-                label="Texte pré-encodé du bouton WhatsApp flottant"
+                label="Message proposé dans le bouton WhatsApp"
                 value={settings.floating_whatsapp_text}
                 onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, floating_whatsapp_text: value }))}
                 placeholder="Ex: Bonjour Vioutou ! Je viens du site..."
@@ -647,16 +647,16 @@ export default function AdminSettingsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <AdminInput
-              label="Numéro WhatsApp Principal (Boutique)"
+              label="Numéro WhatsApp de la boutique"
               value={settings.whatsapp_phone}
               onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, whatsapp_phone: value }))}
-              placeholder="Ex: 22967280018"
+              placeholder="Ex : 22967280018"
             />
             <AdminInput
-              label="Numéro WhatsApp du Livreur (Optionnel)"
+              label="Numéro WhatsApp du livreur (facultatif)"
               value={settings.driver_phone || ''}
               onChange={(value) => setSettings((currentSettings) => ({ ...currentSettings, driver_phone: value }))}
-              placeholder="Ex: 229XXXXXXXX (Pour envoi direct livreur)"
+              placeholder="Ex : 229XXXXXXXX"
             />
           </div>
 
@@ -664,7 +664,7 @@ export default function AdminSettingsPage() {
             <div className="space-y-2 rounded-2xl border border-brand-gold/15 bg-brand-bg p-4">
               <h3 className="font-bebas text-lg text-brand-text uppercase">Nouvelle commande</h3>
               <p className="text-xs text-brand-text-muted">Ce message est préparé quand une commande est envoyée depuis le site.</p>
-              <p className="text-xs text-brand-text-muted">Balises : <code className="text-brand-gold">{"{orderId}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{clientPhone}"}</code>, <code className="text-brand-gold">{"{clientArea}"}</code>, <code className="text-brand-gold">{"{itemsList}"}</code>, <code className="text-brand-gold">{"{orderSubtotal}"}</code>, <code className="text-brand-gold">{"{orderTotal}"}</code></p>
+              <p className="text-xs text-brand-text-muted">Mots à insérer : référence <code className="text-brand-gold">{"{orderId}"}</code>, client <code className="text-brand-gold">{"{clientName}"}</code>, téléphone <code className="text-brand-gold">{"{clientPhone}"}</code>, ville <code className="text-brand-gold">{"{clientArea}"}</code>, articles <code className="text-brand-gold">{"{itemsList}"}</code>, sous-total <code className="text-brand-gold">{"{orderSubtotal}"}</code> et total <code className="text-brand-gold">{"{orderTotal}"}</code>.</p>
               <AdminTextarea label="Message de nouvelle commande" value={settings.checkout_order_template} onChange={(value) => setSettings((current) => ({ ...current, checkout_order_template: value }))} rows={9} />
             </div>
 
@@ -682,7 +682,7 @@ export default function AdminSettingsPage() {
                 <Share2 size={18} /> Message : Partage en Story WhatsApp
               </div>
               <p className="text-xs text-brand-text-muted">
-                Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{productName}"}</code>, <code className="text-brand-gold">{"{productPrice}"}</code>
+                Mots à insérer : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{productName}"}</code>, <code className="text-brand-gold">{"{productPrice}"}</code>
               </p>
               <AdminTextarea
                 value={settings.story_share_template}
@@ -697,7 +697,7 @@ export default function AdminSettingsPage() {
                 <Zap size={18} /> Message : Relance clients
               </div>
               <p className="text-xs text-brand-text-muted">
-                Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{couponCode}"}</code>
+                Mots à insérer : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{couponCode}"}</code>
               </p>
               <AdminTextarea
                 value={settings.vip_magic_template}
@@ -712,7 +712,7 @@ export default function AdminSettingsPage() {
                 <Truck size={18} /> Message : Livraison au livreur
               </div>
               <p className="text-xs text-brand-text-muted">
-                Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{orderId}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{clientPhone}"}</code>, <code className="text-brand-gold">{"{clientArea}"}</code>, <code className="text-brand-gold">{"{itemsList}"}</code>, <code className="text-brand-gold">{"{orderTotal}"}</code>
+                Mots à insérer : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{orderId}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{clientPhone}"}</code>, <code className="text-brand-gold">{"{clientArea}"}</code>, <code className="text-brand-gold">{"{itemsList}"}</code>, <code className="text-brand-gold">{"{orderTotal}"}</code>
               </p>
               <AdminTextarea
                 value={settings.driver_dispatch_template}
@@ -725,7 +725,7 @@ export default function AdminSettingsPage() {
             <div className="space-y-4 pt-4 border-t border-brand-gold/10">
               <h3 className="font-bebas text-lg text-brand-text uppercase tracking-wider">Messages de suivi de commande</h3>
               <p className="text-xs text-brand-text-muted">
-                Balises disponibles : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{orderId}"}</code>
+                Mots à insérer : <code className="text-brand-gold">{"{shopName}"}</code>, <code className="text-brand-gold">{"{clientName}"}</code>, <code className="text-brand-gold">{"{orderId}"}</code>
               </p>
               <AdminTextarea
                 label="Message - En attente"

@@ -391,7 +391,7 @@ export default function AdminOrdersPage() {
             className="flex items-center gap-2"
           >
             <RefreshCw size={16} className={isSyncingPending ? 'animate-spin' : ''} />
-            Réessayer la synchronisation{pendingSyncCount > 0 ? ` (${pendingSyncCount})` : ''}
+            Finaliser l’enregistrement{pendingSyncCount > 0 ? ` (${pendingSyncCount})` : ''}
           </AdminButton>
           <AdminButton variant="secondary" onClick={() => exportOrdersToCsv(orders)}>
             <Download size={16} />
@@ -412,7 +412,7 @@ export default function AdminOrdersPage() {
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button type="button" onClick={() => setStatusFilter('EN ATTENTE')} className="text-left rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-all hover:border-amber-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-amber-600">À confirmer</p><p className="font-bebas text-3xl text-brand-text mt-2">{pendingConfirmationCount}</p><p className="text-xs text-brand-text-muted mt-1">Traiter les nouvelles ventes</p></button>
         <button type="button" onClick={() => setStatusFilter('CONFIRMÉE')} className="text-left rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 transition-all hover:border-blue-500/60"><p className="text-xs font-semibold uppercase tracking-wider text-blue-600">À expédier</p><p className="font-bebas text-3xl text-brand-text mt-2">{readyToShipCount}</p><p className="text-xs text-brand-text-muted mt-1">Préparer les livraisons</p></button>
-        <button type="button" onClick={handlePendingOrdersSync} className="text-left rounded-2xl border border-brand-gold/25 bg-brand-gold/5 p-4 transition-all hover:border-brand-gold"><p className="text-xs font-semibold uppercase tracking-wider text-brand-gold">À synchroniser</p><p className="font-bebas text-3xl text-brand-text mt-2">{pendingSyncCount}</p><p className="text-xs text-brand-text-muted mt-1">Sécuriser les commandes</p></button>
+        <button type="button" onClick={handlePendingOrdersSync} className="text-left rounded-2xl border border-brand-gold/25 bg-brand-gold/5 p-4 transition-all hover:border-brand-gold"><p className="text-xs font-semibold uppercase tracking-wider text-brand-gold">À enregistrer</p><p className="font-bebas text-3xl text-brand-text mt-2">{pendingSyncCount}</p><p className="text-xs text-brand-text-muted mt-1">Enregistrer les commandes</p></button>
       </section>
 
       <div className="flex flex-col lg:flex-row gap-4">

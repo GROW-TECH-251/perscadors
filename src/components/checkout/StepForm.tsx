@@ -67,9 +67,7 @@ export function StepForm({ defaultValues, onNext, onBack }: StepFormProps) {
       nextErrors.client_name = 'Le nom complet est requis.';
     }
 
-    if (!form.client_phone.trim()) {
-      nextErrors.client_phone = 'Le numéro WhatsApp est requis.';
-    } else if (!/^[0-9+\s()-]{8,18}$/.test(form.client_phone.trim())) {
+    if (form.client_phone.trim() && !/^[0-9+\s()-]{8,18}$/.test(form.client_phone.trim())) {
       nextErrors.client_phone = 'Le format du numéro semble invalide.';
     }
 
@@ -126,13 +124,15 @@ export function StepForm({ defaultValues, onNext, onBack }: StepFormProps) {
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand-text-muted">
             <Phone size={14} className="text-brand-gold" />
-            Numéro WhatsApp
+            Numéro WhatsApp recommandé
           </label>
+          <p id="whatsapp-phone-help" className="text-xs text-brand-text-muted">Laissez-le si vous souhaitez que la boutique puisse vous recontacter directement.</p>
           <input
             type="tel"
             value={form.client_phone}
             onChange={(event) => handleFieldChange('client_phone', event.target.value)}
-            placeholder="Ex: +229 67 28 00 18"
+            placeholder="Ex : +229 67 28 00 18"
+            aria-describedby="whatsapp-phone-help"
             className={`w-full rounded-2xl border bg-brand-bg px-4 py-3 text-brand-text focus:outline-none focus:ring-2 transition-colors shadow-inner ${
               errors.client_phone
                 ? 'border-red-500 focus:ring-red-500/30'

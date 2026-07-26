@@ -120,11 +120,8 @@ function normalizeDeliveryZones(value: unknown): DeliveryZone[] {
         const fallbackCity = DEFAULT_DELIVERY_ZONES.find((defaultZone) => defaultZone.id === id)?.name
           || DEFAULT_DELIVERY_ZONES[index]?.name
           || `Ville ${index + 1}`;
-
         return {
           id,
-          // Les anciens enregistrements peuvent contenir city/label au lieu de name.
-          // Un identifiant technique (« zone-1 ») n'est jamais présenté au client.
           name: !hasTechnicalName && candidateName.trim() ? candidateName.trim() : fallbackCity,
           fee: Number(candidate.fee || 0)
         } satisfies DeliveryZone;

@@ -140,7 +140,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
           </div>
           <div className="space-y-1 text-sm text-brand-text">
             <p><span className="text-brand-text-muted">Nom :</span> {formData.client_name}</p>
-            <p><span className="text-brand-text-muted">WhatsApp :</span> {formData.client_phone}</p>
+            <p><span className="text-brand-text-muted">WhatsApp :</span> {formData.client_phone || 'Non renseigné'}</p>
             <p><span className="text-brand-text-muted">Ville :</span> {formData.client_area}</p>
           </div>
         </div>
