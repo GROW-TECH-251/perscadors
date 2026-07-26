@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getAdminSession, signInAdmin } from '@/admin/auth';
 import { AdminInput, AdminButton } from '@/admin/components';
+import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import { Lock, AlertCircle, Loader2 } from 'lucide-react';
 
 function LoginRedirect() {
@@ -49,6 +50,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -56,7 +58,7 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const result = await signInAdmin(identifier, password);
+      const result = await signInAdmin(identifier, password, captchaToken);
 
       if (result.ok) {
         let to = '/admin';
@@ -134,11 +136,18 @@ export default function AdminLoginPage() {
               disabled={loading}
             />
 
+            <TurnstileWidget
+              action="admin_login"
+              onTokenChange={setCaptchaToken}
+              onError={() => setError('La vérification anti-bot est indisponible. Réessayez.')}
+            />
+
             <AdminButton
               type="submit"
               variant="primary"
               size="lg"
               loading={loading}
+              disabled={loading || !captchaToken}
               className="w-full"
             >
               {loading ? (

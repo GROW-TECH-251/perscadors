@@ -9,6 +9,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, MessageCircle, ShieldCheck, Truck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import {
   buildWhatsAppOrderMessage,
   createOrderFromCart,
@@ -31,6 +32,7 @@ interface StepConfirmProps {
 export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfirmProps) {
   const { cartItems, cartTotal, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   // Verrou synchrone : React met l'état à jour de façon asynchrone, ce ref bloque
   // donc un double clic avant le prochain rendu.
   const submissionLockRef = useRef(false);
@@ -50,6 +52,11 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
 
   const handleConfirm = async () => {
     if (isSubmitting || submissionLockRef.current) {
+      return;
+    }
+
+    if (!captchaToken) {
+      onError('Veuillez terminer la vérification anti-bot avant de confirmer.');
       return;
     }
 
@@ -90,7 +97,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
 
     let wasPersisted = false;
     try {
-      const result = await createOrderFromCart(orderPayload);
+      const result = await createOrderFromCart(orderPayload, captchaToken);
       wasPersisted = result.persisted && result.syncStatus === 'synced';
     } catch (error: unknown) {
       // Le service journalise le détail technique. WhatsApp reste le canal de finalisation.
@@ -184,6 +191,10 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
         </div>
       </div>
 
+      <div className="px-6 pt-3 bg-brand-bg-alt/80 flex-shrink-0">
+        <TurnstileWidget action="checkout" onTokenChange={setCaptchaToken} onError={() => onError('La vérification anti-bot est indisponible. Réessayez.')} />
+      </div>
+
       <div className="border-t border-brand-gold/10 bg-brand-bg-alt/80 px-6 py-5 flex gap-3 backdrop-blur-sm flex-shrink-0">
         <button
           type="button"
@@ -197,7 +208,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={isSubmitting}
+          disabled={isSubmitting || !captchaToken}
           className="flex-[1.25] py-4 rounded-2xl bg-[#25D366] text-white font-bebas text-base sm:text-lg uppercase tracking-widest hover:bg-[#20BA5A] transition-all flex items-center justify-center gap-2 shadow-[0_10px_24px_rgba(37,211,102,0.25)] disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98]"
         >
           {isSubmitting ? (

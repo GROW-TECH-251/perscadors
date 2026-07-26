@@ -287,7 +287,7 @@ export async function fetchOrdersByPhone(phone: string): Promise<AdminOrder[]> {
   return allOrders.filter((order) => normalizeCustomerPhone(order.client_phone) === normalizedPhone);
 }
 
-export async function createOrderFromCart(orderData: PublicCheckoutPayload): Promise<OrderCreationResult> {
+export async function createOrderFromCart(orderData: PublicCheckoutPayload, turnstileToken?: string): Promise<OrderCreationResult> {
   const normalizedOrderData = { ...orderData, client_phone: normalizeCustomerPhone(orderData.client_phone) };
   const idempotencyKey = orderData.idempotency_key || generateIdempotencyKey();
   const history: OrderHistoryEntry[] = [
@@ -332,58 +332,46 @@ export async function createOrderFromCart(orderData: PublicCheckoutPayload): Pro
   }
 
 
-  if (!supabase) {
-    return {
-      data: newOrder,
-      syncStatus: 'pending_sync',
-      persisted: false,
-      error: 'La commande est en attente de synchronisation.'
-    };
+  // Les créations depuis l'administration sont déjà couvertes par la policy
+  // Supabase admin. Le checkout public fournit obligatoirement un token Turnstile.
+  if (!turnstileToken) {
+    if (!supabase) {
+      return { data: newOrder, syncStatus: 'pending_sync', persisted: false, error: 'La commande est en attente de synchronisation.' };
+    }
+
+    const { data, error } = await requireSupabase()
+      .from('orders')
+      .insert([{ ...normalizedOrderData, idempotency_key: idempotencyKey, sync_status: 'synced', status: 'EN ATTENTE', history, created_at: newOrder.created_at, updated_at: newOrder.updated_at }])
+      .select()
+      .single();
+
+    if (error) {
+      logSupabaseWarning('orderService', error);
+      return { data: newOrder, syncStatus: 'pending_sync', persisted: false, error: 'La commande est en attente de synchronisation.' };
+    }
+
+    const persistedOrder = { ...(data as AdminOrder), idempotency_key: idempotencyKey, sync_status: 'synced' as const };
+    removeCachedOrder(persistedOrder);
+    return { data: persistedOrder, syncStatus: 'synced', persisted: true, error: null };
   }
 
-  const db = requireSupabase();
-  const { data, error } = await db
-    .from('orders')
-    .insert([
-      {
-        ...normalizedOrderData,
-        idempotency_key: idempotencyKey,
-        sync_status: 'synced',
-        status: 'EN ATTENTE',
-        history,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ])
-    .select()
-    .single();
+  try {
+    const response = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...normalizedOrderData, idempotency_key: idempotencyKey, turnstileToken })
+    });
 
-  if (error) {
-    logSupabaseWarning('orderService', error);
-    // La commande locale reste dans la file pending_sync ; le détail technique ne sort pas du service.
-    return {
-      data: newOrder,
-      syncStatus: 'pending_sync',
-      persisted: false,
-      error: 'La commande est en attente de synchronisation.'
-    };
+    if (!response.ok) {
+      return { data: newOrder, syncStatus: 'pending_sync', persisted: false, error: 'La commande est en attente de synchronisation.' };
+    }
+
+    removeCachedOrder(newOrder);
+    return { data: { ...newOrder, sync_status: 'synced' }, syncStatus: 'synced', persisted: true, error: null };
+  } catch {
+    return { data: newOrder, syncStatus: 'pending_sync', persisted: false, error: 'La commande est en attente de synchronisation.' };
   }
 
-  const persistedOrder = {
-    ...(data as AdminOrder),
-    idempotency_key: idempotencyKey,
-    sync_status: 'synced' as const
-  };
-
-  // Supabase a confirmé la persistance : la copie de secours ne doit plus rester dans la file.
-  removeCachedOrder(persistedOrder);
-
-  return {
-    data: persistedOrder,
-    syncStatus: 'synced',
-    persisted: true,
-    error: null
-  };
 }
 
 export async function updateOrderStatus(

@@ -25,10 +25,15 @@ function hasSupabaseAuthCookie(): boolean {
   return document.cookie.split(';').some((entry) => entry.trim().startsWith('sb-') && entry.includes('auth-token'));
 }
 
-export async function signInAdmin(identifier: string, password: string): Promise<{ ok: boolean; message: string }> {
+export async function signInAdmin(identifier: string, password: string, captchaToken: string | null): Promise<{ ok: boolean; message: string }> {
   if (!supabase) return { ok: false, message: 'La connexion administrateur est indisponible. Contactez l’administrateur.' };
+  if (!captchaToken) return { ok: false, message: 'Veuillez terminer la vérification anti-bot.' };
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email: identifier.trim(), password });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: identifier.trim(),
+    password,
+    options: { captchaToken }
+  });
   if (error || !data.user) return { ok: false, message: 'Identifiant ou mot de passe incorrect.' };
 
   const { data: profile, error: profileError } = await supabase
