@@ -8,7 +8,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, MessageCircle, ShieldCheck, Truck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
-import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import {
   buildWhatsAppOrderMessage,
   createOrderFromCart,
@@ -99,7 +99,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
 
     // Le message reste personnalisable depuis Réglages. En cas de réseau indisponible,
     // le modèle par défaut garde la commande utilisable sans bloquer WhatsApp.
-    const shopSettings = await fetchShopSettings();
+    const shopSettings = await fetchPublicShopSettings();
     const message = buildWhatsAppOrderMessage(
       orderPayload,
       shopSettings?.checkout_order_template || getDefaultShopSettings().checkout_order_template

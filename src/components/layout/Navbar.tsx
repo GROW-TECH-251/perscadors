@@ -8,7 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { fetchActiveAssetBySection } from '@/services/mediaService';
-import { fetchShopSettings } from '@/services/settingsService';
+import { fetchPublicShopSettings } from '@/services/settingsService';
 import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import { Search, ShoppingBag, Menu, X } from 'lucide-react';
 
@@ -28,7 +28,7 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     const mountedTimer = setTimeout(async () => {
       setIsMounted(true);
-      const [settings, activeLogo] = await Promise.all([fetchShopSettings(), fetchActiveAssetBySection('logo')]);
+      const [settings, activeLogo] = await Promise.all([fetchPublicShopSettings(), fetchActiveAssetBySection('logo')]);
       // Un logo défini dans Réglages est prioritaire sur la bibliothèque médias.
       if (settings?.logo_url) setLogoUrl(settings.logo_url);
       else if (activeLogo?.url) setLogoUrl(activeLogo.url);

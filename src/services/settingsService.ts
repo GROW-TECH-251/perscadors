@@ -234,6 +234,29 @@ function getLocalSettingsFallback(): ShopSettings | null {
   }
 }
 
+/**
+ * Lecture destinée à la vitrine et au checkout anonymes.
+ * Les modèles commerciaux, le numéro livreur et la segmentation ne sont jamais
+ * lus depuis public.shop_settings par un navigateur non authentifié.
+ */
+export async function fetchPublicShopSettings(): Promise<ShopSettings | null> {
+  if (!supabase) return getDefaultShopSettings();
+
+  const { data, error } = await supabase
+    .from('public_shop_settings')
+    .select('*')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.warn('Lecture publique des réglages indisponible:', error?.message || 'erreur inconnue');
+    return getDefaultShopSettings();
+  }
+
+  return normalizeShopSettings(data as Partial<ShopSettings>);
+}
+
 export async function fetchShopSettings(): Promise<ShopSettings | null> {
   // Lorsqu'il est disponible, Supabase est la référence partagée : aucun cache local
   // ne doit masquer une modification effectuée depuis un autre appareil.

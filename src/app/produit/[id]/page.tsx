@@ -9,6 +9,7 @@ import { useCatalog } from '@/context/CatalogContext';
 import { useCart } from '@/context/CartContext';
 import { Product, Size } from '@/types';
 import { ArrowLeft, MessageSquareCode, ShoppingBag, Check } from 'lucide-react';
+import { safeJsonLd } from '@/utils/safeJsonLd';
 
 interface ProductDetailContentProps {
   product: Product;
@@ -114,7 +115,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
       <meta property="og:type" content="product" />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(productSchema) }}
       />
 
       <div className="mb-8">

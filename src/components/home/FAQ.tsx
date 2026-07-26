@@ -3,7 +3,7 @@
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useEffect, useState } from 'react';
 import { Plus, Minus } from 'lucide-react';
-import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import type { ShopSettings } from '@/admin/types';
 
 export const FAQ: React.FC = () => {
@@ -14,7 +14,7 @@ export const FAQ: React.FC = () => {
 
   useEffect(() => {
     async function loadFAQ() {
-      const data = await fetchShopSettings();
+      const data = await fetchPublicShopSettings();
       if (data && data.faq_json) {
         setSettings(data);
       }

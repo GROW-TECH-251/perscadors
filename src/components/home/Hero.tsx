@@ -5,7 +5,7 @@ import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import { fetchActiveAssetBySection } from '@/services/mediaService';
 import type { ShopSettings } from '@/admin/types';
 
@@ -19,7 +19,7 @@ export const Hero: React.FC = () => {
   useEffect(() => {
     async function loadHero() {
       const [settingsData, assetData] = await Promise.all([
-        fetchShopSettings(),
+        fetchPublicShopSettings(),
         fetchActiveAssetBySection('hero')
       ]);
 

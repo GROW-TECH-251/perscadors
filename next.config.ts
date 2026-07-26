@@ -31,6 +31,10 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=()'
   },
+  ...(process.env.NODE_ENV === 'production' ? [{
+    key: 'Strict-Transport-Security',
+    value: 'max-age=31536000; includeSubDomains; preload',
+  }] : []),
   {
     key: 'Content-Security-Policy',
     value: [
@@ -51,8 +55,6 @@ const securityHeaders = [
 ];
 
 const remoteHostnames = Array.from(new Set([
-  'localhost',
-  '127.0.0.1',
   '**.supabase.co',
   supabaseHostname,
 ].filter(Boolean))) as string[];
@@ -65,16 +67,11 @@ const nextConfig: NextConfig = {
   skipProxyUrlNormalize: true,
   images: {
     formats: ['image/avif', 'image/webp'],
-    remotePatterns: remoteHostnames.flatMap((hostname) => ([
-      {
-        protocol: 'https' as const,
-        hostname,
-      },
-      {
-        protocol: 'http' as const,
-        hostname,
-      },
-    ])),
+    // Les ressources distantes sont toujours chargées via TLS.
+    remotePatterns: remoteHostnames.map((hostname) => ({
+      protocol: 'https' as const,
+      hostname,
+    })),
   },
   async headers() {
     return [

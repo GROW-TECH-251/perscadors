@@ -13,6 +13,7 @@ import { OutfitCarousel } from '@/components/home/OutfitCarousel';
 import { CategoryGrid } from '@/components/home/CategoryGrid';
 import { Testimonials } from '@/components/home/Testimonials';
 import { FAQ } from '@/components/home/FAQ';
+import { safeJsonLd } from '@/utils/safeJsonLd';
 
 export default function HomePage() {
   // SEO Local Cotonou / Bénin & Données Structurées JSON-LD (schema.org)
@@ -68,7 +69,7 @@ export default function HomePage() {
     <PublicLayout>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(storeSchema) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(storeSchema) }}
       />
       {/* 1. Section Hero (Pleine page avec espace en-tête) */}
       <Hero />

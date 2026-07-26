@@ -3,7 +3,7 @@
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useEffect, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import type { ShopSettings } from '@/admin/types';
 
 export const WhatsAppFloat: React.FC = () => {
@@ -13,7 +13,7 @@ export const WhatsAppFloat: React.FC = () => {
 
   useEffect(() => {
     async function loadWhatsAppFloat() {
-      const data = await fetchShopSettings();
+      const data = await fetchPublicShopSettings();
       if (data) setSettings(data);
     }
     loadWhatsAppFloat();

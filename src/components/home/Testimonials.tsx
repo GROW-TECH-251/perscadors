@@ -4,7 +4,7 @@ import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import { fetchActiveAssetsBySection } from '@/services/mediaService';
 import type { ShopSettings, SiteAsset } from '@/admin/types';
 
@@ -15,7 +15,7 @@ export const Testimonials: React.FC = () => {
   useEffect(() => {
     async function loadTestimonials() {
       const [data, testimData] = await Promise.all([
-        fetchShopSettings(),
+        fetchPublicShopSettings(),
         fetchActiveAssetsBySection('testimonials')
       ]);
       if (data) setSettings(data);

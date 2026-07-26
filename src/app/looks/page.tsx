@@ -7,6 +7,7 @@ import { useCatalog } from '@/context/CatalogContext';
 import { useCart } from '@/context/CartContext';
 import { Sparkles, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { safeJsonLd } from '@/utils/safeJsonLd';
 
 export default function HPLooksPage() {
   const { outfits } = useCatalog();
@@ -67,7 +68,7 @@ export default function HPLooksPage() {
       <meta property="og:type" content="website" />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(looksSchema) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(looksSchema) }}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12">

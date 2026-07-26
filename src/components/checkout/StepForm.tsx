@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, MapPin, Phone, User, Loader2 } from 'lucide-react';
-import { fetchShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import type { CheckoutFormData } from '@/admin/types';
 
 interface StepFormProps {
@@ -30,7 +30,7 @@ export function StepForm({ defaultValues, onNext, onBack }: StepFormProps) {
       try {
         // Le service normalise aussi les anciennes données (string, city, label),
         // afin de n'afficher que des noms de villes compréhensibles.
-        const settings = await fetchShopSettings();
+        const settings = await fetchPublicShopSettings();
         const cityNames = settings?.delivery_zones
           .map((zone) => zone.name.trim())
           .filter(Boolean);
