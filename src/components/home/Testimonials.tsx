@@ -72,6 +72,7 @@ export const Testimonials: React.FC = () => {
                   src={data.screenshot_url || '/images/Temoignages/photos/témoignageclient.jpeg'}
                   alt="Témoignage Poyor Poyor"
                   fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
                   className="object-contain"
                 />
               </div>
@@ -96,7 +97,7 @@ export const Testimonials: React.FC = () => {
                     controls
                     preload="metadata"
                     playsInline
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain bg-black"
                   />
                 </div>
 

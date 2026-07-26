@@ -10,6 +10,8 @@ export const FAQ: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
 
+  const [realtimeVersion, setRealtimeVersion] = useState(0);
+
   useEffect(() => {
     async function loadFAQ() {
       const data = await fetchShopSettings();
@@ -18,9 +20,9 @@ export const FAQ: React.FC = () => {
       }
     }
     loadFAQ();
-  }, []);
+  }, [realtimeVersion]);
 
-  useShopSettingsRealtime(() => { window.location.reload(); });
+  useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
   const toggleFAQ = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
