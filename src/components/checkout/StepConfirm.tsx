@@ -140,8 +140,8 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
           </div>
           <div className="space-y-1 text-sm text-brand-text">
             <p><span className="text-brand-text-muted">Nom :</span> {formData.client_name}</p>
-            <p><span className="text-brand-text-muted">WhatsApp :</span> {formData.client_phone}</p>
-            <p><span className="text-brand-text-muted">Zone :</span> {formData.client_area}</p>
+            <p><span className="text-brand-text-muted">WhatsApp :</span> {formData.client_phone || 'Non renseigné'}</p>
+            <p><span className="text-brand-text-muted">Ville :</span> {formData.client_area}</p>
           </div>
         </div>
 
@@ -174,11 +174,11 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
             <span>{cartTotal.toLocaleString()} FCFA</span>
           </div>
           <div className="flex items-center justify-between text-sm text-brand-text-muted">
-            <span>Livraison</span>
-            <span>Confirmée sur WhatsApp</span>
+            <span>Frais de livraison</span>
+            <span>À confirmer sur WhatsApp</span>
           </div>
           <div className="flex items-center justify-between border-t border-brand-gold/10 pt-3">
-            <span className="font-bebas text-lg uppercase tracking-wider text-brand-text">Total estimé</span>
+            <span className="font-bebas text-lg uppercase tracking-wider text-brand-text">Total des articles</span>
             <span className="font-bebas text-2xl text-brand-gold">{cartTotal.toLocaleString()} FCFA</span>
           </div>
         </div>

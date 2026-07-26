@@ -106,7 +106,7 @@ export default function AdminAnalyticsPage() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between border-b border-brand-gold/10 pb-6">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-gold/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold border border-brand-gold/20 shadow-sm">
-            Moteur de Rentabilité • Données en Direct ({analytics.source === 'rpc' ? 'RPC Supabase Natif' : 'Agrégation Hybride'})
+            Vue de rentabilité • Données actualisées
           </span>
           <h1 className="font-bebas text-4xl tracking-wider text-brand-text uppercase mt-3">Rapports & Analytics</h1>
           <p className="text-brand-text-muted mt-1 text-base">
@@ -204,7 +204,7 @@ export default function AdminAnalyticsPage() {
             <div>
               <p className="text-xs text-brand-text-muted uppercase tracking-wider mb-1">Catalogue Vêtements</p>
               <p className="text-4xl font-bebas text-brand-text">{analytics.stats.totalProducts}</p>
-              <p className="text-xs text-amber-600 font-semibold mt-2">Pièces & Outfits synchronisés</p>
+              <p className="text-xs text-amber-600 font-semibold mt-2">Pièces et looks disponibles</p>
             </div>
             <div className="p-3 bg-amber-100 rounded-xl text-amber-600 shadow-sm">
               <Package size={28} />
@@ -272,7 +272,7 @@ export default function AdminAnalyticsPage() {
         <section className="rounded-3xl border border-brand-gold/25 bg-gradient-to-br from-[#12110d] via-brand-bg-alt to-brand-bg p-6 shadow-xl">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5"><div><span className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">Décisions du jour</span><h2 className="font-bebas text-2xl tracking-wider text-brand-text uppercase mt-1">À traiter maintenant</h2></div><p className="text-sm text-brand-text-muted">Passez des données à l’action.</p></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[{ id: 'confirm', label: 'À confirmer', hint: 'Valider les ventes', path: '/admin/commandes' }, { id: 'ship', label: 'À expédier', hint: 'Préparer les livraisons', path: '/admin/commandes' }, { id: 'stock', label: 'Stock à risque', hint: 'Réapprovisionner', path: '/admin/stock' }, { id: 'followup', label: 'Clients à relancer', hint: 'Créer une opportunité', path: '/admin/clients' }, { id: 'sync', label: 'À synchroniser', hint: 'Sécuriser les données', path: '/admin/commandes' }].map((item) => { const count = analytics.actionItems.find((action) => action.id === item.id)?.count || 0; return <button key={item.id} type="button" onClick={() => router.push(item.path)} className="text-left rounded-2xl border border-brand-gold/15 bg-brand-bg/70 p-4 transition-all hover:-translate-y-0.5 hover:border-brand-gold/60"><span className="text-[11px] font-semibold uppercase tracking-wider text-brand-gold">{item.label}</span><p className="font-bebas text-3xl text-brand-text mt-3">{count}</p><p className="text-xs text-brand-text-muted mt-1">{item.hint}</p></button>; })}
+            {[{ id: 'confirm', label: 'À confirmer', hint: 'Valider les ventes', path: '/admin/commandes' }, { id: 'ship', label: 'À expédier', hint: 'Préparer les livraisons', path: '/admin/commandes' }, { id: 'stock', label: 'Stock à risque', hint: 'Réapprovisionner', path: '/admin/stock' }, { id: 'followup', label: 'Clients à relancer', hint: 'Créer une opportunité', path: '/admin/clients' }, { id: 'sync', label: 'À enregistrer', hint: 'Finaliser les commandes en attente', path: '/admin/commandes' }].map((item) => { const count = analytics.actionItems.find((action) => action.id === item.id)?.count || 0; return <button key={item.id} type="button" onClick={() => router.push(item.path)} className="text-left rounded-2xl border border-brand-gold/15 bg-brand-bg/70 p-4 transition-all hover:-translate-y-0.5 hover:border-brand-gold/60"><span className="text-[11px] font-semibold uppercase tracking-wider text-brand-gold">{item.label}</span><p className="font-bebas text-3xl text-brand-text mt-3">{count}</p><p className="text-xs text-brand-text-muted mt-1">{item.hint}</p></button>; })}
           </div>
         </section>
       </div>

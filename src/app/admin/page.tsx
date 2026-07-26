@@ -279,8 +279,8 @@ export default function AdminDashboardPage() {
             <p className="font-bebas text-3xl text-brand-text mt-3">{stats.lowStockProducts}</p><p className="text-xs text-brand-text-muted mt-1">Réapprovisionner</p>
           </button>
           <button type="button" onClick={() => router.push(stats.pendingSyncOrders > 0 ? '/admin/commandes' : '/admin/clients')} className="group text-left rounded-2xl border border-brand-gold/25 bg-brand-gold/5 p-4 transition-all hover:-translate-y-0.5 hover:border-brand-gold hover:bg-brand-gold/10">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">{stats.pendingSyncOrders > 0 ? 'À synchroniser' : 'À relancer'}</span><Users size={18} className="text-brand-gold" /></div>
-            <p className="font-bebas text-3xl text-brand-text mt-3">{stats.pendingSyncOrders > 0 ? stats.pendingSyncOrders : stats.followupCustomers}</p><p className="text-xs text-brand-text-muted mt-1">{stats.pendingSyncOrders > 0 ? 'Résoudre la synchronisation' : 'Réactiver vos clients'}</p>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">{stats.pendingSyncOrders > 0 ? 'À enregistrer' : 'À relancer'}</span><Users size={18} className="text-brand-gold" /></div>
+            <p className="font-bebas text-3xl text-brand-text mt-3">{stats.pendingSyncOrders > 0 ? stats.pendingSyncOrders : stats.followupCustomers}</p><p className="text-xs text-brand-text-muted mt-1">{stats.pendingSyncOrders > 0 ? 'Enregistrer les commandes en attente' : 'Réactiver vos clients'}</p>
           </button>
         </div>
       </section>
