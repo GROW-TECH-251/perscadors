@@ -5,11 +5,11 @@
 
 'use client';
 
-import React, { useEffect, useMemo, useSyncExternalStore } from 'react';
+import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { DesktopSidebar, BottomTabs } from '@/admin/components';
-import { clearAdminSession, getAdminSession } from '@/admin/auth';
+import { clearAdminSession } from '@/admin/auth';
 import type { AdminScreen } from '@/admin/types';
 import { LogOut } from 'lucide-react';
 
@@ -47,29 +47,6 @@ const PATH_MAP: Record<AdminScreen, string> = {
   newPost: '/admin/contenu/nouveau',
   editPost: '/admin/contenu'
 };
-
-function AuthRedirect({ to, message }: { to: string; message: string }) {
-  const router = useRouter();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace(to);
-      if (typeof window !== 'undefined') {
-        window.location.href = to; // Repli ultime infaillible sur Vercel Serverless
-      }
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [router, to]);
-
-  return (
-    <div className="min-h-screen bg-brand-bg flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold mx-auto mb-4" />
-        <p className="text-brand-text-muted">{message}</p>
-      </div>
-    </div>
-  );
-}
 
 function HeaderMobileScrolled() {
   const router = useRouter();
@@ -130,12 +107,6 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isAuthenticated = useSyncExternalStore(
-    () => () => undefined,
-    getAdminSession,
-    () => false
-  );
-
   const cleanPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
   const isLoginPage = cleanPathname === '/admin/login';
   const lowStockCount = 0;
@@ -161,14 +132,8 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  if (!isAuthenticated) {
-    return (
-      <AuthRedirect
-        to={`/admin/login?redirect=${encodeURIComponent(pathname)}`}
-        message="Redirection vers la connexion admin..."
-      />
-    );
-  }
+  // Le middleware vérifie la session Supabase et le rôle à chaque requête /admin.
+  // Le layout ne déduit jamais une autorisation depuis un cookie ou sessionStorage client.
 
   return (
     <div className="min-h-screen bg-brand-bg">

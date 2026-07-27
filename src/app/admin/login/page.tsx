@@ -5,11 +5,11 @@
 
 'use client';
 
-import React, { useEffect, useSyncExternalStore, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getAdminSession, signInAdmin } from '@/admin/auth';
+import { checkAdminRole, signInAdmin } from '@/admin/auth';
 import { AdminInput, AdminButton } from '@/admin/components';
 import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import { Lock, AlertCircle, Loader2 } from 'lucide-react';
@@ -41,16 +41,31 @@ function LoginRedirect() {
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const isAuthenticated = useSyncExternalStore(
-    () => () => undefined,
-    getAdminSession,
-    () => false
-  );
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    checkAdminRole()
+      .then((isAdmin) => {
+        if (!active) return;
+        setIsAuthenticated(isAdmin);
+      })
+      .catch(() => {
+        if (!active) return;
+        setIsAuthenticated(false);
+      })
+      .finally(() => {
+        if (active) setCheckingSession(false);
+      });
+
+    return () => { active = false; };
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -80,6 +95,10 @@ export default function AdminLoginPage() {
       setLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return <div className="min-h-screen bg-brand-bg" aria-busy="true" />;
+  }
 
   if (isAuthenticated) {
     return <LoginRedirect />;

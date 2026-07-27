@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/admin/login?redirect=${encodeURIComponent(pathname + search)}`, request.url));
   }
 
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
   const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
 
   if (!isAdmin) {
