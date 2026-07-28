@@ -50,7 +50,7 @@ export const Hero: React.FC = () => {
 
   return (
     <section
-      className="relative w-full h-[calc(100vh-80px)] min-h-[700px] flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]"
+      className="relative w-full h-[calc(100vh-80px)] h-[calc(100svh-80px)] min-h-[560px] sm:min-h-[700px] flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]"
     >
       {/* Background Flexible (Vidéo ou Image selon le choix du client en admin) */}
       {mediaUrl && mediaType === 'video' ? (

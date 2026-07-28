@@ -531,7 +531,50 @@ Pour chaque module important, réaliser au minimum :
 
 ---
 
-# 8. Checklist finale avant livraison
+# 8. Matrice de validation responsive
+
+Tester chaque zone ci-dessous aux largeurs suivantes, sans modifier le zoom navigateur :
+
+| Profil | Largeur CSS conseillée | Contrôle prioritaire |
+|---|---:|---|
+| Petit Android / iPhone SE | 320–375px | boutons, checkout, formulaires, absence de scroll horizontal |
+| iPhone récent / grand Android | 390–430px | Hero, cartes, navigation basse, WhatsApp flottant |
+| iPad Mini / tablette | 768px | grilles, modals, tableaux et filtres |
+| iPad Pro / laptop étroit | 1024px | bascule sidebar / navigation basse |
+| Desktop Full HD | 1280–1536px | sidebar, densité dashboard, tables et cartes |
+| Grand écran | 1920px et plus | limites max-width, colonnes, espaces et lisibilité |
+
+## Pages publiques
+
+| Zone | Mobile | Tablette | Desktop / grand écran | Résultat à noter |
+|---|---|---|---|---|
+| Accueil / Hero | CTA empilés, vidéo non déformée | texte lisible | média complet, pas de bannière historique | Validé / anomalie |
+| Navbar / recherche | menu utilisable, recherche accessible | transition propre | liens et panier visibles | Validé / anomalie |
+| Catégorie | filtres accessibles, cartes deux colonnes si possible | grille cohérente | filtres et catalogue alignés | Validé / anomalie |
+| Produit | images défilables, variantes cliquables | galerie lisible | colonnes équilibrées | Validé / anomalie |
+| Looks | cartes lisibles, modal scrollable | deux colonnes si l'espace le permet | grille et modal équilibrées | Validé / anomalie |
+| Panier / checkout | drawer entier, boutons atteignables | étapes lisibles | drawer sans débordement | Validé / anomalie |
+| Footer / WhatsApp | pas de chevauchement avec navigation | colonnes adaptées | contenu espacé | Validé / anomalie |
+
+## Pages administration
+
+| Zone | Mobile / tablette | Desktop / grand écran | Résultat à noter |
+|---|---|---|---|
+| Login | formulaire entier, Turnstile visible | carte centrée | Validé / anomalie |
+| Navigation admin | BottomTabs et menu mobile | sidebar visible, BottomTabs cachée | Validé / anomalie |
+| Dashboard | cartes empilées puis grilles | priorité et KPI lisibles | Validé / anomalie |
+| Commandes | filtres défilables, cartes lisibles | grille commandes utilisable | Validé / anomalie |
+| Produits / catégories | cartes et actions accessibles | grilles 3–4 colonnes | Validé / anomalie |
+| Stock | réassort et cartes accessibles | grille complète | Validé / anomalie |
+| Clients | recherche, cartes et modal utilisables | grille clients lisible | Validé / anomalie |
+| HP Looks | image, pièces et actions accessibles | cartes équilibrées | Validé / anomalie |
+| Contenus | formulaire, média et cartes accessibles | édition confortable | Validé / anomalie |
+| Médias | onglets horizontaux utilisables | bibliothèque lisible | Validé / anomalie |
+| Réglages | tabs, champs et villes sans coupure | colonnes lisibles | Validé / anomalie |
+| Analytics | graphiques défilables ou lisibles | graphiques complets | Validé / anomalie |
+| Santé boutique | actions enveloppées, score lisible | header horizontal | Validé / anomalie |
+
+# 9. Checklist finale avant livraison
 
 - [ ] Fonction publique OK
 - [ ] Panier OK
