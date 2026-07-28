@@ -82,7 +82,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   const getIcon = (iconName: string) => iconMap[iconName] || <Package size={20} />;
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-[#0A0A0A] border-r border-brand-gold/20 h-screen fixed left-0 top-0 z-40 shadow-[0_0_40px_rgba(0,0,0,0.18)]">
+    <aside className="perscadors-desktop-sidebar flex-col w-64 bg-[#0A0A0A] border-r border-brand-gold/20 h-screen fixed left-0 top-0 z-40 shadow-[0_0_40px_rgba(0,0,0,0.18)]">
       <div className="p-6 border-b border-brand-gold/20 bg-gradient-to-b from-white/5 to-transparent">
         <Link href="/" className="block">
           <div className="relative w-32 h-10">
@@ -230,7 +230,7 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
       )}
 
       {/* Levier 3 : Bottom Bar Navigation en Verre Dépoli */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/90 backdrop-blur-xl border-t border-brand-gold/20 z-50 safe-area-bottom shadow-[0_-10px_40px_rgba(10,10,10,0.65)]">
+      <nav className="perscadors-mobile-navigation fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/90 backdrop-blur-xl border-t border-brand-gold/20 z-50 safe-area-bottom shadow-[0_-10px_40px_rgba(10,10,10,0.65)]">
         <div className="grid grid-cols-5 gap-1 py-1 px-2">
           {primaryItems.map((item) => {
             const isActive = currentScreen === item.id;

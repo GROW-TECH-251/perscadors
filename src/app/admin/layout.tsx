@@ -144,7 +144,7 @@ export default function AdminLayout({
         lowStockCount={lowStockCount}
       />
 
-      <main className="lg:ml-64 min-h-screen">
+      <main className="perscadors-admin-main min-h-screen">
         <HeaderMobileScrolled />
 
         <div className="p-6 lg:p-8 pb-24 lg:pb-8">

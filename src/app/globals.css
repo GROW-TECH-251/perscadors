@@ -123,3 +123,29 @@ button:not(:disabled), a { transition: transform 180ms cubic-bezier(0.2, 0.8, 0.
 button:not(:disabled):active { transform: scale(0.98); }
 @media (hover: hover) { .group\/card, .group\/client, .group\/media, .group\/outfit { transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease, border-color 220ms ease; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
+
+
+/* Navigation administration : CSS explicite pour garantir le basculement desktop/mobile.
+   Cela ne dépend pas du bundle Tailwind responsive et évite une sidebar cachée avec
+   une barre basse visible sur les larges écrans. */
+.perscadors-desktop-sidebar {
+  display: none;
+}
+
+.perscadors-admin-main {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .perscadors-desktop-sidebar {
+    display: flex !important;
+  }
+
+  .perscadors-admin-main {
+    margin-left: 16rem;
+  }
+
+  .perscadors-mobile-navigation {
+    display: none !important;
+  }
+}
