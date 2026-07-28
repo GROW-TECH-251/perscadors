@@ -186,13 +186,12 @@ export default function AdminQaPage() {
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
       <AdminConfirmDialog isOpen={pendingReset} title="Réinitialiser la checklist ?" description="Toutes les étapes cochées seront remises à zéro. Cette action ne peut pas être annulée." confirmLabel="Réinitialiser la checklist" onCancel={() => setPendingReset(false)} onConfirm={handleResetChecklist} />
 
-      {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-bebas text-3xl tracking-wider text-brand-text uppercase">Santé boutique</h1>
           <p className="text-brand-text-muted mt-1">Les priorités à corriger pour garder votre boutique prête à vendre.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <AdminButton variant="secondary" onClick={() => router.push('/admin')}>Retour</AdminButton>
           <AdminButton variant="secondary" onClick={() => loadQaData()}>
             <RefreshCw size={16} />
@@ -207,7 +206,7 @@ export default function AdminQaPage() {
 
       <section className="rounded-3xl border border-brand-gold/25 bg-gradient-to-br from-[#12110d] via-brand-bg-alt to-brand-bg p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div><span className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">État global</span><h2 className="font-bebas text-3xl text-brand-text uppercase mt-1">{healthScore >= 85 ? 'Boutique prête à vendre' : 'Priorités à traiter'}</h2><p className="text-sm text-brand-text-muted mt-1">{criticalMetrics} problème(s) critique(s) · {warningMetrics} point(s) à surveiller</p></div>
-        <div className="text-right"><p className="font-bebas text-5xl text-brand-gold">{healthScore}%</p><p className="text-xs uppercase tracking-wider text-brand-text-muted">Score de santé</p></div>
+        <div className="text-left sm:text-right"><p className="font-bebas text-5xl text-brand-gold">{healthScore}%</p><p className="text-xs uppercase tracking-wider text-brand-text-muted">Score de santé</p></div>
       </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

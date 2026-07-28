@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { DesktopSidebar, BottomTabs } from '@/admin/components';
@@ -47,6 +47,14 @@ const PATH_MAP: Record<AdminScreen, string> = {
   newPost: '/admin/contenu/nouveau',
   editPost: '/admin/contenu'
 };
+
+const ADMIN_PREFETCH_PATHS = [
+  '/admin/commandes',
+  '/admin/produits',
+  '/admin/hpb',
+  '/admin/reglages',
+  '/admin/analytics'
+] as const;
 
 function HeaderMobileScrolled() {
   const router = useRouter();
@@ -110,6 +118,15 @@ export default function AdminLayout({
   const cleanPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
   const isLoginPage = cleanPathname === '/admin/login';
   const lowStockCount = 0;
+
+  // Précharge les destinations les plus fréquentes après le rendu initial.
+  // Les pages restent isolées ; seules leurs ressources de route sont anticipées.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      ADMIN_PREFETCH_PATHS.forEach((path) => router.prefetch(path));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [router]);
 
   const currentScreen = useMemo<AdminScreen>(() => {
     if (cleanPathname.startsWith('/admin/produits/')) {
