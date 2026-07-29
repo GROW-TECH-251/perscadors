@@ -141,7 +141,23 @@ export function buildWhatsAppOrderMessage(
   });
 }
 
-export async function fetchAdminOrders(): Promise<AdminOrder[]> {
+let adminOrdersInFlight: Promise<AdminOrder[]> | null = null;
+
+export function fetchAdminOrders(): Promise<AdminOrder[]> {
+  // Dashboard, analytics et synthèse clients peuvent demander les mêmes commandes
+  // pendant le même rendu. Une seule requête part alors vers Supabase.
+  if (!adminOrdersInFlight) {
+    const request = fetchAdminOrdersUncached();
+    adminOrdersInFlight = request;
+    request.finally(() => {
+      if (adminOrdersInFlight === request) adminOrdersInFlight = null;
+    });
+  }
+
+  return adminOrdersInFlight;
+}
+
+async function fetchAdminOrdersUncached(): Promise<AdminOrder[]> {
   // Le dashboard admin lit toujours la base partagée en premier.
   // Le cache navigateur ne contient que les commandes explicitement pending_sync.
   const pendingLocalOrders = readLocalOrders().filter((order) => order.sync_status === 'pending_sync');

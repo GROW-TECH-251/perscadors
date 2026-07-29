@@ -41,11 +41,21 @@ export async function trackEvent(name: string, metadata: object = {}) {
 }
 
 export async function fetchComprehensiveAnalytics(): Promise<ComprehensiveAnalytics> {
-  // 1. Chargement hybride des données locales & distantes
-  const [orders, products, customers] = await Promise.all([
+  // Les RPC ne dépendent pas des calculs locaux : les lancer avec les lectures
+  // évite une seconde phase réseau sur la page Analytics.
+  const rpcRequests = isSupabaseConfigured && supabase
+    ? Promise.all([
+        supabase.rpc('get_monthly_revenue'),
+        supabase.rpc('get_top_viewed_products'),
+        supabase.rpc('get_order_status_counts')
+      ])
+    : Promise.resolve(null);
+
+  const [orders, products, customers, rpcResults] = await Promise.all([
     fetchAdminOrders(),
     fetchAdminProducts(),
-    fetchCustomerSummaries()
+    fetchCustomerSummaries(),
+    rpcRequests
   ]);
 
   const deliveredOrders = orders.filter((o) => o.status === 'LIVRÉE');
@@ -95,21 +105,15 @@ export async function fetchComprehensiveAnalytics(): Promise<ComprehensiveAnalyt
   // Évolution mensuelle (6 derniers mois)
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const monthlyRevenue = deliveredOrders
-    .filter((o) => new Date(o.created_at) >= sixMonthsAgo)
-    .reduce((acc: { month: string; revenue: number }[], order) => {
+  const monthlyRevenueMap = new Map<string, number>();
+  deliveredOrders
+    .filter((order) => new Date(order.created_at) >= sixMonthsAgo)
+    .forEach((order) => {
       const date = new Date(order.created_at);
       const monthKey = `${date.getMonth() + 1}/${date.getFullYear()}`;
-
-      const existing = acc.find((m) => m.month === monthKey);
-      if (existing) {
-        existing.revenue += order.total;
-      } else {
-        acc.push({ month: monthKey, revenue: order.total });
-      }
-
-      return acc;
-    }, [])
+      monthlyRevenueMap.set(monthKey, (monthlyRevenueMap.get(monthKey) || 0) + order.total);
+    });
+  const monthlyRevenue = Array.from(monthlyRevenueMap, ([month, revenue]) => ({ month, revenue }))
     .sort((a, b) => {
       const [m1, y1] = a.month.split('/');
       const [m2, y2] = b.month.split('/');
@@ -142,17 +146,13 @@ export async function fetchComprehensiveAnalytics(): Promise<ComprehensiveAnalyt
     source: 'hybrid'
   };
 
-  if (!isSupabaseConfigured || !supabase) {
+  if (!rpcResults) {
     return baseResult;
   }
 
-  // 2. Tentative d'exécution des fonctions RPC Supabase (Procédure Stockée)
+  // Les résultats RPC ont déjà été obtenus en parallèle des lectures principales.
   try {
-    const [revRes, prodRes, statRes] = await Promise.all([
-      supabase.rpc('get_monthly_revenue'),
-      supabase.rpc('get_top_viewed_products'),
-      supabase.rpc('get_order_status_counts')
-    ]);
+    const [revRes, prodRes, statRes] = rpcResults;
 
     if (!revRes.error && revRes.data && Array.isArray(revRes.data)) {
       baseResult.revenueByMonth = revRes.data;
