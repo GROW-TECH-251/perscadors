@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
+  const isAdmin = profile?.role === 'admin';
 
   if (!isAdmin) {
     if (isLoginPath) return response;

@@ -32,5 +32,5 @@ export async function requireAdmin(): Promise<boolean> {
     .maybeSingle();
 
   if (profileError) return false;
-  return profile?.role === 'admin' || profile?.role === 'superadmin';
+  return profile?.role === 'admin';
 }

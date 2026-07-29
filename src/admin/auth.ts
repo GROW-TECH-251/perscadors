@@ -42,7 +42,7 @@ export async function signInAdmin(identifier: string, password: string, captchaT
     .eq('id', data.user.id)
     .single();
 
-  if (profileError || !profile || !['admin', 'superadmin'].includes(profile.role)) {
+  if (profileError || !profile || profile.role !== 'admin') {
     await supabase.auth.signOut();
     return { ok: false, message: 'Ce compte ne possède pas les droits d’administration.' };
   }
@@ -67,5 +67,5 @@ export async function checkAdminRole(): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  return Boolean(profile && ['admin', 'superadmin'].includes(profile.role));
+  return Boolean(profile && profile.role === 'admin');
 }
