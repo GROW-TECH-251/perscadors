@@ -259,10 +259,10 @@ export default function AdminProductsPage() {
           placeholder="Rechercher un produit..."
           className="flex-1"
         />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
               filter === 'all'
                 ? 'bg-brand-gold text-[#0A0A0A]'
                 : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'
@@ -272,7 +272,7 @@ export default function AdminProductsPage() {
           </button>
           <button
             onClick={() => setFilter('visible')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
               filter === 'visible'
                 ? 'bg-brand-gold text-[#0A0A0A]'
                 : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'
@@ -282,19 +282,19 @@ export default function AdminProductsPage() {
           </button>
           <button
             onClick={() => setFilter('hidden')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${filter === 'hidden' ? 'bg-brand-gold text-[#0A0A0A]' : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'}`}
+            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${filter === 'hidden' ? 'bg-brand-gold text-[#0A0A0A]' : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'}`}
           >
             Masqués
           </button>
           <button
             onClick={() => setFilter('incomplete')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${filter === 'incomplete' ? 'bg-brand-gold text-[#0A0A0A]' : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'}`}
+            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${filter === 'incomplete' ? 'bg-brand-gold text-[#0A0A0A]' : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'}`}
           >
             À compléter
           </button>
           <button
             onClick={() => setFilter('low-stock')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
               filter === 'low-stock'
                 ? 'bg-brand-gold text-[#0A0A0A]'
                 : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'

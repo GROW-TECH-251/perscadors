@@ -94,6 +94,26 @@ function normalizeTemplate(rawTemplate: string | null | undefined, defaultTempla
   return rawTemplate;
 }
 
+function getReadableCityName(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const candidate = value.trim();
+  if (!candidate) return fallback;
+
+  // Anciennes données parfois sérialisées dans une chaîne JSON : ne jamais
+  // afficher cette structure technique telle quelle au marchand.
+  if (candidate.startsWith('{') || candidate.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(candidate) as { name?: unknown; city?: unknown; label?: unknown };
+      const parsedName = parsed.name || parsed.city || parsed.label;
+      return typeof parsedName === 'string' && parsedName.trim() ? parsedName.trim() : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  return /^zone[-_\s]?\d+$/i.test(candidate) ? fallback : candidate;
+}
+
 function normalizeDeliveryZones(value: unknown): DeliveryZone[] {
   if (!Array.isArray(value) || value.length === 0) {
     return DEFAULT_DELIVERY_ZONES;
@@ -107,7 +127,7 @@ function normalizeDeliveryZones(value: unknown): DeliveryZone[] {
       if (typeof zone === 'string') {
         return {
           id: `zone-${index + 1}`,
-          name: zone,
+          name: getReadableCityName(zone, DEFAULT_DELIVERY_ZONES[index]?.name || `Ville ${index + 1}`),
           fee: index === 0 ? 1000 : index === 1 ? 1500 : 2000
         } satisfies DeliveryZone;
       }
@@ -115,14 +135,13 @@ function normalizeDeliveryZones(value: unknown): DeliveryZone[] {
       if (typeof zone === 'object') {
         const candidate = zone as Partial<DeliveryZone> & { city?: string; label?: string };
         const id = candidate.id || `zone-${index + 1}`;
-        const candidateName = candidate.name || candidate.city || candidate.label || '';
-        const hasTechnicalName = /^zone[-_\s]?\d+$/i.test(candidateName.trim());
+        const rawName = candidate.name || candidate.city || candidate.label || '';
         const fallbackCity = DEFAULT_DELIVERY_ZONES.find((defaultZone) => defaultZone.id === id)?.name
           || DEFAULT_DELIVERY_ZONES[index]?.name
           || `Ville ${index + 1}`;
         return {
           id,
-          name: !hasTechnicalName && candidateName.trim() ? candidateName.trim() : fallbackCity,
+          name: getReadableCityName(rawName, fallbackCity),
           fee: Number(candidate.fee || 0)
         } satisfies DeliveryZone;
       }

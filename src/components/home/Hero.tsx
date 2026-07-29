@@ -54,18 +54,32 @@ export const Hero: React.FC = () => {
     >
       {/* Background Flexible (Vidéo ou Image selon le choix du client en admin) */}
       {mediaUrl && mediaType === 'video' ? (
-        <video
-          onError={() => { setMediaUrl(''); }}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="metadata"
-          className="absolute inset-0 w-full h-full object-contain bg-black opacity-65"
-        >
-          <source src={mediaUrl} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
+        <>
+          {/* Extension immersive : remplit les écarts de ratio sans rogner la vidéo principale. */}
+          <video
+            aria-hidden="true"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl"
+          >
+            <source src={mediaUrl} type="video/mp4" />
+          </video>
+          <video
+            onError={() => { setMediaUrl(''); }}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            className="absolute inset-0 h-full w-full object-contain opacity-65"
+          >
+            <source src={mediaUrl} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </>
       ) : mediaUrl && mediaType === 'image' ? (
         <Image
           src={mediaUrl}
