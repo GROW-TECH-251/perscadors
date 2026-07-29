@@ -63,7 +63,7 @@ export const Hero: React.FC = () => {
             muted
             playsInline
             preload="metadata"
-            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl"
+            className="absolute inset-0 h-full w-full scale-125 object-cover opacity-70 blur-xl"
           >
             <source src={mediaUrl} type="video/mp4" />
           </video>
@@ -74,7 +74,7 @@ export const Hero: React.FC = () => {
             muted
             playsInline
             preload="metadata"
-            className="absolute inset-0 h-full w-full object-contain opacity-65"
+            className="absolute inset-0 h-full w-full object-contain opacity-90"
           >
             <source src={mediaUrl} type="video/mp4" />
             Your browser does not support the video tag.
@@ -92,7 +92,7 @@ export const Hero: React.FC = () => {
       ) : null}
 
       {/* Luxury Golden Overlay - Enhanced premium depth */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-black/42 to-black/65 z-10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/80 via-black/30 to-black/35 z-10" />
 
       {/* Subtle vignette for premium feel */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.25)_20%,transparent_65%)] z-10" />
