@@ -26,29 +26,24 @@ function hasSupabaseAuthCookie(): boolean {
 }
 
 export async function signInAdmin(identifier: string, password: string, captchaToken: string | null): Promise<{ ok: boolean; message: string }> {
-  if (!supabase) return { ok: false, message: 'La connexion administrateur est indisponible. Contactez l’administrateur.' };
   if (!captchaToken) return { ok: false, message: 'Veuillez terminer la vérification anti-bot.' };
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: identifier.trim(),
-    password,
-    options: { captchaToken }
-  });
-  if (error || !data.user) return { ok: false, message: 'Identifiant ou mot de passe incorrect.' };
+  try {
+    const response = await fetch('/api/auth/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: identifier.trim(), password, captchaToken })
+    });
+    const result = await response.json() as { ok?: boolean; message?: string };
+    if (!response.ok || !result.ok) {
+      return { ok: false, message: result.message || 'Connexion indisponible. Réessayez.' };
+    }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', data.user.id)
-    .single();
-
-  if (profileError || !profile || profile.role !== 'admin') {
-    await supabase.auth.signOut();
-    return { ok: false, message: 'Ce compte ne possède pas les droits d’administration.' };
+    persistSession(identifier.trim());
+    return { ok: true, message: 'Connexion réussie.' };
+  } catch {
+    return { ok: false, message: 'Connexion indisponible. Réessayez.' };
   }
-
-  persistSession(data.user.email || identifier.trim());
-  return { ok: true, message: 'Connexion réussie.' };
 }
 
 export function getAdminSession(): boolean {

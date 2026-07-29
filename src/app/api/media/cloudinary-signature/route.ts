@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cloudinary } from '@/lib/cloudinary';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { enforceRateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,10 @@ const ALLOWED_FOLDERS = new Set([
 ]);
 
 export async function POST(request: Request) {
+  const rate = await enforceRateLimit(request, 'cloudinary-signature');
+  if (!rate.allowed) {
+    return NextResponse.json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds), 'Cache-Control': 'no-store' } });
+  }
   if (!await requireAdmin()) {
     return NextResponse.json({ error: 'Accès non autorisé.' }, { status: 403 });
   }

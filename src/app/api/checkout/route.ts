@@ -3,6 +3,7 @@ import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { verifyTurnstile } from '@/lib/turnstile';
+import { enforceRateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,6 +56,10 @@ function isValidPayload(value: unknown): value is CheckoutPayload {
 }
 
 export async function POST(request: Request) {
+  const rate = await enforceRateLimit(request, 'checkout-api');
+  if (!rate.allowed) {
+    return NextResponse.json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds), 'Cache-Control': 'no-store' } });
+  }
   let payload: unknown;
   try {
     payload = await request.json();
@@ -64,6 +69,11 @@ export async function POST(request: Request) {
 
   if (!isValidPayload(payload)) {
     return NextResponse.json({ error: 'Les informations de commande sont invalides.' }, { status: 400 });
+  }
+
+  const orderRate = await enforceRateLimit(request, 'checkout-order');
+  if (!orderRate.allowed) {
+    return NextResponse.json({ error: 'Trop de commandes sont en cours. Réessayez dans quelques minutes.' }, { status: 429, headers: { 'Retry-After': String(orderRate.retryAfterSeconds), 'Cache-Control': 'no-store' } });
   }
 
   if (!await verifyTurnstile(payload.turnstileToken, request, 'checkout')) {
