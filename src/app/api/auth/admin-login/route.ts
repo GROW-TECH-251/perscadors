@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rateLimit';
 import { verifyTurnstile } from '@/lib/turnstile';
+import { recordSecurityEvent } from '@/lib/securityAudit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
     options: { captchaToken }
   });
   if (error || !data.user) {
+    await recordSecurityEvent('admin_login_failed', { route: '/api/auth/admin-login', status: 401, actor: 'anonymous' });
     return jsonWithCookies({ ok: false, message: 'Identifiant ou mot de passe incorrect.' }, 401, cookieUpdates);
   }
 
@@ -83,8 +85,10 @@ export async function POST(request: Request) {
 
   if (profileError || profile?.role !== 'admin') {
     await supabase.auth.signOut();
+    await recordSecurityEvent('admin_login_denied', { route: '/api/auth/admin-login', status: 403, actor: 'authenticated' });
     return jsonWithCookies({ ok: false, message: 'Ce compte ne possède pas les droits d’administration.' }, 403, cookieUpdates);
   }
 
+  await recordSecurityEvent('admin_login_succeeded', { route: '/api/auth/admin-login', status: 200, actor: 'admin' });
   return jsonWithCookies({ ok: true }, 200, cookieUpdates);
 }

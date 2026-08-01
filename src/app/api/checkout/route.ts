@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { enforceRateLimit } from '@/lib/rateLimit';
+import { recordSecurityEvent } from '@/lib/securityAudit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -115,8 +116,10 @@ export async function POST(request: Request) {
   }
   if (error) {
     console.warn('checkout_insert_failed', { code: error.code });
+    await recordSecurityEvent('checkout_insert_failed', { route: '/api/checkout', status: 503, code: error.code || 'unknown' });
     return NextResponse.json({ error: 'La commande ne peut pas être enregistrée pour le moment.' }, { status: 503 });
   }
 
+  await recordSecurityEvent('checkout_created', { route: '/api/checkout', status: 200 });
   return NextResponse.json({ persisted: true }, { headers: { 'Cache-Control': 'no-store' } });
 }

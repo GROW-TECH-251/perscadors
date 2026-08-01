@@ -2,6 +2,7 @@ import 'server-only';
 
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { recordSecurityEvent } from '@/lib/securityAudit';
 
 export type RateLimitScope = 'admin-login' | 'checkout-api' | 'checkout-order' | 'cloudinary-signature' | 'cloudinary-delete';
 
@@ -60,6 +61,7 @@ export async function enforceRateLimit(
 
   // En production, ne jamais désactiver silencieusement une protection attendue.
   if (!limiter) {
+    await recordSecurityEvent('rate_limit_unavailable', { scope, route: 'server-rate-limit', status: 503 });
     return { allowed: process.env.NODE_ENV !== 'production', retryAfterSeconds: 60 };
   }
 
@@ -67,9 +69,13 @@ export async function enforceRateLimit(
     const key = `${getClientIp(request)}:${discriminator}`;
     const result = await limiter.limit(key);
     const retryAfterSeconds = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
+    if (!result.success) {
+      await recordSecurityEvent('rate_limit_rejected', { scope, route: 'server-rate-limit', status: 429 });
+    }
     return { allowed: result.success, retryAfterSeconds };
   } catch {
     // Redis indisponible : fail closed en production pour les surfaces sensibles.
+    await recordSecurityEvent('rate_limit_unavailable', { scope, route: 'server-rate-limit', status: 503 });
     return { allowed: process.env.NODE_ENV !== 'production', retryAfterSeconds: 60 };
   }
 }
