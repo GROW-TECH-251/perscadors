@@ -48,6 +48,7 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaVersion, setCaptchaVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -87,10 +88,16 @@ export default function AdminLoginPage() {
         router.replace(to);
       } else {
         setError(result.message);
+        // Les tokens Turnstile sont à usage unique : après toute tentative,
+        // remonter un widget neuf évite un second POST systématiquement refusé.
+        setCaptchaToken(null);
+        setCaptchaVersion((version) => version + 1);
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur de connexion';
       setError(errorMessage);
+      setCaptchaToken(null);
+      setCaptchaVersion((version) => version + 1);
     } finally {
       setLoading(false);
     }
@@ -156,6 +163,7 @@ export default function AdminLoginPage() {
             />
 
             <TurnstileWidget
+              key={captchaVersion}
               action="admin_login"
               onTokenChange={setCaptchaToken}
               onError={() => setError('La vérification anti-bot est indisponible. Réessayez.')}
