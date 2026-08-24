@@ -87,7 +87,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         <Link href="/" className="block">
           <div className="relative w-32 h-10">
             <Image
-              src="/images/LOGOSITE/logo.png"
+              src="/assets/brand/logo.png"
               alt="HP Collection"
               fill
               sizes="128px"

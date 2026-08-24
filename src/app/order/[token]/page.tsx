@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { requireSupabase } from '@/lib/supabase';
-import { PublicLayout } from '@/components/layout/PublicLayout';
+import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { Package, Truck, CheckCircle2, XCircle, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
 
 interface TrackedOrder {

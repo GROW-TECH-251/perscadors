@@ -316,7 +316,7 @@ export default function AdminHpbPage() {
                   {/* Image Principale */}
                   <div className="relative w-full aspect-[4/5] bg-brand-bg overflow-hidden">
                     <Image
-                      src={outfit.image_url || '/images/LOGOSITE/logo.png'}
+                      src={outfit.image_url || '/assets/brand/logo.png'}
                       alt={outfit.name}
                       fill
                       sizes="(max-width: 1024px) 50vw, 33vw"

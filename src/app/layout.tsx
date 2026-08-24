@@ -30,7 +30,7 @@ const bebasNeue = Bebas_Neue({
 
 const FALLBACK_TITLE = 'HP Collection | Boutique E-commerce Streetwear Premium';
 const FALLBACK_DESCRIPTION = 'Boutique premium de mode streetwear par l\'influenceur Vioutou à Cotonou, Bénin. Commandes instantanées via WhatsApp.';
-const FALLBACK_IMAGE = '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0036.jpg';
+const FALLBACK_IMAGE = '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0036.jpg';
 
 export async function generateMetadata(): Promise<Metadata> {
   let title = FALLBACK_TITLE;
@@ -48,7 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
     if (data) { title = data.social_title || title; description = data.social_description || description; image = data.social_image_url || bannerResponse.data?.url || image; }
     else if (bannerResponse.data?.url) image = bannerResponse.data.url;
   }
-  return { metadataBase: new URL('https://perscadors.vercel.app'), title, description, robots: { index: true, follow: true }, openGraph: { title, description, url: 'https://perscadors.vercel.app', siteName: 'HP Collection Bénin', images: [{ url: image, width: 1200, height: 630, alt: title }], locale: 'fr_BJ', type: 'website' }, twitter: { card: 'summary_large_image', title, description, images: [image] }, icons: { icon: '/images/LOGOSITE/logo.png', shortcut: '/images/LOGOSITE/logo.png', apple: '/images/LOGOSITE/logo.png' } };
+  return { metadataBase: new URL('https://perscadors.vercel.app'), title, description, robots: { index: true, follow: true }, openGraph: { title, description, url: 'https://perscadors.vercel.app', siteName: 'HP Collection Bénin', images: [{ url: image, width: 1200, height: 630, alt: title }], locale: 'fr_BJ', type: 'website' }, twitter: { card: 'summary_large_image', title, description, images: [image] }, icons: { icon: '/assets/brand/logo.png', shortcut: '/assets/brand/logo.png', apple: '/assets/brand/logo.png' } };
 }
 
 
