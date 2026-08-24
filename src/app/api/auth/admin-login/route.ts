@@ -73,7 +73,12 @@ export async function POST(request: Request) {
     options: { captchaToken }
   });
   if (error || !data.user) {
-    await recordSecurityEvent('admin_login_failed', { route: '/api/auth/admin-login', status: 401, actor: 'anonymous' });
+    await recordSecurityEvent('admin_login_failed', {
+      route: '/api/auth/admin-login',
+      status: 401,
+      actor: 'anonymous',
+      code: error?.code || 'auth_failed'
+    });
     return jsonWithCookies({ ok: false, message: 'Identifiant ou mot de passe incorrect.' }, 401, cookieUpdates);
   }
 
