@@ -82,7 +82,7 @@ function HeaderMobileScrolled() {
       <div className="flex items-center justify-between">
         <div className="relative h-12 w-36">
           <Image
-            src="/images/LOGOSITE/logo.png"
+            src="/assets/brand/logo.png"
             alt="HP Collection"
             fill
             sizes="144px"

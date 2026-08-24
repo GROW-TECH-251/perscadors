@@ -2,25 +2,24 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { PublicLayout } from '@/components/layout/PublicLayout';
+import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { useCatalog } from '@/context/CatalogContext';
-import { useCart } from '@/context/CartContext';
 import { Sparkles, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { safeJsonLd } from '@/utils/safeJsonLd';
 
 export default function HPLooksPage() {
   const { outfits } = useCatalog();
-  const { addMultipleToCart } = useCart();
 
   // Données structurées JSON-LD E-commerce (schema.org) pour le module HPB (Looks de Vioutou)
+  const fallbackImage = outfits[0]?.image || '/assets/collections/outfits/outfit2.jpeg';
   const looksSchema = {
     "@context": "https://schema.org",
     "@type": ["ItemList", "CollectionPage"],
     "name": "HP Collection — Les Looks de Vioutou (Module HPB)",
-    "description": "Découvrez les 32 tenues streetwear exclusives créées et assemblées par l'influenceur Vioutou à Cotonou. Ajoutez un look complet à votre panier en un clic.",
+    "description": `Découvrez les ${outfits.length} tenues streetwear exclusives créées et assemblées par l'influenceur Vioutou à Cotonou. Ajoutez un look complet à votre panier en un clic.`,
     "url": "https://perscadors.vercel.app/looks",
-    "image": "https://perscadors.vercel.app/images/OUTFITCOLLECTION/outfit1.jpeg",
+    "image": `https://perscadors.vercel.app${fallbackImage}`,
     "numberOfItems": outfits.length,
     "itemListElement": outfits.map((o, index) => ({
       "@type": "ListItem",
@@ -60,10 +59,10 @@ export default function HPLooksPage() {
   return (
     <PublicLayout>
       <title>HP Looks | Inspirations Streetwear de Vioutou à Cotonou</title>
-      <meta name="description" content="Découvrez les 32 tenues streetwear exclusives créées par l'influenceur Vioutou à Cotonou. Ajoutez un look complet à votre panier en un clic." />
+      <meta name="description" content={`Découvrez les ${outfits.length} tenues streetwear exclusives créées par l'influenceur Vioutou à Cotonou. Ajoutez un look complet à votre panier en un clic.`} />
       <meta property="og:title" content="HP Looks | Inspirations Streetwear de Vioutou à Cotonou" />
-      <meta property="og:description" content="Découvrez les 32 tenues streetwear exclusives créées par l'influenceur Vioutou à Cotonou. Ajoutez un look complet à votre panier en un clic." />
-      <meta property="og:image" content="/images/OUTFITCOLLECTION/outfit1.jpeg" />
+      <meta property="og:description" content={`Découvrez les ${outfits.length} tenues streetwear exclusives créées par l'influenceur Vioutou à Cotonou. Ajoutez un look complet à votre panier en un clic.`} />
+      <meta property="og:image" content={fallbackImage} />
       <meta property="og:url" content="https://perscadors.vercel.app/looks" />
       <meta property="og:type" content="website" />
       <script
@@ -170,7 +169,13 @@ export default function HPLooksPage() {
                     </div>
 
                     <button
-                      onClick={() => addMultipleToCart(outfit.products)}
+                      onClick={() => {
+                        const phone = process.env.NEXT_PUBLIC_WHATSAPP_PHONE_DIGITS?.trim() || '22967280018';
+                        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://perscadors.vercel.app';
+                        const message = `Bonjour 👋\n\nJe souhaite recréer ce look : ${outfit.name}\n\n${origin}${outfit.image}\n\nMerci !`;
+                        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                        window.open(url, '_blank');
+                      }}
                       className="w-full py-3.5 bg-brand-gold hover:bg-brand-gold-light text-brand-bg font-bebas text-lg uppercase tracking-widest rounded transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Sparkles size={16} />

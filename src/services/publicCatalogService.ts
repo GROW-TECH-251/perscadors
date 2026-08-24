@@ -19,28 +19,28 @@ interface CategoryMeta {
   fallbackImage: string;
 }
 
-const DEFAULT_PRODUCT_IMAGE = '/images/LOGOSITE/logo.png';
+const DEFAULT_PRODUCT_IMAGE = '/assets/brand/logo.png';
 
 const CATEGORY_META_MAP: Record<string, CategoryMeta> = {
   'basket-pour-homme': {
     name: 'Baskets Homme',
     tagline: 'Des kicks premium pour imposer ton style partout à Cotonou.',
-    fallbackImage: '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0012.jpg'
+    fallbackImage: '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0012.jpg'
   },
   'complet-pour-homme': {
     name: 'Complets Streetwear',
     tagline: 'Oversize, monogrammes et ensembles premium validés par Vioutou.',
-    fallbackImage: '/images/ARTICLES/COMPLET POUR HOMME/IMG-20251014-WA0006.jpg'
+    fallbackImage: '/assets/collections/articles/COMPLET POUR HOMME/IMG-20251014-WA0006.jpg'
   },
   'jean-overside-pour-homme': {
     name: 'Jeans Oversize',
     tagline: 'Des coupes larges et premium pensées pour les vrais looks streetwear.',
-    fallbackImage: '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0037.jpg'
+    fallbackImage: '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0037.jpg'
   },
   'tapettes-pour-homme': {
     name: 'Tapettes & Sandales',
     tagline: 'Confort premium, daim et finitions haut de gamme pour les sorties chill.',
-    fallbackImage: '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0026.jpg'
+    fallbackImage: '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0026.jpg'
   }
 };
 
@@ -231,7 +231,7 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
       return {
         id: String(outfitRow.id),
         name: outfitRow.name,
-        image: outfitRow.image_url || '/images/LOGOSITE/logo.png',
+        image: outfitRow.image_url || '/assets/brand/logo.png',
         price: finalPrice,
         products: outfitProducts
       };

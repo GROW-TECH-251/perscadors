@@ -9,9 +9,9 @@ export const products: Product[] = [
     category: 'basket-pour-homme',
     price: 22000,
     images: [
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0012.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0013.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0014.jpg'
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0012.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0013.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0014.jpg'
     ],
     sizes: ['40', '41', '42', '43', '44'],
     outOfStockSizes: ['40'],
@@ -28,9 +28,9 @@ export const products: Product[] = [
     category: 'basket-pour-homme',
     price: 24500,
     images: [
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0033.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0034.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0035.jpg'
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0033.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0034.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0035.jpg'
     ],
     sizes: ['41', '42', '43', '44'],
     outOfStockSizes: ['44'],
@@ -47,9 +47,9 @@ export const products: Product[] = [
     category: 'basket-pour-homme',
     price: 19500,
     images: [
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0108.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0109.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0110.jpg'
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0108.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0109.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0110.jpg'
     ],
     sizes: ['39', '40', '41', '42', '43'],
     outOfStockSizes: [],
@@ -65,9 +65,9 @@ export const products: Product[] = [
     category: 'basket-pour-homme',
     price: 25000,
     images: [
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0111.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0112.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0113.jpg'
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0111.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0112.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0113.jpg'
     ],
     sizes: ['40', '41', '42', '43', '44'],
     outOfStockSizes: ['41', '42'],
@@ -83,9 +83,9 @@ export const products: Product[] = [
     category: 'basket-pour-homme',
     price: 18000,
     images: [
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0114.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0115.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0116.jpg'
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0114.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0115.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0116.jpg'
     ],
     sizes: ['39', '40', '41', '42', '43', '44'],
     outOfStockSizes: [],
@@ -101,9 +101,9 @@ export const products: Product[] = [
     category: 'basket-pour-homme',
     price: 28000,
     images: [
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0117.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0118.jpg',
-      '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0119.jpg'
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0117.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0118.jpg',
+      '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0119.jpg'
     ],
     sizes: ['40', '41', '42', '43', '44', '45'],
     outOfStockSizes: [],
@@ -122,8 +122,8 @@ export const products: Product[] = [
     category: 'complet-pour-homme',
     price: 25000,
     images: [
-      '/images/ARTICLES/COMPLET POUR HOMME/IMG-20251014-WA0006.jpg',
-      '/images/ARTICLES/COMPLET POUR HOMME/IMG-20251014-WA0007.jpg'
+      '/assets/collections/articles/COMPLET POUR HOMME/IMG-20251014-WA0006.jpg',
+      '/assets/collections/articles/COMPLET POUR HOMME/IMG-20251014-WA0007.jpg'
     ],
     sizes: ['M', 'L', 'XL', 'XXL'],
     outOfStockSizes: ['XXL'],
@@ -140,8 +140,8 @@ export const products: Product[] = [
     category: 'complet-pour-homme',
     price: 23500,
     images: [
-      '/images/ARTICLES/COMPLET POUR HOMME/IMG-20251014-WA0008.jpg',
-      '/images/ARTICLES/COMPLET POUR HOMME/IMG-20251014-WA0009.jpg'
+      '/assets/collections/articles/COMPLET POUR HOMME/IMG-20251014-WA0008.jpg',
+      '/assets/collections/articles/COMPLET POUR HOMME/IMG-20251014-WA0009.jpg'
     ],
     sizes: ['S', 'M', 'L', 'XL'],
     outOfStockSizes: ['S'],
@@ -157,8 +157,8 @@ export const products: Product[] = [
     category: 'complet-pour-homme',
     price: 21000,
     images: [
-      '/images/ARTICLES/COMPLET POUR HOMME/IMG-20251014-WA0010.jpg',
-      '/images/ARTICLES/COMPLET POUR HOMME/IMG-20251014-WA0011.jpg'
+      '/assets/collections/articles/COMPLET POUR HOMME/IMG-20251014-WA0010.jpg',
+      '/assets/collections/articles/COMPLET POUR HOMME/IMG-20251014-WA0011.jpg'
     ],
     sizes: ['M', 'L', 'XL'],
     outOfStockSizes: [],
@@ -176,9 +176,9 @@ export const products: Product[] = [
     category: 'jean-overside-pour-homme',
     price: 18500,
     images: [
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0037.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0038.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0039.jpg'
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0037.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0038.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0039.jpg'
     ],
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
     outOfStockSizes: ['S', 'XXL'],
@@ -195,9 +195,9 @@ export const products: Product[] = [
     category: 'jean-overside-pour-homme',
     price: 17000,
     images: [
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0040.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0041.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0042.jpg'
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0040.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0041.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0042.jpg'
     ],
     sizes: ['M', 'L', 'XL'],
     outOfStockSizes: [],
@@ -213,9 +213,9 @@ export const products: Product[] = [
     category: 'jean-overside-pour-homme',
     price: 19000,
     images: [
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0043.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0044.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0045.jpg'
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0043.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0044.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0045.jpg'
     ],
     sizes: ['S', 'M', 'L', 'XL'],
     outOfStockSizes: ['XL'],
@@ -231,9 +231,9 @@ export const products: Product[] = [
     category: 'jean-overside-pour-homme',
     price: 16500,
     images: [
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0046.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0047.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0048.jpg'
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0046.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0047.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0048.jpg'
     ],
     sizes: ['M', 'L', 'XL', 'XXL'],
     outOfStockSizes: [],
@@ -249,9 +249,9 @@ export const products: Product[] = [
     category: 'jean-overside-pour-homme',
     price: 19500,
     images: [
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0021.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0022.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0023.jpg'
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0021.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0022.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0023.jpg'
     ],
     sizes: ['S', 'M', 'L', 'XL'],
     outOfStockSizes: [],
@@ -268,9 +268,9 @@ export const products: Product[] = [
     category: 'jean-overside-pour-homme',
     price: 20500,
     images: [
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0049.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0050.jpg',
-      '/images/ARTICLES/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0051.jpg'
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0049.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0050.jpg',
+      '/assets/collections/articles/JEAN OVERSIDE POUR HOMME/IMG-20251014-WA0051.jpg'
     ],
     sizes: ['M', 'L', 'XL', 'XXL'],
     outOfStockSizes: [],
@@ -288,9 +288,9 @@ export const products: Product[] = [
     category: 'tapettes-pour-homme',
     price: 14500,
     images: [
-      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0026.jpg',
-      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0027.jpg',
-      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0028.jpg'
+      '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0026.jpg',
+      '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0027.jpg',
+      '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0028.jpg'
     ],
     sizes: ['39', '40', '41', '42', '43', '44'],
     outOfStockSizes: ['39', '44'],
@@ -307,8 +307,8 @@ export const products: Product[] = [
     category: 'tapettes-pour-homme',
     price: 11000,
     images: [
-      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0029.jpg',
-      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0030.jpg'
+      '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0029.jpg',
+      '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0030.jpg'
     ],
     sizes: ['40', '41', '42', '43'],
     outOfStockSizes: [],
@@ -324,8 +324,8 @@ export const products: Product[] = [
     category: 'tapettes-pour-homme',
     price: 15000,
     images: [
-      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0031.jpg',
-      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0032.jpg'
+      '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0031.jpg',
+      '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0032.jpg'
     ],
     sizes: ['41', '42', '43', '44'],
     outOfStockSizes: ['41'],
@@ -341,9 +341,9 @@ export const products: Product[] = [
     category: 'tapettes-pour-homme',
     price: 13500,
     images: [
-      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0064.jpg',
-      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0065.jpg',
-      '/images/ARTICLES/TAPETTES POUR HOMME/IMG-20251014-WA0074.jpg'
+      '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0064.jpg',
+      '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0065.jpg',
+      '/assets/collections/articles/TAPETTES POUR HOMME/IMG-20251014-WA0074.jpg'
     ],
     sizes: ['40', '41', '42', '43', '44', '45'],
     outOfStockSizes: [],

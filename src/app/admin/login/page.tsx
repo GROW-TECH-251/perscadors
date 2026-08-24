@@ -110,7 +110,7 @@ export default function AdminLoginPage() {
         <div className="text-center mb-8">
           <div className="relative w-48 h-16 mx-auto mb-4">
             <Image
-              src="/images/LOGOSITE/logo.png"
+              src="/assets/brand/logo.png"
               alt="HP Collection"
               fill
               sizes="192px"

@@ -269,7 +269,7 @@ export default function AdminOrdersPage() {
           quantity: 1,
           size,
           color,
-          image: '/images/LOGOSITE/logo.png'
+          image: '/assets/brand/logo.png'
         });
       }
 
@@ -280,7 +280,7 @@ export default function AdminOrdersPage() {
           quantity: 1,
           size: 'Standard',
           color: 'Standard',
-          image: '/images/LOGOSITE/logo.png'
+          image: '/assets/brand/logo.png'
         });
       }
 

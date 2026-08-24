@@ -7,12 +7,12 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import React from 'react';
-import { PublicLayout } from '@/components/layout/PublicLayout';
-import { Hero } from '@/components/home/Hero';
-import { OutfitCarousel } from '@/components/home/OutfitCarousel';
-import { CategoryGrid } from '@/components/home/CategoryGrid';
-import { Testimonials } from '@/components/home/Testimonials';
-import { FAQ } from '@/components/home/FAQ';
+import { PublicLayout } from '@/components/public/layout/PublicLayout';
+import { Hero } from '@/components/public/home/Hero';
+import { OutfitCarousel } from '@/components/public/home/OutfitCarousel';
+import { CategoryGrid } from '@/components/public/home/CategoryGrid';
+import { Testimonials } from '@/components/public/home/Testimonials';
+import { FAQ } from '@/components/public/home/FAQ';
 import { safeJsonLd } from '@/utils/safeJsonLd';
 
 export default function HomePage() {
@@ -24,8 +24,8 @@ export default function HomePage() {
     "name": "HP Collection",
     "legalName": "HP Collection / Perscadors E-commerce",
     "url": "https://perscadors.vercel.app/",
-    "logo": "https://perscadors.vercel.app/images/LOGOSITE/logo.png",
-    "image": "https://perscadors.vercel.app/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0036.jpg",
+    "logo": "https://perscadors.vercel.app/assets/brand/logo.png",
+    "image": "https://perscadors.vercel.app/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0036.jpg",
     "description": "Boutique premium de mode streetwear par l'influenceur Vioutou à Cotonou, Bénin. Baskets, complets, jeans oversize et claquettes VIP. Commandes instantanées via WhatsApp avec livraison express.",
     "telephone": "+22967280018",
     "priceRange": "10000 FCFA - 50000 FCFA",
