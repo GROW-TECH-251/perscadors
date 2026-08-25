@@ -1,12 +1,11 @@
 // src/app/page.tsx
-// ============================================
-// Page d'Accueil Publique (Forcée Dynamique & Injectée JSON-LD Store / Local SEO Cotonou)
-// ============================================
+// Page d'Accueil Publique — Optimisée performance (ISR 60s + dynamic imports)
+// Plus de force-dynamic pour permettre cache et fluidité
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 60;
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { Hero } from '@/components/public/home/Hero';
 import { OutfitCarousel } from '@/components/public/home/OutfitCarousel';
@@ -15,6 +14,24 @@ import { ArticleRequestSection } from '@/components/public/home/ArticleRequestSe
 import { Testimonials } from '@/components/public/home/Testimonials';
 import { FAQ } from '@/components/public/home/FAQ';
 import { safeJsonLd } from '@/utils/safeJsonLd';
+
+// Dynamic imports pour code splitting — gain perf / risque faible
+// Ces composants sont lourds (carousel 64 images, grille, témoignages, FAQ, demande article)
+const OutfitCarousel = dynamic(() => import('@/components/public/home/OutfitCarousel').then((m) => m.OutfitCarousel), {
+  loading: () => <div className="py-24 bg-brand-bg-alt border-y border-brand-gold/10 animate-pulse h-96" />,
+});
+const CategoryGrid = dynamic(() => import('@/components/public/home/CategoryGrid').then((m) => m.CategoryGrid), {
+  loading: () => <div className="py-24 bg-brand-bg animate-pulse h-96" />,
+});
+const ArticleRequestSection = dynamic(() => import('@/components/public/home/ArticleRequestSection').then((m) => m.ArticleRequestSection), {
+  loading: () => <div className="py-20 bg-brand-bg-alt border-y border-brand-gold/10 animate-pulse h-64" />,
+});
+const Testimonials = dynamic(() => import('@/components/public/home/Testimonials').then((m) => m.Testimonials), {
+  loading: () => <div className="py-24 bg-brand-bg-alt border-y border-brand-gold/10 animate-pulse h-64" />,
+});
+const FAQ = dynamic(() => import('@/components/public/home/FAQ').then((m) => m.FAQ), {
+  loading: () => <div className="py-16 bg-brand-bg animate-pulse h-64" />,
+});
 
 export default function HomePage() {
   // SEO Local Cotonou / Bénin & Données Structurées JSON-LD (schema.org)
