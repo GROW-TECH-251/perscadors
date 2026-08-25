@@ -66,6 +66,6 @@ jobs:
       - name: Scan current files only (not full history)
         uses: gitleaks/gitleaks-action@v2.3.8
         with:
-          args: --no-git --source . -v --redact --no-banner
+          args: --no-git --source . --config gitleaks.toml -v --redact --no-banner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

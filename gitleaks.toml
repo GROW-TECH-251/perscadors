@@ -1,0 +1,28 @@
+title = "Perscadors Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore test files with UUIDs that look like api keys"
+paths = [
+    '''tests/''',
+    '''.*\.test\.ts''',
+    '''README\.md''',
+]
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key - allowlist test UUIDs"
+
+    [[rules.allowlists]]
+    description = "Allow test idempotency_key UUIDs"
+    paths = ['''tests/unit/checkoutValidation\.test\.ts''']
+    regexes = ['''a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d''', '''idempotency_key''']
+
+[[rules]]
+id = "sidekiq-secret"
+
+    [[rules.allowlists]]
+    description = "Allow README example"
+    paths = ['''README\.md''']

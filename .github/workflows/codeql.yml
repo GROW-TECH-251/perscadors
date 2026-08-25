@@ -38,6 +38,16 @@ jobs:
         with:
           languages: javascript-typescript
           build-mode: none
+          # Ignore les assets binaires 67M qui ne sont pas du code
+          paths-ignore: |
+            public/assets/**
+            public/**
+            node_modules/**
+            .next/**
+            **/*.jpeg
+            **/*.jpg
+            **/*.png
+            **/*.mp4
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3.28.1
