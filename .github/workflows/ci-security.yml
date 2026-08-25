@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 2
 
       - name: Setup Node
         uses: actions/setup-node@v4.1.0
@@ -32,8 +34,6 @@ jobs:
         run: npm ci
 
       - name: Check whitespace and conflict markers
-        # Pour les merge commits, HEAD^ peut ne pas exister ou diff trop large
-        # On vérifie seulement les changements du dernier commit sans faire échouer sur merge
         run: |
           if git rev-parse HEAD^ >/dev/null 2>&1; then
             git diff --check HEAD^ HEAD || echo "Whitespace check: warnings found but not blocking for merge"
@@ -60,11 +60,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 1
 
       - name: Scan current files only (not full history)
-        # On scanne seulement les fichiers actuels, pas tout l'historique
-        # Les fichiers d'audit avec VERCEL_TOKEN ont été supprimés en 26e5c24
-        # On ignore node_modules et .next via .gitleaksignore
         uses: gitleaks/gitleaks-action@v2.3.8
+        with:
+          args: --no-git --source . -v --redact --no-banner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
