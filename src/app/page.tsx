@@ -11,6 +11,7 @@ import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { Hero } from '@/components/public/home/Hero';
 import { OutfitCarousel } from '@/components/public/home/OutfitCarousel';
 import { CategoryGrid } from '@/components/public/home/CategoryGrid';
+import { ArticleRequestSection } from '@/components/public/home/ArticleRequestSection';
 import { Testimonials } from '@/components/public/home/Testimonials';
 import { FAQ } from '@/components/public/home/FAQ';
 import { safeJsonLd } from '@/utils/safeJsonLd';
@@ -77,6 +78,8 @@ export default function HomePage() {
       <OutfitCarousel />
       {/* 3. Section Collections / Catégories */}
       <CategoryGrid />
+      {/* 3b. Section Demande d'article non trouvé — placée sous catégories pour meilleur parcours UX */}
+      <ArticleRequestSection />
       {/* 4. Section Témoignages & Preuve sociale */}
       <Testimonials />
       {/* 5. Section Foire Aux Questions (FAQ) */}

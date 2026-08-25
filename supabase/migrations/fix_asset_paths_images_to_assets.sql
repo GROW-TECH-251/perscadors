@@ -5,7 +5,7 @@
 --   OUTFITCOLLECTION → collections/outfits
 --   ARTICLES → collections/articles
 --   Temoignages / Témoignagesetavisclients → testimonials
--- Mais site_assets.url et shop_settings.* contenaient encore /images/... → 404 dans Vercel Logs
+-- Mais site_assets.url, shop_settings.*, outfits.image_url, products.* contenaient encore /images/... → 404 dans Vercel Logs
 --   GET /images/ARRIEREPLAN/7679830-uhd_4096_2160_25fps.mp4 404
 --   GET /images/OUTFITCOLLECTION/outfit23.jpeg 404
 -- Cette migration corrige les URLs en base sans toucher au code applicatif (qui utilise déjà /assets/)
@@ -102,7 +102,7 @@ update public.outfits
 set image_url = replace(image_url, 'perscadors.vercel.app/images/', 'perscadors.vercel.app/assets/')
 where image_url like '%perscadors.vercel.app/images/%';
 
--- 6. products : image_url / images array peuvent contenir anciens chemins
+-- 6. products : image_url (text) peut contenir anciens chemins
 update public.products
 set image_url = replace(image_url, '/images/', '/assets/')
 where image_url like '/images/%';
@@ -115,18 +115,76 @@ update public.products
 set image_url = replace(image_url, 'LOGOSITE', 'brand')
 where image_url ilike '%LOGOSITE%';
 
--- Note : si products.images est jsonb array, il faut aussi le migrer
--- On tente un update jsonb si la colonne existe
+update public.products
+set image_url = replace(image_url, 'perscadors.vercel.app/images/', 'perscadors.vercel.app/assets/')
+where image_url like '%perscadors.vercel.app/images/%';
+
+-- 7. products.images est de type text[] (pas jsonb) → il faut utiliser unnest + array_agg
+-- Fix pour text[] : remplace /images/ → /assets/ dans chaque élément du tableau
 do $$
 begin
-  if exists (select 1 from information_schema.columns where table_name='products' and column_name='images') then
+  if exists (
+    select 1 from information_schema.columns 
+    where table_schema='public' and table_name='products' and column_name='images' and data_type='ARRAY'
+  ) then
+    -- Migration pour text[] : on reconstruit le tableau avec REPLACE
     update public.products
-    set images = replace(images::text, '/images/', '/assets/')::jsonb
+    set images = (
+      select array_agg(replace(img, '/images/', '/assets/'))
+      from unnest(images) as img
+    )
+    where exists (
+      select 1 from unnest(images) as img where img like '%/images/%'
+    );
+
+    -- Renommage dossiers dans text[]
+    update public.products
+    set images = (
+      select array_agg(replace(img, 'ARTICLES', 'collections/articles'))
+      from unnest(images) as img
+    )
+    where exists (
+      select 1 from unnest(images) as img where img ilike '%ARTICLES%'
+    );
+
+    update public.products
+    set images = (
+      select array_agg(replace(img, 'OUTFITCOLLECTION', 'collections/outfits'))
+      from unnest(images) as img
+    )
+    where exists (
+      select 1 from unnest(images) as img where img ilike '%OUTFITCOLLECTION%'
+    );
+
+    update public.products
+    set images = (
+      select array_agg(replace(img, 'LOGOSITE', 'brand'))
+      from unnest(images) as img
+    )
+    where exists (
+      select 1 from unnest(images) as img where img ilike '%LOGOSITE%'
+    );
+
+    update public.products
+    set images = (
+      select array_agg(replace(img, 'perscadors.vercel.app/images/', 'perscadors.vercel.app/assets/'))
+      from unnest(images) as img
+    )
+    where exists (
+      select 1 from unnest(images) as img where img like '%perscadors.vercel.app/images/%'
+    );
+  elsif exists (
+    select 1 from information_schema.columns 
+    where table_schema='public' and table_name='products' and column_name='images'
+  ) then
+    -- Fallback si images est jsonb ou text : tentative générique
+    update public.products
+    set images = replace(images::text, '/images/', '/assets/')::text::jsonb
     where images::text like '%/images/%';
   end if;
 end $$;
 
--- 7. categories : image_url
+-- 8. categories : image_url
 update public.categories
 set image_url = replace(image_url, '/images/', '/assets/')
 where image_url like '/images/%';
@@ -135,20 +193,28 @@ update public.categories
 set image_url = replace(image_url, 'ARTICLES', 'collections/articles')
 where image_url ilike '%ARTICLES%';
 
--- 8. content_posts : image_url
+update public.categories
+set image_url = replace(image_url, 'perscadors.vercel.app/images/', 'perscadors.vercel.app/assets/')
+where image_url like '%perscadors.vercel.app/images/%';
+
+-- 9. content_posts : image_url
 update public.content_posts
 set image_url = replace(image_url, '/images/', '/assets/')
 where image_url like '/images/%';
 
--- 9. Nettoyage cache local : les anciennes URLs avec /images/ ne doivent plus être servies
--- Le code applicatif utilise déjà /assets/ (vérifié grep -R /assets/ 40+ refs)
--- Cette migration ne supprime rien, elle corrige seulement
+update public.content_posts
+set image_url = replace(image_url, 'perscadors.vercel.app/images/', 'perscadors.vercel.app/assets/')
+where image_url like '%perscadors.vercel.app/images/%';
+
+-- 10. Nettoyage : anciennes URLs ne doivent plus être servies
+-- Le code applicatif utilise déjà /assets/ (40+ refs)
 
 commit;
 
 -- Vérification post-migration (à exécuter manuellement) :
 -- SELECT id, url FROM site_assets WHERE url LIKE '/images/%'; -- doit être 0
 -- SELECT hero_video_url, logo_url, social_image_url FROM shop_settings WHERE hero_video_url LIKE '/images/%' OR logo_url LIKE '/images/%' OR social_image_url LIKE '/images/%'; -- doit être 0
--- SELECT url FROM site_assets WHERE url LIKE '%ARRIEREPLAN%' OR url LIKE '%LOGOSITE%' OR url LIKE '%OUTFITCOLLECTION%'; -- doit être 0 (anciens noms)
+-- SELECT url FROM site_assets WHERE url ILIKE '%ARRIEREPLAN%' OR url ILIKE '%LOGOSITE%' OR url ILIKE '%OUTFITCOLLECTION%'; -- doit être 0
 -- SELECT id, image_url FROM outfits WHERE image_url LIKE '/images/%'; -- doit être 0
 -- SELECT id, image_url FROM products WHERE image_url LIKE '/images/%'; -- doit être 0
+-- SELECT id, images FROM products WHERE EXISTS (SELECT 1 FROM unnest(images) AS img WHERE img LIKE '%/images/%'); -- doit être 0
