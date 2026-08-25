@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { PublicLayout } from '@/components/layout/PublicLayout';
+import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { useCatalog } from '@/context/CatalogContext';
 import { Product, Size } from '@/types';
 import { SlidersHorizontal, ArrowLeft } from 'lucide-react';

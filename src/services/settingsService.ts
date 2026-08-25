@@ -24,12 +24,12 @@ const DEFAULT_SEGMENTATION: CustomerSegmentationSettings = {
 };
 
 const DEFAULT_TESTIMONIALS: TestimonialsData = {
-  screenshot_url: '/images/Temoignages/photos/témoignageclient.jpeg',
+  screenshot_url: '/assets/testimonials/photos/témoignageclient.jpeg',
   screenshot_quote: "Tu connais #HPcollection c'est la meilleure prêt à porter du Bénin 🇧🇯 actuellement chez Honoré Perscadors...",
   videos: [
-    { src: '/images/Temoignages/video/client.mp4', title: 'Avis Client #1', description: 'Validation de l\'outfit complet par un king local.' },
-    { src: '/images/Temoignages/video/client2.mp4', title: 'Avis Client #2', description: 'Review des baskets premium à la réception.' },
-    { src: '/images/Temoignages/video/client3.mp4', title: 'Avis Client #3', description: 'Un look validé à 100% sur Cotonou.' }
+    { src: '/assets/testimonials/video/client.mp4', title: 'Avis Client #1', description: 'Validation de l\'outfit complet par un king local.' },
+    { src: '/assets/testimonials/video/client2.mp4', title: 'Avis Client #2', description: 'Review des baskets premium à la réception.' },
+    { src: '/assets/testimonials/video/client3.mp4', title: 'Avis Client #3', description: 'Un look validé à 100% sur Cotonou.' }
   ]
 };
 
@@ -70,12 +70,12 @@ export function getDefaultShopSettings(): ShopSettings {
     logo_url: '',
     hero_title: 'Vioutou t\'habille. Tu règnes.',
     hero_subtitle: 'La marque de mode streetwear premium. Statut, style, modernité et une élégance sans compromis. Impose ta présence dans la rue.',
-    hero_video_url: '/images/ARRIEREPLAN/7679830-uhd_4096_2160_25fps.mp4',
+    hero_video_url: '/assets/backgrounds/7679830-uhd_4096_2160_25fps.mp4',
     footer_description: 'La marque de mode streetwear premium au Bénin. Statut, style, modernité et une élégance sans compromis.',
     floating_whatsapp_text: 'Bonjour Vioutou ! Je viens du site HP Collection et j\'aimerais discuter de vos outfits.',
     social_title: 'HP Collection | Boutique Streetwear Premium',
     social_description: 'Découvrez la sélection streetwear premium HP Collection.',
-    social_image_url: '/images/ARTICLES/BASKET POUR HOMME/IMG-20251014-WA0036.jpg',
+    social_image_url: '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0036.jpg',
     testimonials_json: DEFAULT_TESTIMONIALS,
     faq_json: DEFAULT_FAQ,
     updated_at: getCurrentIsoDate()

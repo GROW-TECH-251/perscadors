@@ -1,25 +1,28 @@
 import { Outfit } from '@/types';
 import { products } from './products';
 
-// Auto-seeding des 32 HP Looks du Repo avec assignation variée sur l'intégralité du catalogue
-export const outfits: Outfit[] = Array.from({ length: 32 }, (_, i) => {
-  const index = i + 1;
-  
-  // Distribution logique des pièces parmi les 19 articles du catalogue
-  let associatedProducts = [products[0], products[6]]; // defaults: Basket 1 + Complet 1
-  if (index % 4 === 0) {
-    associatedProducts = [products[1], products[9], products[15]]; // Basket 2 + Jean 1 + Tapette 1
-  } else if (index % 4 === 1) {
-    associatedProducts = [products[5], products[13], products[18]]; // Sneaker Vioutou + Jean Carpenter + Claquette VIP
-  } else if (index % 4 === 2) {
-    associatedProducts = [products[2], products[7], products[14]]; // Runner Sport + Complet Street + Jean Cargo
+// Liste statique des images présentes dans `public/assets/collections/outfits`
+// Générée depuis l'état actuel du dossier pour éviter l'utilisation de `fs` côté client.
+const outfitIndices: number[] = [2,3,4,5,6,7,8,9,10,11,12,14,16,17,18,19,20,21,22,23,24,25,26,27,28,29,31];
+
+// Auto-seeding des Looks en fonction des images présentes
+export const outfits: Outfit[] = outfitIndices.map((fileIndex, idx) => {
+  const seq = idx + 1; // sequence for distribution logic
+
+  // Distribution logique des pièces parmi le catalogue
+  let associatedProducts = [products[0], products[6]];
+  if (seq % 4 === 0) {
+    associatedProducts = [products[1], products[9], products[15]];
+  } else if (seq % 4 === 1) {
+    associatedProducts = [products[5], products[13], products[18]];
+  } else if (seq % 4 === 2) {
+    associatedProducts = [products[2], products[7], products[14]];
   } else {
-    associatedProducts = [products[3], products[10], products[16]]; // High Top + Cargo Heavy + Slide Premium
+    associatedProducts = [products[3], products[10], products[16]];
   }
 
   const totalPrice = associatedProducts.reduce((sum, p) => sum + (p?.price || 0), 0);
 
-  // Styling names premium
   const stylingNames = [
     'Urban Royalty', 'Denim Deluxe', 'Luxe Streetwear', 'Minimalist Vibe',
     'Margiela Flow', 'Cozy Street Wear', 'Sport Runner Elite', 'Benin Trendsetter',
@@ -31,15 +34,15 @@ export const outfits: Outfit[] = Array.from({ length: 32 }, (_, i) => {
     'Signature HP Drip', 'Elegance & Flow', 'Streetwear Heritage', 'Urban Legend'
   ];
 
-  const name = stylingNames[i % stylingNames.length] + ` (Look #${index})`;
+  const name = stylingNames[idx % stylingNames.length] + ` (Look #${fileIndex})`;
 
   return {
-    id: `outfit-${index}`,
+    id: `outfit-${fileIndex}`,
     name,
-    image: `/images/OUTFITCOLLECTION/outfit${index}.jpeg`,
+    image: `/assets/collections/outfits/outfit${fileIndex}.jpeg`,
     price: totalPrice,
     products: associatedProducts.filter(Boolean)
   };
 });
 
-export const getOutfitById = (id: string) => outfits.find(o => o.id === id);
+export const getOutfitById = (id: string) => outfits.find((o) => o.id === id);

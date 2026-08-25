@@ -355,7 +355,7 @@ export default function AdminMediaPage() {
                         )
                       ) : (
                         <Image
-                          src={asset.url || '/images/LOGOSITE/logo.png'}
+                          src={asset.url || '/assets/brand/logo.png'}
                           alt={asset.alt}
                           fill
                           sizes="(max-width: 1024px) 50vw, 33vw"
