@@ -20,18 +20,16 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+        uses: actions/checkout@v4.2.2
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v3.28.1
         with:
           languages: javascript-typescript
           build-mode: none
           queries: security-and-quality
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v3.28.1
         with:
           category: "/language:javascript-typescript"
