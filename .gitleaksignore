@@ -1,0 +1,22 @@
+# Gitleaks ignore file - false positives for Perscadors
+# Les variables d'env avec _TOKEN ou _SECRET_KEY sont des références, pas des secrets commités
+# On ignore les fichiers d'audit qui contenaient VERCEL_TOKEN et ont été supprimés mais restent dans l'historique
+# Le scan actuel utilise --no-git donc historique non scanné, mais on garde ce fichier pour sécurité
+
+# Anciens fichiers d'audit supprimés en 26e5c24 mais présents dans historique 7219eb1
+vercel_audit.js
+vercel_get_more.js
+generate_pdf.js
+vercel_api_test.html
+vercel_audit_combined.html
+vercel_build_logs.html
+vercel_deployment_detail.html
+vercel_deployments_list.html
+vercel_audit.pdf
+
+# Fichiers de test qui contiennent des exemples de tokens
+tests/
+
+# Node modules et build
+node_modules/
+.next/

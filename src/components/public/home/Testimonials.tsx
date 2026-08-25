@@ -56,7 +56,7 @@ export const Testimonials: React.FC = () => {
             <div key={i} className="p-6 bg-brand-bg border border-brand-gold/10 rounded-2xl shadow-lg">
               <div className="text-sm text-brand-text-muted mb-4">{t.city}</div>
               <h4 className="font-bebas text-lg text-brand-gold mb-2">{t.name}</h4>
-              <p className="text-sm text-brand-text leading-relaxed">"{t.quote}"</p>
+              <p className="text-sm text-brand-text leading-relaxed">&quot;{t.quote}&quot;</p>
             </div>
           ))}
         </div>
