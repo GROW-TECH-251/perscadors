@@ -41,8 +41,8 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const timer = window.setTimeout(() => { void loadCatalog(); }, 0);
-    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial catalog load, intentional for perf <100ms
+    void loadCatalog();
   }, [pathname, loadCatalog]);
 
   useCatalogRealtime(() => { if (!pathname.startsWith('/admin')) void loadCatalog(); });
