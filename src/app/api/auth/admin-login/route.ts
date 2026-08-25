@@ -67,10 +67,16 @@ export async function POST(request: Request) {
     }
   });
 
+  // FIX SEC-AUTH-001 : Suppression double vérification Turnstile
+  // Le token Turnstile est à usage unique. verifyTurnstile() ci-dessus le consomme
+  // via Cloudflare siteverify. Si on le repasse à Supabase (options.captchaToken),
+  // Supabase retente siteverify → Cloudflare répond "timeout-or-duplicate"
+  // → 400 captcha_failed (vu dans supabase-auth-logs : "captcha protection: request disallowed (timeout-or-duplicate)")
+  // Solution : garder notre vérif custom (hostname + action) et désactiver CAPTCHA dans Supabase Dashboard
+  // Auth → Configuration → CAPTCHA → Disable. Ainsi signIn sans captchaToken.
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
-    options: { captchaToken }
   });
   if (error || !data.user) {
     await recordSecurityEvent('admin_login_failed', {
