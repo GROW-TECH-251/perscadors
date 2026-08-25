@@ -64,7 +64,7 @@ jobs:
           fetch-depth: 1
 
       - name: Scan current files only (not full history)
-        uses: gitleaks/gitleaks-action@v2.3.8
+        uses: gitleaks/gitleaks-action@v3.0.0
         with:
           args: --no-git --source . --config gitleaks.toml -v --redact --no-banner
         env:
