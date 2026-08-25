@@ -3,7 +3,8 @@ import { products } from './products';
 
 // Liste statique des images présentes dans `public/assets/collections/outfits`
 // Générée depuis l'état actuel du dossier pour éviter l'utilisation de `fs` côté client.
-const outfitIndices: number[] = [2,3,4,5,6,7,8,9,10,11,12,14,16,17,18,19,20,21,22,23,24,25,26,27,28,29,31];
+// Après fix assets 404 : on inclut les 32 outfits (restauration outfit1,13,15,30,32 manquants)
+const outfitIndices: number[] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32];
 
 // Auto-seeding des Looks en fonction des images présentes
 export const outfits: Outfit[] = outfitIndices.map((fileIndex, idx) => {
