@@ -3,15 +3,17 @@
 // Layout Racine Next.js (Forcé Dynamique & Optimisation SEO / Open Graph Universelle)
 // ============================================
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 import type { Metadata } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { Barlow, Bebas_Neue } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import { CatalogProvider } from '@/context/CatalogContext';
+
+// Performance : On retire force-dynamic pour permettre ISR et cache
+// La génération de metadata utilise Promise.all déjà parallèle
+// On garde un revalidate de 60s pour les métadonnées sociales
+export const revalidate = 60;
 
 const barlow = Barlow({
   subsets: ['latin'],

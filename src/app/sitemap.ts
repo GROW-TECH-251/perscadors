@@ -1,10 +1,7 @@
 // src/app/sitemap.ts
-// ============================================
-// Générateur de Sitemap Dynamique (Forcé Dynamique pour esquiver le cache CDN Vercel)
-// ============================================
+// Générateur de Sitemap — ISR 1h pour SEO sans frapper Supabase à chaque requête
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 3600;
 
 import type { MetadataRoute } from 'next';
 import { fetchPublicCatalogSnapshot } from '@/services/publicCatalogService';

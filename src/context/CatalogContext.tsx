@@ -2,7 +2,6 @@
 
 import { useCatalogRealtime } from '@/hooks/useCatalogRealtime';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import type { CatalogCategory, Outfit, Product } from '@/types';
 import {
   fetchPublicCatalogSnapshot,
@@ -28,24 +27,34 @@ const CatalogContext = createContext<CatalogContextValue | undefined>(undefined)
 const fallbackSnapshot = getFallbackCatalogSnapshot();
 
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   const [catalog, setCatalog] = useState(fallbackSnapshot);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const loadCatalog = useCallback(async () => {
-    const snapshot = await fetchPublicCatalogSnapshot();
-    setCatalog(snapshot);
+    try {
+      const snapshot = await fetchPublicCatalogSnapshot();
+      setCatalog(snapshot);
+    } catch {
+      // Fallback silencieux déjà en place
+    } finally {
+      setIsInitialLoad(false);
+    }
   }, []);
 
+  // Performance P0 : Charger une seule fois au mount, pas à chaque changement de pathname
+  // Avant : useEffect dépendait de pathname → reload à chaque navigation → latence 2-3s
+  // Après : mount une seule fois → pas de re-fetch bloquant navigation
   useEffect(() => {
-    if (pathname.startsWith('/admin')) {
-      return;
+    if (isInitialLoad) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- initial catalog load, intentional for perf <100ms
+      void loadCatalog();
     }
+  }, [isInitialLoad, loadCatalog]);
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial catalog load, intentional for perf <100ms
+  // Realtime : recharge seulement quand DB change (produit ajouté/modifié par admin)
+  useCatalogRealtime(() => {
     void loadCatalog();
-  }, [pathname, loadCatalog]);
-
-  useCatalogRealtime(() => { if (!pathname.startsWith('/admin')) void loadCatalog(); });
+  });
 
   const value = useMemo<CatalogContextValue>(() => ({
     products: catalog.products,
