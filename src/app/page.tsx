@@ -8,11 +8,6 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { Hero } from '@/components/public/home/Hero';
-import { OutfitCarousel } from '@/components/public/home/OutfitCarousel';
-import { CategoryGrid } from '@/components/public/home/CategoryGrid';
-import { ArticleRequestSection } from '@/components/public/home/ArticleRequestSection';
-import { Testimonials } from '@/components/public/home/Testimonials';
-import { FAQ } from '@/components/public/home/FAQ';
 import { safeJsonLd } from '@/utils/safeJsonLd';
 
 // Dynamic imports pour code splitting — gain perf / risque faible
@@ -89,7 +84,7 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(storeSchema) }}
       />
-      {/* 1. Section Hero (Pleine page avec espace en-tête) */}
+      {/* 1. Section Hero (Pleine page avec espace en-tête) - simplifiée à 2 CTAs */}
       <Hero />
       {/* 2. Section HP Looks de Vioutou (Mes articles qui font craquer) */}
       <OutfitCarousel />
