@@ -243,7 +243,10 @@ export const ArticleRequestSection: React.FC = () => {
   }, []);
 
   useShopSettingsRealtime(() => {
-    window.location.reload();
+    void (async () => {
+      const data = await fetchPublicShopSettings();
+      if (data) setSettings(data);
+    })();
   });
 
   const handleFieldChange = (field: keyof ArticleFormState, value: string) => {

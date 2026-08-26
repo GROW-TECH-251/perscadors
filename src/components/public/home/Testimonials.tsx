@@ -2,33 +2,65 @@
 
 import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import type { ShopSettings } from '@/admin/types';
 
+type TestimonialItem = {
+  name: string;
+  quote: string;
+  city: string;
+};
+
+const FALLBACK_TESTIMONIALS: TestimonialItem[] = [
+  { name: 'Aïcha', quote: "J'ai commandé une tenue complète, la qualité est incroyable. Livraison rapide !", city: 'Cotonou' },
+  { name: 'Kossi', quote: "Style unique et service au top — je recommande HP Collection.", city: 'Abomey-Calavi' },
+  { name: 'Marie', quote: "Les couleurs rendent encore mieux en vrai. Très satisfaite.", city: 'Porto-Novo' },
+];
+
 export const Testimonials: React.FC = () => {
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
+  const [testimonials, setTestimonials] = useState<TestimonialItem[]>(FALLBACK_TESTIMONIALS);
 
-  useEffect(() => {
-    async function loadTestimonials() {
+  const loadTestimonials = useCallback(async () => {
+    try {
       const data = await fetchPublicShopSettings();
-      if (data) setSettings(data);
+      if (data) {
+        setSettings(data);
+        // Utilise les vraies données si présentes et valides, sinon fallback
+        const realData = data.testimonials_json as unknown;
+        if (Array.isArray(realData) && realData.length > 0) {
+          const normalized = (realData as TestimonialItem[]).filter(
+            (t) => t && typeof t.name === 'string' && typeof t.quote === 'string'
+          );
+          if (normalized.length > 0) {
+            setTestimonials(normalized);
+            return;
+          }
+        }
+        // Si pas de vraies données, garde fallback
+        setTestimonials(FALLBACK_TESTIMONIALS);
+      }
+    } catch {
+      // Garde fallback en cas d'erreur
+      setTestimonials(FALLBACK_TESTIMONIALS);
     }
-    loadTestimonials();
   }, []);
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load intentional
+    void loadTestimonials();
+  }, [loadTestimonials]);
+
+  // FIX PUB-PERF-01 + PUB-UX : Remplace window.location.reload() par re-fetch ciblé
+  // Avant : reload complet page → latence 2-3s, perte état panier, UX cassée
+  // Après : recharge seulement les témoignages via loadTestimonials → pas de reload
   useShopSettingsRealtime(() => {
-    window.location.reload();
+    void loadTestimonials();
   });
   useSiteAssetsRealtime(() => {
-    window.location.reload();
+    void loadTestimonials();
   });
-
-  const fakeTestimonials = [
-    { name: 'Aïcha', quote: "J'ai commandé une tenue complète, la qualité est incroyable. Livraison rapide !", city: 'Cotonou' },
-    { name: 'Kossi', quote: "Style unique et service au top — je recommande HP Collection.", city: 'Abomey-Calavi' },
-    { name: 'Marie', quote: "Les couleurs rendent encore mieux en vrai. Très satisfaite.", city: 'Porto-Novo' },
-  ];
 
   return (
     <section id="testimonials" className="py-24 bg-brand-bg-alt border-y border-brand-gold/10">
@@ -44,7 +76,7 @@ export const Testimonials: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-          {fakeTestimonials.map((t, i) => (
+          {testimonials.map((t, i) => (
             <div key={i} className="p-6 bg-brand-bg border border-brand-gold/10 rounded-2xl shadow-lg">
               <div className="text-sm text-brand-text-muted mb-4">{t.city}</div>
               <h4 className="font-bebas text-lg text-brand-gold mb-2">{t.name}</h4>
