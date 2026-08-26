@@ -40,10 +40,14 @@ export async function generateMetadata(): Promise<Metadata> {
   let image = FALLBACK_IMAGE;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // FIX PUB-DATA-01 : permission denied shop_settings 401
+  // Avant : client.from('shop_settings').select(...) avec anon key → 401 car RLS revoke select anon (migration limit_public_shop_settings.sql)
+  // Après : utilise la vue publique public_shop_settings qui est autorisée anon/authenticated et contient seulement social_title, social_description, social_image_url
+  // Cette vue est créée dans limit_public_shop_settings.sql avec security_invoker=false et grant select anon,authenticated
   if (url && key) {
     const client = createClient(url, key, { auth: { persistSession: false } });
     const [settingsResponse, bannerResponse] = await Promise.all([
-      client.from('shop_settings').select('social_title,social_description,social_image_url').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+      client.from('public_shop_settings').select('social_title,social_description,social_image_url').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
       client.from('site_assets').select('url').eq('section', 'ambience').eq('active', true).order('updated_at', { ascending: false }).limit(1).maybeSingle()
     ]);
     const data = settingsResponse.data;

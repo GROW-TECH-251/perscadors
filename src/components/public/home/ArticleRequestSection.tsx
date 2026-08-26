@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import type { ShopSettings } from '@/admin/types';
-import { SearchX, Upload, MessageCircle } from 'lucide-react';
+import { SearchX, Upload, MessageCircle, Loader2 } from 'lucide-react';
 
 const EMPTY_ARTICLE_FORM = {
   articleType: '',
@@ -13,6 +13,7 @@ const EMPTY_ARTICLE_FORM = {
   color: '',
   size: '',
   quantity: '1',
+  budget: '',
   notes: '',
   urgency: 'Standard',
 };
@@ -31,6 +32,7 @@ type ArticleSubmissionModalProps = {
   imagePreview: string | null;
   articleForm: ArticleFormState;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
+  isUploading: boolean;
   onClose: () => void;
   onImageSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFieldChange: (field: keyof ArticleFormState, value: string) => void;
@@ -44,6 +46,7 @@ function ArticleSubmissionModal({
   imagePreview,
   articleForm,
   fileInputRef,
+  isUploading,
   onClose,
   onImageSelect,
   onFieldChange,
@@ -81,9 +84,7 @@ function ArticleSubmissionModal({
               {imagePreview ? (
                 <Image src={imagePreview} alt="Aperçu article" fill className="object-cover" />
               ) : (
-                <div className="flex h-full items-center justify-center text-center text-xs text-[#4d4d4d]">
-                  Aucune photo
-                </div>
+                <div className="flex h-full items-center justify-center text-center text-xs text-[#4d4d4d]">Aucune photo</div>
               )}
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={onImageSelect} className="hidden" />
@@ -160,13 +161,28 @@ function ArticleSubmissionModal({
               </label>
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-2 text-sm text-[#2f2f2f]">
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.24em]">Budget (FCFA)</span>
+                <input
+                  value={articleForm.budget}
+                  onChange={(event) => onFieldChange('budget', event.target.value)}
+                  placeholder="Ex: 25000, 30000..."
+                  className="w-full rounded-xl border border-brand-gold/30 bg-white px-3 py-2.5 text-[#111111] placeholder:text-[#6b6b6b] focus:border-brand-gold focus:outline-none"
+                />
+              </label>
+              <div className="flex items-end pb-2">
+                <p className="text-[11px] text-[#777]">Budget indicatif pour que Vioutou vous propose la meilleure offre</p>
+              </div>
+            </div>
+
             <label className="block space-y-2 text-sm text-[#2f2f2f]">
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.24em]">Notes / Budget</span>
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.24em]">Notes</span>
               <textarea
                 value={articleForm.notes}
                 onChange={(event) => onFieldChange('notes', event.target.value)}
                 placeholder="Précisions, couleur, budget, référence exacte..."
-                rows={4}
+                rows={3}
                 className="w-full rounded-xl border border-brand-gold/30 bg-white px-3 py-2.5 text-[#111111] placeholder:text-[#6b6b6b] focus:border-brand-gold focus:outline-none"
               />
             </label>
@@ -175,9 +191,16 @@ function ArticleSubmissionModal({
               <button
                 type="button"
                 onClick={onSubmit}
-                className="flex-1 rounded-xl bg-brand-gold px-4 py-3 font-bebas text-lg uppercase tracking-[0.20em] text-[#0A0A0A] transition hover:bg-brand-gold-light"
+                disabled={isUploading}
+                className="flex-1 rounded-xl bg-brand-gold px-4 py-3 font-bebas text-lg uppercase tracking-[0.20em] text-[#0A0A0A] transition hover:bg-brand-gold-light disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Envoyer via WhatsApp
+                {isUploading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" /> Upload en cours...
+                  </>
+                ) : (
+                  'Envoyer via WhatsApp'
+                )}
               </button>
               <button
                 type="button"
@@ -185,14 +208,15 @@ function ArticleSubmissionModal({
                   onClose();
                   onReset();
                 }}
-                className="flex-1 rounded-xl border border-brand-gold/40 bg-white px-4 py-3 font-bebas text-lg uppercase tracking-[0.20em] text-[#111111] transition hover:bg-[#F8F1E7]"
+                disabled={isUploading}
+                className="flex-1 rounded-xl border border-brand-gold/40 bg-white px-4 py-3 font-bebas text-lg uppercase tracking-[0.20em] text-[#111111] transition hover:bg-[#F8F1E7] disabled:opacity-50"
               >
                 Annuler
               </button>
             </div>
 
             <p className="text-[11px] leading-relaxed text-[#555555]">
-              Le message sera envoyé via WhatsApp au numéro {settings.whatsapp_phone || '22967280018'}. La photo devra être envoyée manuellement dans la conversation WhatsApp.
+              Le message sera envoyé via WhatsApp au numéro {settings.whatsapp_phone || '22967280018'}. {imagePreview ? 'La photo sera uploadée et le lien inclus automatiquement.' : 'Ajoutez une photo pour une demande plus précise.'}
             </p>
           </div>
         </div>
@@ -205,7 +229,9 @@ export const ArticleRequestSection: React.FC = () => {
   const [settings, setSettings] = useState(getDefaultShopSettings());
   const [showArticleForm, setShowArticleForm] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [articleForm, setArticleForm] = useState(EMPTY_ARTICLE_FORM);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -233,6 +259,12 @@ export const ArticleRequestSection: React.FC = () => {
       return;
     }
 
+    if (file.size > 5 * 1024 * 1024) {
+      window.alert('Image trop volumineuse (max 5MB).');
+      return;
+    }
+
+    setSelectedFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       setImagePreview(typeof reader.result === 'string' ? reader.result : null);
@@ -242,6 +274,7 @@ export const ArticleRequestSection: React.FC = () => {
 
   const resetArticleForm = () => {
     setImagePreview(null);
+    setSelectedFile(null);
     setArticleForm(EMPTY_ARTICLE_FORM);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -253,7 +286,39 @@ export const ArticleRequestSection: React.FC = () => {
     resetArticleForm();
   };
 
-  const handleSubmitArticle = () => {
+  const uploadImageIfNeeded = async (): Promise<string | null> => {
+    if (!selectedFile) return null;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const response = await fetch('/api/media/article-request-upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !result.url) {
+        console.warn('Upload article request failed', result.error);
+        return null;
+      }
+
+      return result.url;
+    } catch (err) {
+      console.warn('Upload error', err);
+      return null;
+    }
+  };
+
+  const handleSubmitArticle = async () => {
+    setIsUploading(true);
+
+    // FIX PUB-FUNC-01 : Upload image avec lien
+    // Avant : imagePreview base64 local non envoyable via wa.me (texte uniquement)
+    // Après : upload vers Supabase Storage article-requests via API service_role → URL publique → incluse dans message WhatsApp
+    const uploadedImageUrl = await uploadImageIfNeeded();
+
     const clientPhone = normalizePhoneDigits(settings.whatsapp_phone || '22967280018');
     const lines = [
       'Bonjour Vioutou 👋',
@@ -265,10 +330,11 @@ export const ArticleRequestSection: React.FC = () => {
       `Couleur : ${articleForm.color || 'Non précisé'}`,
       `Taille : ${articleForm.size || 'Non précisé'}`,
       `Quantité : ${articleForm.quantity || '1'}`,
+      `Budget : ${articleForm.budget || 'Non précisé'} FCFA`,
       `Urgence : ${articleForm.urgency || 'Standard'}`,
-      `Remarques / Budget : ${articleForm.notes || 'Aucune remarque'}`,
+      `Remarques : ${articleForm.notes || 'Aucune remarque'}`,
       '',
-      imagePreview ? 'Photo jointe : oui (à envoyer manuellement dans WhatsApp)' : 'Photo : pas encore jointe',
+      uploadedImageUrl ? `📸 Photo : ${uploadedImageUrl}` : imagePreview ? 'Photo jointe : oui (upload échoué, à envoyer manuellement)' : 'Photo : pas encore jointe',
       '',
       'Merci de me confirmer si vous pouvez le trouver, le commander ou me proposer une alternative.',
       '',
@@ -277,6 +343,7 @@ export const ArticleRequestSection: React.FC = () => {
 
     const url = `https://wa.me/${clientPhone}?text=${encodeURIComponent(lines.join('\n'))}`;
     window.open(url, '_blank', 'noopener,noreferrer');
+    setIsUploading(false);
     closeArticleForm();
   };
 
@@ -300,7 +367,7 @@ export const ArticleRequestSection: React.FC = () => {
             </p>
             <div className="flex items-center gap-6 pt-2 text-xs text-brand-text-muted">
               <span className="flex items-center gap-2">
-                <Upload size={14} className="text-brand-gold" /> Photo
+                <Upload size={14} className="text-brand-gold" /> Photo avec lien
               </span>
               <span className="flex items-center gap-2">
                 <MessageCircle size={14} className="text-brand-gold" /> WhatsApp direct
@@ -327,6 +394,7 @@ export const ArticleRequestSection: React.FC = () => {
         imagePreview={imagePreview}
         articleForm={articleForm}
         fileInputRef={fileInputRef}
+        isUploading={isUploading}
         onClose={() => setShowArticleForm(false)}
         onImageSelect={handleImageSelect}
         onFieldChange={handleFieldChange}
