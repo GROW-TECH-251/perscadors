@@ -24,7 +24,11 @@ const DEFAULT_SEGMENTATION: CustomerSegmentationSettings = {
 };
 
 const DEFAULT_TESTIMONIALS: TestimonialsData = {
-  screenshot_url: '/assets/testimonials/photos/témoignageclient.jpeg',
+  // Volontairement vide : aucune capture n'est fournie par défaut. L'ancienne
+  // valeur pointait vers /assets/testimonials/photos/témoignageclient.jpeg,
+  // un fichier inexistant (le dossier ne contient que video/), ce qui
+  // produisait une image cassée en vitrine.
+  screenshot_url: '',
   screenshot_quote: "Tu connais #HPcollection c'est la meilleure prêt à porter du Bénin 🇧🇯 actuellement chez Honoré Perscadors...",
   videos: [
     { src: '/assets/testimonials/video/client.mp4', title: 'Avis Client #1', description: 'Validation de l\'outfit complet par un king local.' },
