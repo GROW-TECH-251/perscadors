@@ -90,7 +90,7 @@ export const Footer: React.FC = () => {
             </li>
             <li>
               {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- anchor scroll */}
-              <a href="/#temoinages" className="hover:text-brand-gold transition-colors cursor-pointer">
+              <a href="/#testimonials" className="hover:text-brand-gold transition-colors cursor-pointer">
                 Avis Clients
               </a>
             </li>
@@ -108,19 +108,16 @@ export const Footer: React.FC = () => {
           <h3 className="font-bebas text-lg tracking-wider text-brand-gold uppercase mb-4">Boutique</h3>
           <p className="text-sm leading-relaxed mb-4 flex flex-col sm:flex-row sm:items-center sm:gap-4">
             <span className="flex items-center gap-2">
-              <span className="inline-block w-10 h-8"> 
-                {/* Drapeau personnalisé */}
-                <svg width="82" height="70" viewBox="0 0 82 70" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <g clipPath="url(#clip0_14_77)">
-                    <path d="M72.8889 9.72222H31.8889V35H82V17.5C82 15.4372 81.0401 13.4589 79.3314 12.0003C77.6228 10.5417 75.3053 9.72222 72.8889 9.72222Z" fill="#FCD116"/>
-                    <path d="M31.8889 60.2778H72.8889C75.3053 60.2778 77.6228 59.4583 79.3314 57.9997C81.0401 56.5411 82 54.5628 82 52.5V35H31.8889V60.2778Z" fill="#E8112D"/>
-                    <path d="M31.8889 9.72222H9.11111C6.69469 9.72222 4.37725 10.5417 2.66858 12.0003C0.959918 13.4589 0 15.4372 0 17.5L0 52.5C0 54.5628 0.959918 56.5411 2.66858 57.9997C4.37725 59.4583 6.69469 60.2778 9.11111 60.2778H31.8889V9.72222Z" fill="#008751"/>
-                  </g>
-                  <defs>
-                    <clipPath id="clip0_14_77">
-                      <rect width="82" height="70" fill="white"/>
-                    </clipPath>
-                  </defs>
+              {/* Drapeau du Bénin — ratio réel 2:3 (hauteur:largeur) :
+                  viewBox 300×200, bande verte au guindant (2/5), jaune en
+                  haut et rouge en bas à droite. Taille en rem (h-4 w-6),
+                  aligné sur la ligne de texte, liseré discret pour rester
+                  lisible sur fond sombre. */}
+              <span className="inline-block h-4 w-6 shrink-0 overflow-hidden rounded-[3px] ring-1 ring-inset ring-white/20">
+                <svg viewBox="0 0 300 200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="block h-full w-full">
+                  <rect x="0" y="0" width="120" height="200" fill="#008751" />
+                  <rect x="120" y="0" width="180" height="100" fill="#FCD116" />
+                  <rect x="120" y="100" width="180" height="100" fill="#E8112D" />
                 </svg>
               </span>
               <span> {settings.country}</span>
