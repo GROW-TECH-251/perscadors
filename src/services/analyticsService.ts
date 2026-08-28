@@ -26,6 +26,12 @@ export interface ComprehensiveAnalytics {
   source: 'rpc' | 'hybrid';
 }
 
+// NOTE (Impl 11) : `trackEvent` est volontairement non branché (aucun appelant
+// dans le code). La table `analytics_events` n'a par ailleurs AUCUNE policy
+// INSERT dans les migrations (seule la lecture admin `analytics_events_admin_read`
+// existe via harmonize_admin_roles.sql), donc tout insert public serait rejeté
+// par RLS. Si un tracking client est réintroduit un jour, passer par un endpoint
+// serveur contrôlé (route handler) qui insère côté serveur.
 export async function trackEvent(name: string, metadata: object = {}) {
   if (!isSupabaseConfigured || !supabase) return;
 

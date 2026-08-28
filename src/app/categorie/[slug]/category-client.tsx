@@ -13,7 +13,7 @@ import { normalizeProductAttribute, normalizeSize } from '@/utils/normalizeProdu
 export default function CategoryPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const { products, categories, getProductsByCategory } = useCatalog();
+  const { categories, getProductsByCategory } = useCatalog();
   const slug = params.slug as string;
   const searchQuery = searchParams.get('search') || '';
 
@@ -39,7 +39,7 @@ export default function CategoryPage() {
 
     if (searchQuery) {
       const query = normalizeProductAttribute(searchQuery);
-      result = products.filter(
+      result = rawProducts.filter(
         (product) =>
           normalizeProductAttribute(product.name).includes(query) ||
           normalizeProductAttribute(product.description).includes(query)
@@ -59,7 +59,7 @@ export default function CategoryPage() {
     }
 
     return result;
-  }, [products, rawProducts, searchQuery, selectedSizes, selectedColors]);
+  }, [rawProducts, searchQuery, selectedSizes, selectedColors]);
 
   const toggleSize = (size: Size) => {
     const normalizedSize = normalizeSize(size);
