@@ -372,7 +372,37 @@ export async function compressImage(file: File, maxWidth: number = 800): Promise
 // UNIVERSAL ADMIN DYNAMIC MEDIA SYSTEM (site_assets)
 // ============================================
 
+/**
+ * Impl 6 — Déduplication : Navbar et Footer (logo), Hero (hero), etc. appellent
+ * chacun fetchSiteAssets() au montage. On partage UNE promesse en vol + un cache
+ * mémoire à TTL court, invalidé par le canal Realtime partagé.
+ */
+const SITE_ASSETS_TTL_MS = 30_000;
+let siteAssetsInFlight: Promise<SiteAsset[]> | null = null;
+let siteAssetsCache: { value: SiteAsset[]; expiresAt: number } | null = null;
+
+export function invalidateSiteAssetsCache(): void {
+  siteAssetsCache = null;
+}
+
 export async function fetchSiteAssets(): Promise<SiteAsset[]> {
+  if (siteAssetsCache && siteAssetsCache.expiresAt > Date.now()) {
+    return siteAssetsCache.value;
+  }
+  if (!siteAssetsInFlight) {
+    siteAssetsInFlight = fetchSiteAssetsUncached()
+      .then((assets) => {
+        siteAssetsCache = { value: assets, expiresAt: Date.now() + SITE_ASSETS_TTL_MS };
+        return assets;
+      })
+      .finally(() => {
+        siteAssetsInFlight = null;
+      });
+  }
+  return siteAssetsInFlight;
+}
+
+async function fetchSiteAssetsUncached(): Promise<SiteAsset[]> {
   // Supabase est la source de vérité partagée. Le cache local sert uniquement de secours hors ligne.
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase

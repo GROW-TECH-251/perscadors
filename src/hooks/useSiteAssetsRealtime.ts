@@ -1,33 +1,24 @@
 'use client';
 
-import { useEffect, useId, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useEffect, useRef } from 'react';
+import { subscribeRealtime } from '@/lib/publicRealtime';
 
-/** Écoute Realtime des médias avec un channel unique par composant. */
+/**
+ * Écoute Realtime des médias.
+ * Impl 6 : canal partagé via src/lib/publicRealtime.ts — un seul canal
+ * site_assets pour tous les composants, au lieu d'un canal par montage.
+ */
 export function useSiteAssetsRealtime(onChange: () => void) {
   const callbackRef = useRef(onChange);
-  const subscriptionId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
 
   useEffect(() => {
     callbackRef.current = onChange;
   }, [onChange]);
 
   useEffect(() => {
-    const client = supabase;
-    if (!client) return;
-
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const channel = client
-      .channel(`perscadors-assets-${subscriptionId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_assets' }, () => {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => callbackRef.current(), 200);
-      })
-      .subscribe();
-
+    const unsubscribe = subscribeRealtime('site_assets', () => callbackRef.current());
     return () => {
-      if (timer) clearTimeout(timer);
-      client.removeChannel(channel);
+      unsubscribe();
     };
-  }, [subscriptionId]);
+  }, []);
 }

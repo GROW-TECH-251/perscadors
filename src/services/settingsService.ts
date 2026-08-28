@@ -261,8 +261,39 @@ function getLocalSettingsFallback(): ShopSettings | null {
  * Lecture destinée à la vitrine et au checkout anonymes.
  * Les modèles commerciaux, le numéro livreur et la segmentation ne sont jamais
  * lus depuis public.shop_settings par un navigateur non authentifié.
+ *
+ * Impl 6 — Déduplication : plusieurs composants publics (Navbar, Hero, Footer,
+ * WhatsAppFloat, Testimonials, FAQ, ArticleRequestSection, checkout) appellent
+ * cette fonction au montage. Sans garde-fou, cela génère 8+ requêtes Supabase
+ * redondantes. On partage donc UNE promesse en vol et un cache mémoire à TTL
+ * court, invalidé par le canal Realtime partagé (src/lib/publicRealtime.ts).
  */
+const PUBLIC_SETTINGS_TTL_MS = 30_000;
+let publicSettingsInFlight: Promise<ShopSettings> | null = null;
+let publicSettingsCache: { value: ShopSettings; expiresAt: number } | null = null;
+
+export function invalidatePublicShopSettingsCache(): void {
+  publicSettingsCache = null;
+}
+
 export async function fetchPublicShopSettings(): Promise<ShopSettings | null> {
+  if (publicSettingsCache && publicSettingsCache.expiresAt > Date.now()) {
+    return publicSettingsCache.value;
+  }
+  if (!publicSettingsInFlight) {
+    publicSettingsInFlight = fetchPublicShopSettingsUncached()
+      .then((settings) => {
+        publicSettingsCache = { value: settings, expiresAt: Date.now() + PUBLIC_SETTINGS_TTL_MS };
+        return settings;
+      })
+      .finally(() => {
+        publicSettingsInFlight = null;
+      });
+  }
+  return publicSettingsInFlight;
+}
+
+async function fetchPublicShopSettingsUncached(): Promise<ShopSettings> {
   if (!supabase) return getDefaultShopSettings();
 
   const { data, error } = await supabase

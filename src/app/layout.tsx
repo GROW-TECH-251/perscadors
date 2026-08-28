@@ -9,6 +9,7 @@ import { Barlow, Bebas_Neue } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import { CatalogProvider } from '@/context/CatalogContext';
+import { PublicSettingsProvider } from '@/context/PublicSettingsContext';
 
 // Performance : On retire force-dynamic pour permettre ISR et cache
 // La génération de metadata utilise Promise.all déjà parallèle
@@ -71,9 +72,11 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-brand-bg text-brand-text font-barlow selection:bg-brand-gold/30 selection:text-brand-text">
         <CatalogProvider>
           <CartProvider>
-            <main className="flex-grow">
-              {children}
-            </main>
+            <PublicSettingsProvider>
+              <main className="flex-grow">
+                {children}
+              </main>
+            </PublicSettingsProvider>
           </CartProvider>
         </CatalogProvider>
       </body>
