@@ -4,14 +4,15 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { recordSecurityEvent } from '@/lib/securityAudit';
 
-export type RateLimitScope = 'admin-login' | 'checkout-api' | 'checkout-order' | 'cloudinary-signature' | 'cloudinary-delete';
+export type RateLimitScope = 'admin-login' | 'checkout-api' | 'checkout-order' | 'cloudinary-signature' | 'cloudinary-delete' | 'order-tracking';
 
 const RULES: Record<RateLimitScope, { limit: number; window: Parameters<typeof Ratelimit.slidingWindow>[1] }> = {
   'admin-login': { limit: 5, window: '15 m' },
   'checkout-api': { limit: 10, window: '10 m' },
   'checkout-order': { limit: 5, window: '10 m' },
   'cloudinary-signature': { limit: 20, window: '10 m' },
-  'cloudinary-delete': { limit: 10, window: '10 m' }
+  'cloudinary-delete': { limit: 10, window: '10 m' },
+  'order-tracking': { limit: 30, window: '10 m' }
 };
 
 let redis: Redis | null = null;

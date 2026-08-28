@@ -3,17 +3,32 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { requireSupabase } from '@/lib/supabase';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { Package, Truck, CheckCircle2, XCircle, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
 
+interface TrackedItem {
+  name: string;
+  price: number;
+  quantity: number;
+  size: string;
+  color: string;
+}
+
+interface TrackedHistoryEntry {
+  status: string;
+  date: string;
+  note?: string;
+}
+
 interface TrackedOrder {
   order_number: string;
-  client_name: string;
-  client_phone: string;
   status: string;
-  total: number;
   created_at: string;
+  items: TrackedItem[];
+  subtotal: number;
+  delivery_fee: number;
+  total: number;
+  history: TrackedHistoryEntry[];
 }
 
 export default function OrderTrackingPage() {
@@ -23,31 +38,47 @@ export default function OrderTrackingPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchOrder() {
-      if (!params?.token) return;
+      if (!params?.token) {
+        setError('Commande introuvable ou numéro de suivi invalide.');
+        setLoading(false);
+        return;
+      }
 
       try {
-        const supabase = requireSupabase();
-        const { data, error: fetchError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('order_number', params.token)
-          .single();
+        // Lecture via la route serveur sécurisée /api/order/[token] : le client
+        // anonyme n'a plus aucun accès en lecture à la table orders (RLS SEC-1).
+        const response = await fetch(`/api/order/${encodeURIComponent(params.token)}`, {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
 
-        if (fetchError || !data) {
+        if (response.status === 404) {
           setError('Commande introuvable ou numéro de suivi invalide.');
-        } else {
-          setOrder(data as TrackedOrder);
+          return;
         }
+        if (!response.ok) {
+          setError('Erreur de chargement des données de la commande.');
+          return;
+        }
+
+        const data = (await response.json()) as TrackedOrder;
+        if (!cancelled) setOrder(data);
       } catch (err: unknown) {
         console.error('Erreur de suivi de commande:', err);
-        setError('Erreur de chargement des données de la commande.');
+        if (!cancelled) setError('Erreur de chargement des données de la commande.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchOrder();
+
+    return () => {
+      cancelled = true;
+    };
   }, [params?.token]);
 
   const getStatusDisplay = (status: string) => {
@@ -84,6 +115,14 @@ export default function OrderTrackingPage() {
           classes: 'bg-amber-950/50 text-amber-400 border-amber-800/50',
         };
     }
+  };
+
+  const formatFcfa = (value: number) => `${value.toLocaleString('fr-FR')} FCFA`;
+
+  const formatDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   if (loading) {
@@ -184,25 +223,6 @@ export default function OrderTrackingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-brand-gold/10">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-text-muted mb-1">
-                Client
-              </div>
-              <div className="text-lg font-medium text-brand-text">
-                {order.client_name}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-text-muted mb-1">
-                Téléphone WhatsApp
-              </div>
-              <div className="text-lg font-mono text-brand-gold">
-                {order.client_phone}
-              </div>
-            </div>
-          </div>
-
           <div className="pt-6 border-t border-brand-gold/10">
             <div className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-text-muted mb-2">
               Statut actuel
@@ -213,16 +233,87 @@ export default function OrderTrackingPage() {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-brand-gold/15">
-            <div className="flex justify-between items-baseline">
+          {/* Articles commandés */}
+          {order.items.length > 0 && (
+            <div className="pt-6 border-t border-brand-gold/10">
+              <div className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-text-muted mb-3">
+                Articles commandés
+              </div>
+              <ul className="space-y-3">
+                {order.items.map((item, index) => (
+                  <li
+                    key={`${item.name}-${index}`}
+                    className="flex items-start justify-between gap-4 text-sm sm:text-base"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium text-brand-text truncate">{item.name}</div>
+                      <div className="text-xs text-brand-text-muted">
+                        {item.quantity} × {item.price.toLocaleString('fr-FR')} FCFA
+                        {item.size || item.color ? ` — ${[item.size, item.color].filter(Boolean).join(', ')}` : ''}
+                      </div>
+                    </div>
+                    <div className="font-mono text-brand-gold whitespace-nowrap">
+                      {(item.price * item.quantity).toLocaleString('fr-FR')} FCFA
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Récapitulatif des montants */}
+          <div className="pt-6 border-t border-brand-gold/10 space-y-2">
+            <div className="flex justify-between text-sm sm:text-base text-brand-text-muted">
+              <span>Sous-total</span>
+              <span className="font-mono">{formatFcfa(order.subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm sm:text-base text-brand-text-muted">
+              <span>Livraison</span>
+              <span className="font-mono">{formatFcfa(order.delivery_fee)}</span>
+            </div>
+            <div className="flex justify-between items-baseline pt-2 border-t border-brand-gold/15">
               <span className="font-bebas text-lg sm:text-xl tracking-wider text-brand-text-muted uppercase">
                 Total Commande
               </span>
               <span className="font-bebas text-3xl sm:text-4xl tracking-wider text-brand-gold">
-                {order.total?.toLocaleString()} FCFA
+                {formatFcfa(order.total)}
               </span>
             </div>
           </div>
+
+          {/* Historique */}
+          {order.history.length > 0 && (
+            <div className="pt-6 border-t border-brand-gold/10">
+              <div className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-text-muted mb-3">
+                Historique
+              </div>
+              <ol className="relative space-y-5 pl-6">
+                {order.history.map((entry, index) => {
+                  const entryDisplay = getStatusDisplay(entry.status);
+                  return (
+                    <li key={`${entry.date}-${index}`} className="relative">
+                      <span className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-brand-gold shadow-[0_0_8px_rgba(184,149,42,0.7)]" />
+                      {index < order.history.length - 1 && (
+                        <span className="absolute -left-[19px] top-4 w-px h-full bg-brand-gold/25" />
+                      )}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${entryDisplay.classes}`}>
+                          {entryDisplay.icon}
+                          {entryDisplay.label}
+                        </span>
+                        {entry.date && (
+                          <span className="text-xs text-brand-text-muted">{formatDate(entry.date)}</span>
+                        )}
+                      </div>
+                      {entry.note && (
+                        <p className="text-sm text-brand-text-muted mt-1">{entry.note}</p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
 
           {/* Premium subtle bottom accent line */}
           <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-brand-gold/70 to-transparent z-30" />
