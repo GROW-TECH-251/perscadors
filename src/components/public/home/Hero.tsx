@@ -73,9 +73,12 @@ export const Hero: React.FC = () => {
   });
 
   return (
-    <section className="relative w-full h-[calc(100vh-80px)] h-[calc(100svh-80px)] min-h-[560px] sm:min-h-[700px] flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]">
+    <section className="perscadors-hero relative w-full flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]">
       {mediaUrl && mediaType === 'video' ? (
         <>
+          {/* Fond flou : desktop uniquement, où object-contain laisse un
+              letterboxing à combler. Sur mobile, une seule vidéo (object-cover)
+              remplit le hero : on évite le double décodage du fichier UHD. */}
           <video
             aria-hidden="true"
             autoPlay
@@ -83,7 +86,7 @@ export const Hero: React.FC = () => {
             muted
             playsInline
             preload="metadata"
-            className="absolute inset-0 h-full w-full scale-125 object-cover opacity-70 blur-xl"
+            className="absolute inset-0 hidden h-full w-full scale-125 object-cover opacity-70 blur-xl lg:block"
           >
             <source src={mediaUrl} type="video/mp4" />
           </video>
@@ -94,7 +97,7 @@ export const Hero: React.FC = () => {
             muted
             playsInline
             preload="metadata"
-            className="absolute inset-0 h-full w-full object-contain opacity-90"
+            className="absolute inset-0 h-full w-full object-cover lg:object-contain opacity-90"
           >
             <source src={mediaUrl} type="video/mp4" />
             Your browser does not support the video tag.

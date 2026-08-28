@@ -34,6 +34,21 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Hero plein écran : hauteur pilotée uniquement par les unités viewport —
+   aucun pixel, aucune soustraction arbitraire du header (l'ancien
+   calc(100svh-80px) était faux : le header mobile réel ≈ 104px, d'où un
+   décalage et un défilement parasite). Le fallback 100vh est isolé dans un
+   bloc @supports afin qu'il ne soit pas supprimé par la minification CSS. */
+.perscadors-hero {
+  height: 100vh;
+}
+
+@supports (height: 100svh) {
+  .perscadors-hero {
+    height: 100svh;
+  }
+}
+
 * {
   scrollbar-width: none !important;
 }

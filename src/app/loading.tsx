@@ -18,8 +18,8 @@ export default function Loading() {
         </div>
       </div>
 
-      {/* Hero skeleton */}
-      <div className="relative w-full h-[calc(100vh-80px)] min-h-[560px] bg-black flex items-center justify-center overflow-hidden">
+      {/* Hero skeleton — hauteur alignée sur le Hero réel (.perscadors-hero) */}
+      <div className="perscadors-hero relative w-full bg-black flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/80 via-black/30 to-black/35" />
         <div className="relative z-20 max-w-5xl mx-auto text-center px-4 space-y-8">
           <div className="space-y-4">
