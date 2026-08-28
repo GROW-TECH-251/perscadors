@@ -149,7 +149,7 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  // Le middleware vérifie la session Supabase et le rôle à chaque requête /admin.
+  // Le proxy (ex-middleware) vérifie la session Supabase et le rôle à chaque requête /admin.
   // Le layout ne déduit jamais une autorisation depuis un cookie ou sessionStorage client.
 
   return (

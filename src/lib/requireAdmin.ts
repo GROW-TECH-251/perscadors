@@ -17,7 +17,7 @@ export async function requireAdmin(): Promise<boolean> {
     cookies: {
       getAll: () => cookieStore.getAll(),
       // These handlers only verify an existing session. Session refresh is handled
-      // by middleware, so no response cookies need to be written here.
+      // by the proxy (ex-middleware), so no response cookies need to be written here.
       setAll: () => undefined
     }
   });

@@ -16,11 +16,12 @@ describe('SEC-9 / RLS et protection — comportement sécurité', () => {
     expect(delContent).toContain('requireAdmin');
   });
 
-  it('le middleware doit protéger /admin', async () => {
+  it('le proxy (ex-middleware) doit protéger /admin', async () => {
     const { readFile } = await import('fs/promises');
-    const middlewareContent = await readFile('middleware.ts', 'utf-8');
-    expect(middlewareContent).toContain('/admin');
-    expect(middlewareContent).toContain('admin');
+    const proxyContent = await readFile('src/proxy.ts', 'utf-8');
+    expect(proxyContent).toContain('export async function proxy');
+    expect(proxyContent).toContain('/admin');
+    expect(proxyContent).toContain('matcher');
   });
 
   it('la migration RLS doit supprimer la policy d auto-élévation profiles_update_own', async () => {
