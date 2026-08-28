@@ -22,3 +22,9 @@ Avant toute exécution en production :
 - un index destiné au suivi des commandes par état de synchronisation.
 
 La migration échoue volontairement si des `order_number` historiques sont dupliqués. Corriger ces doublons avant de la relancer : ne jamais supprimer ou modifier des commandes de production sans export de sauvegarde et validation métier.
+
+## Migration de sécurité — `restrict_profile_role_updates.sql`
+
+Cette migration supprime la policy permissive `profiles_update_own` (UPDATE de sa propre ligne `public.profiles` sans restriction de colonnes), qui permettait à un utilisateur authentifié de s'auto-promouvoir `admin`.
+
+**Important** : elle doit être appliquée **après** `normalize_rls_crud_storage.sql` (qui crée cette policy). Si `normalize_rls_crud_storage.sql` était ré-exécutée après coup, la policy permissive serait recréée — il faudrait alors ré-appliquer `restrict_profile_role_updates.sql`.

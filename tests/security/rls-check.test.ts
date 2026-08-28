@@ -22,4 +22,11 @@ describe('SEC-9 / RLS et protection — comportement sécurité', () => {
     expect(middlewareContent).toContain('/admin');
     expect(middlewareContent).toContain('admin');
   });
+
+  it('la migration RLS doit supprimer la policy d auto-élévation profiles_update_own', async () => {
+    const { readFile } = await import('fs/promises');
+    const migration = await readFile('supabase/migrations/restrict_profile_role_updates.sql', 'utf-8');
+    expect(migration.trim().length).toBeGreaterThan(0);
+    expect(migration).toContain('drop policy if exists profiles_update_own on public.profiles');
+  });
 });
