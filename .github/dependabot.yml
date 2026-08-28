@@ -6,6 +6,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "typescript"
+        versions: ["7.x"]
+      - dependency-name: "eslint"
+        versions: ["10.x"]
     groups:
       production-dependencies:
         dependency-type: production
