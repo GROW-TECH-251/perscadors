@@ -29,9 +29,9 @@ describe('Impl 8 — source unique du numéro WhatsApp', () => {
   });
 
   it('les pages publiques ne doivent plus coder en dur 22967280018', async () => {
-    const produit = await readFile('src/app/produit/[id]/page.tsx', 'utf-8');
+    const produit = await readFile('src/app/produit/[id]/product-detail-client.tsx', 'utf-8');
     const order = await readFile('src/app/order/[token]/page.tsx', 'utf-8');
-    const looks = await readFile('src/app/looks/page.tsx', 'utf-8');
+    const looks = await readFile('src/app/looks/hp-looks-client.tsx', 'utf-8');
 
     expect(produit).not.toContain('wa.me/22967280018');
     expect(order).not.toContain('wa.me/22967280018');
@@ -39,9 +39,9 @@ describe('Impl 8 — source unique du numéro WhatsApp', () => {
   });
 
   it('les pages publiques consomment settings.whatsapp_phone', async () => {
-    const produit = await readFile('src/app/produit/[id]/page.tsx', 'utf-8');
+    const produit = await readFile('src/app/produit/[id]/product-detail-client.tsx', 'utf-8');
     const order = await readFile('src/app/order/[token]/page.tsx', 'utf-8');
-    const looks = await readFile('src/app/looks/page.tsx', 'utf-8');
+    const looks = await readFile('src/app/looks/hp-looks-client.tsx', 'utf-8');
 
     expect(produit).toContain('settings.whatsapp_phone');
     expect(order).toContain('settings.whatsapp_phone');
@@ -49,7 +49,7 @@ describe('Impl 8 — source unique du numéro WhatsApp', () => {
   });
 
   it('la page looks ne doit plus lire l env directement dans le rendu', async () => {
-    const looks = await readFile('src/app/looks/page.tsx', 'utf-8');
+    const looks = await readFile('src/app/looks/hp-looks-client.tsx', 'utf-8');
     expect(looks).not.toContain('NEXT_PUBLIC_WHATSAPP_PHONE_DIGITS');
   });
 });
