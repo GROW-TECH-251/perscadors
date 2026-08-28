@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useCatalog } from '@/context/CatalogContext';
 import { Outfit } from '@/types';
@@ -13,9 +13,9 @@ export const OutfitCarousel: React.FC = () => {
   const { outfits } = useCatalog();
   const { addMultipleToCart } = useCart();
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
-  const [isAutoPaused, setIsAutoPaused] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef({ isDragging: false, startX: 0, startScrollLeft: 0 });
+  const isAutoPausedRef = useRef(false);
 
   // Performance P0 : Ne plus dupliquer 64 images (32*2) pour infinite scroll
   // Avant : [...outfits, ...outfits] → 64 images rendues d'un coup, toutes avec next/image optimization → lourd, 2-3s latence
@@ -23,8 +23,8 @@ export const OutfitCarousel: React.FC = () => {
   // Gain : -50% images initiales, -50% requêtes _next/image, LCP amélioré
   const displayOutfits = useMemo(() => outfits, [outfits]);
 
-  const pauseAutoScroll = () => setIsAutoPaused(true);
-  const resumeAutoScroll = () => setIsAutoPaused(false);
+  const pauseAutoScroll = () => { isAutoPausedRef.current = true; };
+  const resumeAutoScroll = () => { isAutoPausedRef.current = false; };
 
   const handleRecreateLook = (outfit: Outfit) => {
     addMultipleToCart(outfit.products);
@@ -77,6 +77,44 @@ export const OutfitCarousel: React.FC = () => {
     container.scrollLeft += event.deltaY;
   };
 
+  // Auto-scroll JavaScript : remplace l'ancienne animation CSS
+  // @keyframes scroll-carousel { translate3d(-50%) }. Celle-ci exigeait deux
+  // copies identiques du contenu pour boucler sans trou ; or l'optimisation
+  // "Performance P0" ne rend plus qu'une seule copie (32 images). Résultat
+  // observé : la piste défilait dans le vide (image coupée, zone blanche,
+  // reset brutal toutes les 28 s). Ici, on fait défiler scrollLeft par petits
+  // pas (requestAnimationFrame), avec boucle propre en bout de piste, pause au
+  // survol/pointer/toucher et respect de prefers-reduced-motion.
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const SPEED_PX_PER_SECOND = 80;
+    let rafId = 0;
+    let lastTime: number | null = null;
+
+    const step = (time: number) => {
+      const elapsed = lastTime === null ? 0 : Math.min(time - lastTime, 50);
+      lastTime = time;
+
+      const current = scrollRef.current;
+      if (current && !isAutoPausedRef.current && elapsed > 0) {
+        const maxScroll = current.scrollWidth - current.clientWidth;
+        if (maxScroll > 0) {
+          const next = current.scrollLeft + (SPEED_PX_PER_SECOND * elapsed) / 1000;
+          current.scrollLeft = next >= maxScroll ? 0 : next;
+        }
+      }
+
+      rafId = requestAnimationFrame(step);
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [outfits.length]);
+
   const modalOutfitPrice = selectedOutfit ? selectedOutfit.price.toLocaleString() : '0';
 
   return (
@@ -121,8 +159,7 @@ export const OutfitCarousel: React.FC = () => {
                 resumeAutoScroll();
               }}
               onWheel={handleWheel}
-              className={`outfit-carousel-track ${isAutoPaused ? 'auto-paused' : ''} flex w-max max-w-none gap-6 overflow-x-auto scroll-smooth pb-4 select-none touch-pan-x cursor-grab active:cursor-grabbing`}
-              style={{ animationPlayState: isAutoPaused ? 'paused' : 'running' }}
+              className="outfit-carousel-track flex w-max max-w-none gap-6 overflow-x-auto pb-4 select-none touch-pan-x cursor-grab active:cursor-grabbing"
             >
               {displayOutfits.map((outfit, index) => (
                 <button

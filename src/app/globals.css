@@ -73,19 +73,9 @@ html {
   transform: translateY(0);
 }
 
-@keyframes scroll-carousel {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  100% {
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-
 .outfit-carousel-track {
   scrollbar-width: none;
   -ms-overflow-style: none;
-  scroll-snap-type: x proximity;
   touch-action: pan-x;
   padding-inline: 0 !important;
   margin-inline: 0 !important;
@@ -94,22 +84,10 @@ html {
   max-width: none;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
-  will-change: transform;
-  animation: scroll-carousel 28s linear infinite;
-}
-
-.outfit-carousel-track.auto-paused,
-.outfit-carousel-track:hover,
-.outfit-carousel-track:focus-within {
-  animation-play-state: paused;
 }
 
 .outfit-carousel-track::-webkit-scrollbar {
   display: none;
-}
-
-.outfit-carousel-track > * {
-  scroll-snap-align: start;
 }
 
 /* Premium Entry Animations */
