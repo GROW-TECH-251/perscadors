@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   const supabase = createServerClient(url, anonKey, {
     cookies: {
       getAll: () => [],
-      setAll: (cookies: Array<{ name: string; value: string; options: CookieOptions }>) => cookieUpdates.push(...cookies)
+      setAll: (cookies: Array<{ name: string; value: string; options: CookieOptions }>) => { cookieUpdates.push(...cookies); }
     }
   });
 
