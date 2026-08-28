@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import type { AdminCategory, AdminProduct, AdminOutfit } from '@/admin/types';
 import { products as fallbackProducts } from '@/data/products';
 import { outfits as fallbackOutfits } from '@/data/outfits';
@@ -181,6 +182,30 @@ export function getFallbackCatalogSnapshot(): PublicCatalogSnapshot {
   };
 }
 
+function normalizeOutfitRows(rows: AdminOutfit[] | null | undefined, products: Product[]): Outfit[] {
+  if (!rows || rows.length === 0) return [];
+
+  return rows.map((outfitRow) => {
+    const productIds = Array.isArray(outfitRow.product_ids) ? outfitRow.product_ids : [];
+    const outfitProducts = productIds
+      .map((id) => products.find((p) => p.id === String(id)))
+      .filter(Boolean) as Product[];
+
+    const calculatedPrice = outfitProducts.reduce((sum, p) => sum + p.price, 0);
+    const finalPrice = outfitRow.custom_price !== null && outfitRow.custom_price !== undefined
+      ? Number(outfitRow.custom_price)
+      : calculatedPrice;
+
+    return {
+      id: String(outfitRow.id),
+      name: outfitRow.name,
+      image: outfitRow.image_url || '/assets/brand/logo.png',
+      price: finalPrice,
+      products: outfitProducts
+    };
+  });
+}
+
 export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapshot> {
   if (!isSupabaseConfigured || !supabase) {
     return getFallbackCatalogSnapshot();
@@ -217,30 +242,46 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
     : mergeCategoriesWithProducts(normalizedProducts, (categoriesResponse.data || []) as AdminCategory[]);
 
   // Pôle 5 / Module HPB : Résolution dynamique des outfits Supabase avec fusion statique
-  let normalizedOutfits: Outfit[] = [];
-  if (!outfitsResponse.error && outfitsResponse.data && outfitsResponse.data.length > 0) {
-    normalizedOutfits = (outfitsResponse.data as AdminOutfit[]).map((outfitRow) => {
-      const productIds = Array.isArray(outfitRow.product_ids) ? outfitRow.product_ids : [];
-      const outfitProducts = productIds
-        .map((id) => normalizedProducts.find((p) => p.id === String(id)))
-        .filter(Boolean) as Product[];
+  const normalizedOutfits = normalizeOutfitRows(outfitsResponse.data as AdminOutfit[] | null, normalizedProducts);
 
-      const calculatedPrice = outfitProducts.reduce((sum, p) => sum + p.price, 0);
-      const finalPrice = outfitRow.custom_price !== null && outfitRow.custom_price !== undefined ? Number(outfitRow.custom_price) : calculatedPrice;
+  return {
+    products: normalizedProducts,
+    categories: normalizedCategories,
+    outfits: normalizedOutfits,
+    source: 'supabase'
+  };
+}
 
-      return {
-        id: String(outfitRow.id),
-        name: outfitRow.name,
-        image: outfitRow.image_url || '/assets/brand/logo.png',
-        price: finalPrice,
-        products: outfitProducts
-      };
-    });
-
-  } else {
-    // Une réponse Supabase vide signifie qu'aucun look visible n'est publié.
-    normalizedOutfits = [];
+/**
+ * Snapshot destiné au RENDU SERVEUR (generateMetadata, ISR). Utilise un client
+ * Supabase serveur sûr (createClient supabase-js, sans cookies navigateur) au
+ * lieu du client navigateur @/lib/supabase. Sert aux pages publiques à exposer
+ * titre/description/OG dans le HTML initial (SEO) — cf. Impl 9.
+ */
+export async function fetchServerCatalogSnapshot(): Promise<PublicCatalogSnapshot> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !anonKey) {
+    return getFallbackCatalogSnapshot();
   }
+
+  const client = createClient(url, anonKey, { auth: { persistSession: false } });
+
+  const [productsResponse, categoriesResponse, outfitsResponse] = await Promise.all([
+    client.from('products').select('*').eq('visible', true).order('created_at', { ascending: false }),
+    client.from('categories').select('*').eq('visible', true).order('position', { ascending: true }),
+    client.from('outfits').select('*').eq('visible', true).order('created_at', { ascending: false })
+  ]);
+
+  if (productsResponse.error) {
+    return getFallbackCatalogSnapshot();
+  }
+
+  const normalizedProducts = ((productsResponse.data || []) as AdminProduct[]).map(normalizeAdminProduct);
+  const normalizedCategories = categoriesResponse.error
+    ? buildCategoriesFromProducts(normalizedProducts)
+    : mergeCategoriesWithProducts(normalizedProducts, (categoriesResponse.data || []) as AdminCategory[]);
+  const normalizedOutfits = normalizeOutfitRows(outfitsResponse.data as AdminOutfit[] | null, normalizedProducts);
 
   return {
     products: normalizedProducts,
