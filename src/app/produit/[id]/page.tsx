@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { useCatalog } from '@/context/CatalogContext';
 import { useCart } from '@/context/CartContext';
+import { usePublicSettings } from '@/context/PublicSettingsContext';
+import { openWhatsApp } from '@/services/whatsappService';
 import { Product, Size } from '@/types';
 import { ArrowLeft, MessageSquareCode, ShoppingBag, Check } from 'lucide-react';
 import { safeJsonLd } from '@/utils/safeJsonLd';
@@ -18,6 +20,7 @@ interface ProductDetailContentProps {
 
 function ProductDetailContent({ product, suggestions }: ProductDetailContentProps) {
   const { addToCart } = useCart();
+  const { settings } = usePublicSettings();
   const [selectedImage, setSelectedImage] = useState<string>(product.images[0] ?? '');
   const [selectedSize, setSelectedSize] = useState<Size | null>(
     product.sizes.find((size) => !product.outOfStockSizes?.includes(size)) || product.sizes[0] || null
@@ -70,9 +73,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
       `📍 _Livraison partout au Bénin._\n` +
       `Peux-tu me confirmer la dispo ? Merci ! 🙌`;
 
-    const encodedText = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/22967280018?text=${encodedText}`;
-    window.open(whatsappUrl, '_blank');
+    openWhatsApp(message, settings.whatsapp_phone);
   };
 
   // Données structurées JSON-LD E-commerce (schema.org)

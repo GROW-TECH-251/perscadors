@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
+import { usePublicSettings } from '@/context/PublicSettingsContext';
+import { buildWhatsAppUrl } from '@/services/whatsappService';
 import { Package, Truck, CheckCircle2, XCircle, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
 
 interface TrackedItem {
@@ -33,6 +35,7 @@ interface TrackedOrder {
 
 export default function OrderTrackingPage() {
   const params = useParams<{ token: string }>();
+  const { settings } = usePublicSettings();
   const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -198,6 +201,10 @@ export default function OrderTrackingPage() {
   }
 
   const statusDisplay = getStatusDisplay(order.status);
+  const supportHref = buildWhatsAppUrl(
+    `Bonjour Vioutou, je souhaite avoir des informations sur ma commande ${order.order_number}.`,
+    settings.whatsapp_phone
+  );
 
   return (
     <PublicLayout>
@@ -325,7 +332,7 @@ export default function OrderTrackingPage() {
             Pour toute modification ou question urgente, contactez Vioutou en direct sur WhatsApp.
           </p>
           <a
-            href={`https://wa.me/22967280018?text=${encodeURIComponent(`Bonjour Vioutou, je souhaite avoir des informations sur ma commande ${order.order_number}.`)}`}
+            href={supportHref}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-[#25D366] hover:bg-[#20BA5A] text-white font-bebas text-xl uppercase tracking-widest rounded-2xl shadow-[0_10px_25px_rgba(37,211,102,0.25)] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"

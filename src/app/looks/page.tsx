@@ -4,12 +4,15 @@ import React from 'react';
 import Image from 'next/image';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { useCatalog } from '@/context/CatalogContext';
+import { usePublicSettings } from '@/context/PublicSettingsContext';
+import { buildWhatsAppUrl } from '@/services/whatsappService';
 import { Sparkles, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { safeJsonLd } from '@/utils/safeJsonLd';
 
 export default function HPLooksPage() {
   const { outfits } = useCatalog();
+  const { settings } = usePublicSettings();
 
   // Données structurées JSON-LD E-commerce (schema.org) pour le module HPB (Looks de Vioutou)
   const fallbackImage = outfits[0]?.image || '/assets/collections/outfits/outfit2.jpeg';
@@ -170,10 +173,9 @@ export default function HPLooksPage() {
 
                     <button
                       onClick={() => {
-                        const phone = process.env.NEXT_PUBLIC_WHATSAPP_PHONE_DIGITS?.trim() || '22967280018';
                         const origin = typeof window !== 'undefined' ? window.location.origin : 'https://perscadors.vercel.app';
                         const message = `Bonjour 👋\n\nJe souhaite recréer ce look : ${outfit.name}\n\n${origin}${outfit.image}\n\nMerci !`;
-                        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                        const url = buildWhatsAppUrl(message, settings.whatsapp_phone);
                         window.open(url, '_blank');
                       }}
                       className="w-full py-3.5 bg-brand-gold hover:bg-brand-gold-light text-brand-bg font-bebas text-lg uppercase tracking-widest rounded transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
