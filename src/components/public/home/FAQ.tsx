@@ -51,7 +51,7 @@ export const FAQ: React.FC = () => {
             return (
               <div
                 key={index}
-                className="border border-brand-gold/15 rounded-xl bg-brand-bg-alt overflow-hidden transition-all duration-300 shadow-sm hover:border-brand-gold/40"
+                className="border border-brand-gold/15 rounded-xl bg-brand-bg-alt overflow-hidden transition-all duration-(--motion-fast) hover:border-brand-gold/40"
               >
                 <button
                   onClick={() => toggleFAQ(index)}
@@ -67,7 +67,7 @@ export const FAQ: React.FC = () => {
 
                 {/* Animated collapse content */}
                 <div
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                  className={`transition-all duration-(--motion-smooth) ease-out-luxe overflow-hidden ${
                     isOpen ? 'max-h-48 border-t border-brand-gold/10' : 'max-h-0'
                   }`}
                 >
