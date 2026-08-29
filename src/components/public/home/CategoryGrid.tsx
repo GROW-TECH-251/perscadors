@@ -34,14 +34,14 @@ export const CategoryGrid: React.FC = () => {
                 <Link
                   key={category.slug}
                   href={`/categorie/${category.slug}`}
-                  className="relative h-[460px] group rounded-3xl overflow-hidden border border-brand-gold/10 bg-brand-bg-alt flex flex-col justify-end shadow-2xl hover:shadow-[0_30px_60px_-15px_rgb(0,0,0,0.45)] ring-1 ring-inset ring-brand-gold/5 hover:ring-brand-gold/25 transition-all duration-[650ms] ease-[cubic-bezier(0.23,1.0,0.32,1)] hover:scale-[1.015] hover:-translate-y-[3px] cursor-pointer will-change-transform"
+                  className="relative h-[460px] group rounded-3xl overflow-hidden border border-brand-gold/10 bg-brand-bg-alt flex flex-col justify-end shadow-2xl hover:shadow-[0_30px_60px_-15px_rgb(0,0,0,0.45)] ring-1 ring-inset ring-brand-gold/5 hover:ring-brand-gold/25 transition-all duration-(--motion-raise) ease-out-luxe hover:scale-[1.015] hover:-translate-y-[3px] cursor-pointer will-change-transform"
                 >
                   <Image
                     src={category.image}
                     alt={category.name}
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover transition-all duration-[800ms] ease-out group-hover:scale-[1.12] group-hover:brightness-[0.82] group-hover:saturate-[1.08]"
+                    className="object-cover transition-all duration-(--motion-reveal) ease-out-expo group-hover:scale-[1.12] group-hover:brightness-[0.82] group-hover:saturate-[1.08]"
                   />
 
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-black/38 to-transparent group-hover:from-[#0A0A0A] group-hover:via-black/62 transition-all duration-[650ms] z-10" />
