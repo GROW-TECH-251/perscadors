@@ -3,12 +3,14 @@ import { readFile } from 'fs/promises';
 
 // Garde-fou IMP-02 — Micro-interactions & états :
 // - plus aucune durée motion codée en dur dans les composants publics migrés
-//   (Navbar exceptée : périmètre IMP-03) ;
+//   (Navbar incluse depuis IMP-03) ;
 // - squelette de chargement média défini dans globals.css et posé derrière les
 //   images des deux grilles publiques (catégories + HP Looks) ;
 // - prefers-reduced-motion reste la loi (acquis Phase 1, non négociable).
 
+// IMP-03 : Navbar.tsx ajoutée aux migrées (dernière exclue par IMP-02).
 const MIGRATED = [
+  'src/components/public/layout/Navbar.tsx',
   'src/components/public/home/CategoryGrid.tsx',
   'src/components/public/home/OutfitCarousel.tsx',
   'src/components/public/home/FAQ.tsx',
