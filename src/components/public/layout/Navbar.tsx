@@ -97,8 +97,10 @@ export const Navbar: React.FC = () => {
 
   return (
     <nav
-      className={`sticky top-0 left-0 w-full z-50 transition-all duration-500 bg-brand-bg border-b border-brand-gold/20 shadow-md ${
-        isScrolled ? 'py-3 bg-brand-bg/95 backdrop-blur-md shadow-lg' : 'py-5'
+      className={`sticky top-0 left-0 w-full z-50 border-b transition-all duration-(--motion-smooth) ease-out-luxe ${
+        isScrolled
+          ? 'py-3 bg-brand-bg/90 backdrop-blur-lg border-brand-gold/30 shadow-lg'
+          : 'py-5 bg-brand-bg/80 backdrop-blur-sm border-brand-gold/20 shadow-md'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
@@ -120,8 +122,8 @@ export const Navbar: React.FC = () => {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`font-bebas text-lg tracking-wider transition-colors hover:text-brand-gold ${
-                  isActive ? 'text-brand-gold border-b border-brand-gold' : 'text-brand-text'
+                className={`nav-link font-bebas text-lg tracking-wider hover:text-brand-gold ${
+                  isActive ? 'nav-link--active text-brand-gold' : 'text-brand-text'
                 }`}
               >
                 {link.name}
@@ -133,7 +135,7 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center space-x-2 sm:space-x-5">
           <form
             onSubmit={handleSearchSubmit}
-            className={`flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/95 transition-all duration-300 ${
+            className={`flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/95 transition-all duration-(--motion-fast) ease-out-luxe ${
               isSearchOpen ? 'absolute right-12 top-4 w-[calc(100%-40px)] max-w-[240px] sm:relative sm:right-0 sm:top-0 sm:w-64 opacity-100 z-50 shadow-lg backdrop-blur-sm' : 'w-0 opacity-0 pointer-events-none md:opacity-100 md:w-48 md:pointer-events-auto'
             }`}
           >
@@ -160,7 +162,7 @@ export const Navbar: React.FC = () => {
 
           <button
             onClick={() => setCartOpen(true)}
-            className="relative p-1 text-brand-text hover:text-brand-gold transition-all duration-300 hover:scale-105"
+            className="relative p-1 text-brand-text hover:text-brand-gold transition-all duration-(--motion-fast) ease-out-expo hover:scale-105"
             aria-label="Panier d'achat"
             title="Panier d'achat"
           >
@@ -175,6 +177,7 @@ export const Navbar: React.FC = () => {
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-1 text-brand-text hover:text-brand-gold transition-colors md:hidden"
+            aria-expanded={isMobileMenuOpen}
             aria-label="Menu principal de navigation"
             title="Menu principal de navigation"
           >
@@ -184,7 +187,7 @@ export const Navbar: React.FC = () => {
       </div>
 
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-brand-bg-alt border-t border-brand-gold/10 px-4 py-6 space-y-4 shadow-xl">
+        <div className="md:hidden bg-brand-bg-alt/95 backdrop-blur-md border-t border-brand-gold/10 px-4 py-6 space-y-4 shadow-xl animate-nav-panel">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
