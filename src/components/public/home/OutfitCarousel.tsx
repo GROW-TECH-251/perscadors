@@ -166,9 +166,10 @@ export const OutfitCarousel: React.FC = () => {
                   type="button"
                   key={`${outfit.id}-${index}`}
                   onClick={() => setSelectedOutfit(outfit)}
-                  className="relative w-64 h-96 flex-shrink-0 group overflow-hidden rounded-xl border border-brand-gold/10 bg-brand-bg shadow-lg transition-transform duration-300 hover:scale-[1.03] text-left"
+                  className="relative w-64 h-96 flex-shrink-0 group overflow-hidden rounded-xl border border-brand-gold/10 bg-brand-bg shadow-lg transition-transform duration-(--motion-fast) ease-out-expo hover:scale-[1.03] text-left"
                   style={{ width: `${CAROUSEL_CARD_WIDTH}px` }}
                 >
+                  <div className="skeleton-media" aria-hidden="true" />
                   <Image
                     src={outfit.image}
                     alt={outfit.name}
@@ -177,9 +178,9 @@ export const OutfitCarousel: React.FC = () => {
                     priority={index < 4}
                     loading={index < 4 ? 'eager' : 'lazy'}
                     draggable={false}
-                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    className="object-cover transition-transform duration-(--motion-reveal) ease-out-expo group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6 z-10">
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-(--motion-smooth) flex flex-col justify-end p-6 z-10">
                     <span className="text-brand-gold font-bebas text-2xl tracking-wider uppercase leading-none">
                       {outfit.name.split(' (')[0]}
                     </span>

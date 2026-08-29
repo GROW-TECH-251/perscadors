@@ -383,7 +383,7 @@ export const ArticleRequestSection: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowArticleForm(true)}
-              className="w-full lg:w-auto px-8 py-4 bg-brand-gold hover:bg-brand-gold-light active:bg-[#9F7F1F] text-[#0A0A0A] font-bebas text-xl tracking-[3px] uppercase rounded-xl shadow-2xl hover:shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5)] ring-1 ring-inset ring-black/10 transition-all duration-400 hover:scale-[1.03] active:scale-[0.985] flex items-center justify-center gap-2.5"
+              className="w-full lg:w-auto px-8 py-4 bg-brand-gold hover:bg-brand-gold-light active:bg-[#9F7F1F] text-[#0A0A0A] font-bebas text-xl tracking-[3px] uppercase rounded-xl shadow-2xl hover:shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5)] ring-1 ring-inset ring-black/10 transition-all duration-(--motion-smooth) ease-out-luxe hover:scale-[1.03] active:scale-[0.985] flex items-center justify-center gap-2.5"
             >
               <span>Ajouter votre demande</span>
             </button>
