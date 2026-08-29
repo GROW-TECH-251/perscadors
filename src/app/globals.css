@@ -133,6 +133,28 @@ html {
   display: none;
 }
 
+/* ============================================
+   IMP-02 — Squelette de chargement média
+   Couche CSS pure placée SOUS <Image fill> (ordre DOM) :
+   pendant le chargement l'<img> ne peint rien → squelette visible ;
+   l'image opaque (JPEG) le couvre ensuite. Aucun JS, aucun layout shift.
+   Animation opacity uniquement (règle motion) ; neutralisée par
+   prefers-reduced-motion via la règle globale existante.
+   ============================================ */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.skeleton-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(110deg, #EDEAE3 8%, #F5F0E8 18%, #EDEAE3 33%);
+  animation: skeleton-pulse 1.6s var(--ease-out-expo) infinite;
+}
+
 /* Premium Entry Animations */
 @keyframes slide-up-fade {
   0% {
