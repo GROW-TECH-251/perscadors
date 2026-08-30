@@ -8,6 +8,7 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { Hero } from '@/components/public/home/Hero';
+import { ScrollReveal } from '@/components/public/ScrollReveal';
 import { safeJsonLd } from '@/utils/safeJsonLd';
 
 // Dynamic imports pour code splitting — gain perf / risque faible
@@ -87,15 +88,17 @@ export default function HomePage() {
       {/* 1. Section Hero (Pleine page avec espace en-tête) - simplifiée à 2 CTAs */}
       <Hero />
       {/* 2. Section HP Looks de Vioutou (Mes articles qui font craquer) */}
-      <OutfitCarousel />
+      {/* IMP-05 — ScrollReveal : contenu 100% dans le HTML serveur (SEO),
+          révélation au scroll neutralisée par prefers-reduced-motion. */}
+      <ScrollReveal><OutfitCarousel /></ScrollReveal>
       {/* 3. Section Collections / Catégories */}
-      <CategoryGrid />
+      <ScrollReveal><CategoryGrid /></ScrollReveal>
       {/* 3b. Section Demande d'article non trouvé — placée sous catégories pour meilleur parcours UX */}
-      <ArticleRequestSection />
+      <ScrollReveal><ArticleRequestSection /></ScrollReveal>
       {/* 4. Section Témoignages & Preuve sociale */}
-      <Testimonials />
+      <ScrollReveal><Testimonials /></ScrollReveal>
       {/* 5. Section Foire Aux Questions (FAQ) */}
-      <FAQ />
+      <ScrollReveal><FAQ /></ScrollReveal>
     </PublicLayout>
   );
 }
