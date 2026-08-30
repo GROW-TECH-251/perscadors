@@ -38,12 +38,15 @@ describe('Unit — IMP-05 Scroll reveal system', () => {
 
   it('les 5 sections sont enveloppées par ScrollReveal, pas le Hero', async () => {
     const page = await readFile('src/app/page.tsx', 'utf-8');
-    expect((page.match(/<ScrollReveal>/g) || []).length).toBe(5);
+    expect((page.match(/<ScrollReveal>/g) || []).length).toBe(7);
     expect(page).toContain('<ScrollReveal><OutfitCarousel /></ScrollReveal>');
     expect(page).toContain('<ScrollReveal><CategoryGrid /></ScrollReveal>');
     expect(page).toContain('<ScrollReveal><ArticleRequestSection /></ScrollReveal>');
     expect(page).toContain('<ScrollReveal><Testimonials /></ScrollReveal>');
     expect(page).toContain('<ScrollReveal><FAQ /></ScrollReveal>');
+    // IMP-06 : deux sections supplémentaires enveloppées.
+    expect(page).toContain('<ScrollReveal><CuratedCollections /></ScrollReveal>');
+    expect(page).toContain('<ScrollReveal><StatsStrip /></ScrollReveal>');
     expect(page).not.toContain('<ScrollReveal><Hero /></ScrollReveal>');
     expect(page).toContain('<Hero />');
   });

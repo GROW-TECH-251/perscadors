@@ -9,6 +9,9 @@ import dynamic from 'next/dynamic';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { Hero } from '@/components/public/home/Hero';
 import { ScrollReveal } from '@/components/public/ScrollReveal';
+import { Marquee } from '@/components/public/home/Marquee';
+import { CuratedCollections } from '@/components/public/home/CuratedCollections';
+import { StatsStrip } from '@/components/public/home/StatsStrip';
 import { safeJsonLd } from '@/utils/safeJsonLd';
 
 // Dynamic imports pour code splitting — gain perf / risque faible
@@ -87,12 +90,18 @@ export default function HomePage() {
       />
       {/* 1. Section Hero (Pleine page avec espace en-tête) - simplifiée à 2 CTAs */}
       <Hero />
+      {/* IMP-06 — Bande marquee éditoriale (server, CSS transform, no reveal : impact immédiat) */}
+      <Marquee />
       {/* 2. Section HP Looks de Vioutou (Mes articles qui font craquer) */}
       {/* IMP-05 — ScrollReveal : contenu 100% dans le HTML serveur (SEO),
           révélation au scroll neutralisée par prefers-reduced-motion. */}
       <ScrollReveal><OutfitCarousel /></ScrollReveal>
+      {/* IMP-06 — Collections curatées « Sélection Vioutou » (server, données réelles du catalogue) */}
+      <ScrollReveal><CuratedCollections /></ScrollReveal>
       {/* 3. Section Collections / Catégories */}
       <ScrollReveal><CategoryGrid /></ScrollReveal>
+      {/* IMP-06 — Bandeau de chiffres clés (server, dérivés du catalogue réel) */}
+      <ScrollReveal><StatsStrip /></ScrollReveal>
       {/* 3b. Section Demande d'article non trouvé — placée sous catégories pour meilleur parcours UX */}
       <ScrollReveal><ArticleRequestSection /></ScrollReveal>
       {/* 4. Section Témoignages & Preuve sociale */}
