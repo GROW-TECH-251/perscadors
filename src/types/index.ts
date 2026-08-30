@@ -16,6 +16,7 @@ export interface Product {
   description: string;
   isPopular?: boolean;
   video?: string;
+  createdAt?: string;
 }
 
 export interface CatalogCategory {
