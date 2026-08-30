@@ -26,6 +26,78 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
+// ============================================
+// IMP-10 — Polish du dashboard : KPI animés, tooltips premium, états vides
+// soignés. Aucun nouveau graphique, export CSV inchangé.
+// ============================================
+const KPI_COUNTUP_MS = 800;
+
+// Comptage animé (requestAnimationFrame, easeOutCubic) coupé sous
+// prefers-reduced-motion : la valeur finale s'affiche immédiatement.
+function useCountUp(target: number): number {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    // Reduced-motion : progress saute directement à 1 (aucune animation),
+    // le setState reste dans le callback rAF (pas de rendu en cascade).
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const start = performance.now();
+    let rafId = 0;
+
+    const step = (now: number) => {
+      const progress = reduce ? 1 : Math.min((now - start) / KPI_COUNTUP_MS, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(target * eased));
+      if (progress < 1) rafId = requestAnimationFrame(step);
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [target]);
+
+  return display;
+}
+
+function KpiValue({ value, format, className = 'text-4xl font-bebas text-brand-text' }: { value: number; format: (value: number) => string; className?: string }) {
+  const animated = useCountUp(value);
+  return <p className={className}>{format(animated)}</p>;
+}
+
+// Tooltip partagé : panneau sombre/or cohérent avec l'identité admin,
+// label doré, valeur formatée par graphique (FCFA, %, clients...).
+function ChartTooltip({ active, payload, label, valueFormatter }: {
+  active?: boolean;
+  payload?: Array<{ value?: string | number; name?: string }>;
+  label?: string | number;
+  valueFormatter?: (value: number) => string;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const heading = label !== undefined && label !== '' ? String(label) : payload[0]?.name;
+
+  return (
+    <div className="bg-[#0A0A0A]/95 border border-brand-gold/40 rounded-xl px-4 py-3 shadow-xl max-w-[240px]">
+      {heading && <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-gold mb-1">{heading}</p>}
+      <p className="font-bebas text-xl text-brand-text leading-none">
+        {valueFormatter ? valueFormatter(Number(payload[0].value || 0)) : String(payload[0].value ?? '')}
+      </p>
+    </div>
+  );
+}
+
+// État vide structuré : là où l'italique nu rendait la zone « cassée »,
+// chaque graphique explique maintenant ce qui remplira la donnée.
+function ChartEmptyState({ icon: Icon, title, hint }: { icon: React.ComponentType<{ size?: number }>; title: string; hint: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-64 gap-3 rounded-2xl border border-dashed border-brand-gold/25 bg-brand-bg/50 px-6 text-center">
+      <div className="p-3 bg-brand-gold/10 rounded-full text-brand-gold">
+        <Icon size={22} />
+      </div>
+      <p className="font-bebas text-xl tracking-wider text-brand-text uppercase">{title}</p>
+      <p className="text-xs text-brand-text-muted max-w-[240px] leading-relaxed">{hint}</p>
+    </div>
+  );
+}
+
 export default function AdminAnalyticsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -132,7 +204,7 @@ export default function AdminAnalyticsPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs text-brand-text-muted uppercase tracking-wider mb-1">Revenu Total (Livrées)</p>
-              <p className="text-4xl font-bebas text-brand-text">{formatCurrency(analytics.stats.totalRevenue)}</p>
+              <KpiValue value={analytics.stats.totalRevenue} format={formatCurrency} />
               <p className="text-xs text-emerald-600 font-semibold mt-2 flex items-center gap-1">
                 <TrendingUp size={14} /> Trésorerie nette encaissée
               </p>
@@ -147,7 +219,7 @@ export default function AdminAnalyticsPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs text-brand-text-muted uppercase tracking-wider mb-1">MRR (30 Derniers Jours)</p>
-              <p className="text-4xl font-bebas text-brand-text">{formatCurrency(analytics.stats.mrr)}</p>
+              <KpiValue value={analytics.stats.mrr} format={formatCurrency} />
               <p className="text-xs text-emerald-600 font-semibold mt-2 flex items-center gap-1">
                 <TrendingUp size={14} /> Rythme mensuel estimé
               </p>
@@ -162,7 +234,7 @@ export default function AdminAnalyticsPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs text-brand-text-muted uppercase tracking-wider mb-1">Panier Moyen (AOV)</p>
-              <p className="text-4xl font-bebas text-brand-text">{formatCurrency(analytics.stats.averageOrderValue)}</p>
+              <KpiValue value={analytics.stats.averageOrderValue} format={formatCurrency} />
               <p className="text-xs text-blue-600 font-semibold mt-2">Par commande validée</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-xl text-blue-600 shadow-sm">
@@ -175,7 +247,7 @@ export default function AdminAnalyticsPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs text-brand-text-muted uppercase tracking-wider mb-1">Rétention Clients</p>
-              <p className="text-4xl font-bebas text-brand-text">{analytics.stats.retentionRate}%</p>
+              <KpiValue value={analytics.stats.retentionRate} format={(value) => `${value}%`} />
               <p className="text-xs text-purple-600 font-semibold mt-2 flex items-center gap-1">
                 <Award size={14} /> Achats récurrents (&gt;1 commande)
               </p>
@@ -190,7 +262,7 @@ export default function AdminAnalyticsPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs text-brand-text-muted uppercase tracking-wider mb-1">Total Clients Uniques</p>
-              <p className="text-4xl font-bebas text-brand-text">{analytics.stats.totalCustomers}</p>
+              <KpiValue value={analytics.stats.totalCustomers} format={(value) => value.toLocaleString('fr-FR')} />
               <p className="text-xs text-indigo-600 font-semibold mt-2">Base de données active</p>
             </div>
             <div className="p-3 bg-indigo-100 rounded-xl text-indigo-600 shadow-sm">
@@ -203,7 +275,7 @@ export default function AdminAnalyticsPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs text-brand-text-muted uppercase tracking-wider mb-1">Catalogue Vêtements</p>
-              <p className="text-4xl font-bebas text-brand-text">{analytics.stats.totalProducts}</p>
+              <KpiValue value={analytics.stats.totalProducts} format={(value) => value.toLocaleString('fr-FR')} />
               <p className="text-xs text-amber-600 font-semibold mt-2">Pièces et looks disponibles</p>
             </div>
             <div className="p-3 bg-amber-100 rounded-xl text-amber-600 shadow-sm">
@@ -249,8 +321,8 @@ export default function AdminAnalyticsPage() {
                 <XAxis dataKey="month" stroke="#888880" tick={{ fontSize: 12 }} />
                 <YAxis stroke="#888880" tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 12 }} />
                 <Tooltip
-                  formatter={(value) => formatChartCurrency(value as number | string | undefined)}
-                  contentStyle={{ backgroundColor: '#F5F0E8', border: '1px solid #B8952A', borderRadius: '12px', fontWeight: 'bold' }}
+                  cursor={{ stroke: '#B8952A', strokeOpacity: 0.35 }}
+                  content={<ChartTooltip valueFormatter={formatChartCurrency} />}
                 />
                 <Line
                   type="monotone"
@@ -263,9 +335,11 @@ export default function AdminAnalyticsPage() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-64 text-brand-text-muted italic">
-              Aucune donnée financière mensuelle disponible
-            </div>
+            <ChartEmptyState
+              icon={TrendingUp}
+              title="Aucun revenu enregistré"
+              hint="Les revenus apparaîtront dès votre première commande livrée."
+            />
           )}
         </AdminCard>
 
@@ -296,16 +370,18 @@ export default function AdminAnalyticsPage() {
                 <XAxis type="number" stroke="#888880" tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
                 <YAxis dataKey="name" type="category" stroke="#888880" tick={{ fontSize: 11 }} width={120} />
                 <Tooltip
-                  formatter={(value) => formatChartCurrency(value as number | string | undefined)}
-                  contentStyle={{ backgroundColor: '#F5F0E8', border: '1px solid #B8952A', borderRadius: '12px', fontWeight: 'bold' }}
+                  cursor={{ fill: 'rgba(184, 149, 42, 0.08)' }}
+                  content={<ChartTooltip valueFormatter={formatChartCurrency} />}
                 />
                 <Bar dataKey="price" fill="#B8952A" radius={[0, 8, 8, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-64 text-brand-text-muted italic">
-              Aucun produit actif dans le catalogue
-            </div>
+            <ChartEmptyState
+              icon={Package}
+              title="Catalogue vide"
+              hint="Ajoutez des produits visibles pour voir apparaître les best-sellers."
+            />
           )}
         </AdminCard>
 
@@ -336,16 +412,15 @@ export default function AdminAnalyticsPage() {
                     <Cell key={`${entry.name}-${index}`} fill={['#B8952A', '#3B82F6', '#6366F1'][index % 3]} />
                   ))}
                 </Pie>
-                <Tooltip
-                  formatter={(value) => `${Number(value || 0)} client(s)`}
-                  contentStyle={{ backgroundColor: '#F5F0E8', border: '1px solid #B8952A', borderRadius: '12px', fontWeight: 'bold' }}
-                />
+                <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} client(s)`} />} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-64 text-brand-text-muted italic">
-              Aucun segment client actif
-            </div>
+            <ChartEmptyState
+              icon={Users}
+              title="Aucun client segmenté"
+              hint="Les segments se construiront dès vos premières commandes."
+            />
           )}
         </AdminCard>
       </div>
