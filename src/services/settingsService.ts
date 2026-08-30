@@ -4,6 +4,7 @@
 // ============================================
 
 import { requireSupabase, supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { ShopSettings, ApiResponse, DeliveryZone, CustomerSegmentationSettings, TestimonialsData, FAQItem } from '@/admin/types';
 
@@ -272,6 +273,13 @@ const PUBLIC_SETTINGS_TTL_MS = 30_000;
 let publicSettingsInFlight: Promise<ShopSettings> | null = null;
 let publicSettingsCache: { value: ShopSettings; expiresAt: number } | null = null;
 
+export function seedPublicShopSettingsCache(settings: ShopSettings): void {
+  // PERF-02 — Le serveur possède déjà les réglages : on amorce le cache TTL
+  // partagé, ainsi TOUS les consommateurs clients (provider, Hero, Navbar,
+  // Footer, FAQ, checkout...) servent la valeur sans requête réseau.
+  publicSettingsCache = { value: settings, expiresAt: Date.now() + PUBLIC_SETTINGS_TTL_MS };
+}
+
 export function invalidatePublicShopSettingsCache(): void {
   publicSettingsCache = null;
 }
@@ -308,6 +316,29 @@ async function fetchPublicShopSettingsUncached(): Promise<ShopSettings> {
     return getDefaultShopSettings();
   }
 
+  return normalizeShopSettings(data as Partial<ShopSettings>);
+}
+
+/**
+ * PERF-02 — Lecture serveur des réglages publics (client supabase-js direct,
+ * sans cookies navigateur — même pattern que fetchServerCatalogSnapshot).
+ * Retourne null en cas d'échec : la page n'hydrate alors rien et le client
+ * retombe sur son comportement historique (fetch + cache TTL).
+ */
+export async function fetchServerPublicShopSettings(): Promise<ShopSettings | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !anonKey) return null;
+
+  const client = createClient(url, anonKey, { auth: { persistSession: false } });
+  const { data, error } = await client
+    .from('public_shop_settings')
+    .select('*')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
   return normalizeShopSettings(data as Partial<ShopSettings>);
 }
 
