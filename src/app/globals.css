@@ -176,6 +176,21 @@ html {
 .animate-nav-panel > *:nth-child(5) { animation-delay: 160ms; }
 .animate-nav-panel > *:nth-child(6) { animation-delay: 200ms; }
 
+/* IMP-05 — Scroll reveal : état caché posé uniquement par JS
+   (useScrollReveal) après hydration → le HTML serveur reste intégralement
+   visible pour les crawlers et les navigateurs sans JS. Reduced-motion :
+   le hook ne pose jamais ces classes (garde matchMedia). */
+.reveal-hidden {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  transition: opacity var(--motion-reveal) var(--ease-out-expo), transform var(--motion-reveal) var(--ease-out-expo);
+}
+
+.reveal-hidden.reveal-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
 /* Custom animations helper classes */
 .fade-in-scroll {
   opacity: 0;
