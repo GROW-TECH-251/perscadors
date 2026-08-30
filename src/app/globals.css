@@ -246,6 +246,25 @@ html {
   will-change: transform, opacity;
 }
 
+/* IMP-04 — Hero cinématique : stagger d'entrée (titre → sous-titre → CTA).
+   Surcharges déclarées APRÈS .animate-slide-up-fade (même spécificité,
+   ordre de source) : le delay de base (0.2s, utilisé par 12 composants
+   admin) reste inchangé ; seul le Hero combine les deux classes. */
+.animate-slide-up-fade.stagger-1 { animation-delay: 0.05s; }
+.animate-slide-up-fade.stagger-2 { animation-delay: 0.3s; }
+.animate-slide-up-fade.stagger-3 { animation-delay: 0.55s; }
+
+/* IMP-04 — Indicateur de scroll : flottement vertical doux et infini.
+   translateY uniquement (GPU) → neutralisé par prefers-reduced-motion. */
+@keyframes scroll-cue-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(10px); }
+}
+
+.animate-scroll-cue {
+  animation: scroll-cue-float 2.2s ease-in-out infinite;
+}
+
 
 
 /* interaction, accessibility and motion refinements */

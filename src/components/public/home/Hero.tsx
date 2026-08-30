@@ -7,9 +7,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import { fetchActiveAssetBySection } from '@/services/mediaService';
+import { ChevronDown } from 'lucide-react';
 import type { ShopSettings } from '@/admin/types';
 
 const DEFAULT_HERO_VIDEO = '/assets/backgrounds/7679830-uhd_4096_2160_25fps.mp4';
+// IMP-04 — Poster par défaut du Hero : peint immédiatement (chargement),
+// remplit le letterbox desktop en flou, et constitue le fallback net si la
+// vidéo échoue. Aucun champ poster n'existe dans shop_settings ; asset local.
+const DEFAULT_HERO_POSTER = '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0036.jpg';
 
 type HeroMediaType = 'video' | 'image';
 
@@ -18,6 +23,9 @@ export const Hero: React.FC = () => {
   const [mediaType, setMediaType] = useState<HeroMediaType>('video');
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
   const [realtimeVersion, setRealtimeVersion] = useState(0);
+  // IMP-04 — Fin de l'écran vide : si la vidéo échoue, l'image poster
+  // (nette) prend le relais au lieu de laisser un fond noir.
+  const [videoFailed, setVideoFailed] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -29,6 +37,8 @@ export const Hero: React.FC = () => {
       ]);
 
       if (!isMounted) return;
+
+      setVideoFailed(false);
 
       if (settingsData) {
         setSettings(settingsData);
@@ -74,24 +84,25 @@ export const Hero: React.FC = () => {
 
   return (
     <section className="perscadors-hero relative w-full flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]">
-      {mediaUrl && mediaType === 'video' ? (
+      {mediaUrl && mediaType === 'video' && !videoFailed ? (
         <>
-          {/* Fond flou : desktop uniquement, où object-contain laisse un
-              letterboxing à combler. Sur mobile, une seule vidéo (object-cover)
-              remplit le hero : on évite le double décodage du fichier UHD. */}
-          <video
+          {/* IMP-04 — Couche poster (une seule vidéo décodée, fin du double
+              décodage UHD) : image optimisée peinte immédiatement (état de
+              chargement + LCP), floutée pour combler le letterbox desktop
+              (lg:object-contain). Elle reste masquée sous la vidéo sur mobile. */}
+          <Image
+            src={DEFAULT_HERO_POSTER}
+            alt=""
+            fill
+            sizes="100vw"
+            quality={40}
+            priority
             aria-hidden="true"
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            className="absolute inset-0 hidden h-full w-full scale-125 object-cover opacity-70 blur-xl lg:block"
-          >
-            <source src={mediaUrl} type="video/mp4" />
-          </video>
+            className="absolute inset-0 scale-125 object-cover opacity-70 blur-lg lg:blur-xl"
+          />
           <video
-            onError={() => setMediaUrl('')}
+            poster={DEFAULT_HERO_POSTER}
+            onError={() => setVideoFailed(true)}
             autoPlay
             loop
             muted
@@ -112,25 +123,41 @@ export const Hero: React.FC = () => {
           className="absolute inset-0 object-cover opacity-65"
           priority
         />
+      ) : videoFailed ? (
+        /* IMP-04 — Fallback net : la vidéo a échoué, le poster prend le
+           relais (jamais d'écran vide). */
+        <Image
+          src={DEFAULT_HERO_POSTER}
+          alt={settings.hero_title}
+          fill
+          sizes="100vw"
+          quality={60}
+          priority
+          className="absolute inset-0 object-cover opacity-80"
+        />
       ) : null}
 
       <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/80 via-black/30 to-black/35 z-10" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.25)_20%,transparent_65%)] z-10" />
 
       <div className="relative z-20 max-w-5xl mx-auto text-center px-4 sm:px-6 lg:px-8 space-y-8 flex flex-col items-center justify-center">
-        <div className="space-y-4 animate-slide-up-fade">
-          <h1 className="font-bebas text-hero tracking-wider text-white uppercase drop-shadow-2xl leading-none">
-            {heroTitleParts.primary}.
-            {heroTitleParts.secondary ? (
-              <span className="text-brand-gold"> {heroTitleParts.secondary}.</span>
-            ) : null}
-          </h1>
-          <p className="hidden sm:block text-brand-text-muted max-w-2xl mx-auto text-base sm:text-xl font-light leading-relaxed">
-            {settings.hero_subtitle}
-          </p>
+        <div className="space-y-4">
+          <div className="animate-slide-up-fade stagger-1">
+            <h1 className="font-bebas text-hero tracking-wider text-white uppercase drop-shadow-2xl leading-none">
+              {heroTitleParts.primary}.
+              {heroTitleParts.secondary ? (
+                <span className="text-brand-gold"> {heroTitleParts.secondary}.</span>
+              ) : null}
+            </h1>
+          </div>
+          <div className="animate-slide-up-fade stagger-2">
+            <p className="hidden sm:block text-brand-text-muted max-w-2xl mx-auto text-base sm:text-xl font-light leading-relaxed">
+              {settings.hero_subtitle}
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4 pt-4 animate-slide-up-fade">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4 pt-4 animate-slide-up-fade stagger-3">
           <Link
             href="#carousel-outfits"
             className="group w-full sm:w-auto px-9 py-4.5 bg-brand-gold hover:bg-brand-gold-light active:bg-[#9F7F1F] text-[#0A0A0A] font-bebas text-xl tracking-[3px] uppercase transition-all duration-(--motion-smooth) ease-out-luxe hover:scale-[1.03] active:scale-[0.985] rounded-xl shadow-2xl hover:shadow-[0_20px_35px_-10px_rgb(0,0,0,0.5)] ring-1 ring-inset ring-black/10 text-center flex items-center justify-center gap-2.5"
@@ -145,6 +172,19 @@ export const Hero: React.FC = () => {
           </Link>
         </div>
       </div>
+
+      {/* IMP-04 — Indicateur de scroll discret vers les outfits.
+          Wrapper positionnant (left-1/2 -translate-x-1/2) + span animé en
+          translateY seul : le centrage ne dépend pas de l'animation. */}
+      <a
+        href="#carousel-outfits"
+        aria-label="Découvrir les outfits Vioutou"
+        className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 text-white/70 hover:text-brand-gold transition-colors cursor-pointer"
+      >
+        <span className="animate-scroll-cue block p-1">
+          <ChevronDown size={26} aria-hidden="true" />
+        </span>
+      </a>
     </section>
   );
 };
