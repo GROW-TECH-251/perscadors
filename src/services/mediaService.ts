@@ -4,6 +4,7 @@
 // ============================================
 // Upload, suppression, synchronisation temps réel et gestion hybride des assets du site
 
+import { createClient } from '@supabase/supabase-js';
 import { requireSupabase, supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import { deleteCloudinaryVideo, uploadCloudinaryVideo } from '@/services/cloudinaryVideoService';
@@ -398,6 +399,13 @@ const SITE_ASSETS_TTL_MS = 30_000;
 let siteAssetsInFlight: Promise<SiteAsset[]> | null = null;
 let siteAssetsCache: { value: SiteAsset[]; expiresAt: number } | null = null;
 
+export function seedSiteAssetsCache(assets: SiteAsset[]): void {
+  // PERF-03 — Amorce le cache TTL partagé avec les assets lus côté serveur :
+  // Navbar, Footer et Hero servent la valeur sans AUCUNE requête réseau au
+  // chargement (même pattern que seedPublicShopSettingsCache, PERF-02).
+  siteAssetsCache = { value: assets, expiresAt: Date.now() + SITE_ASSETS_TTL_MS };
+}
+
 export function invalidateSiteAssetsCache(): void {
   siteAssetsCache = null;
 }
@@ -452,6 +460,27 @@ async function fetchSiteAssetsUncached(): Promise<SiteAsset[]> {
   }
 
   return DEFAULT_SITE_ASSETS;
+}
+
+/**
+ * PERF-03 — Lecture serveur des assets de site (client supabase-js direct,
+ * sans cookies navigateur). Retourne null si la table est vide ou en erreur :
+ * la page n'hydrate alors rien et le client garde son comportement historique
+ * (fetch + cache TTL + fallback local).
+ */
+export async function fetchServerSiteAssets(): Promise<SiteAsset[] | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !anonKey) return null;
+
+  const client = createClient(url, anonKey, { auth: { persistSession: false } });
+  const { data, error } = await client
+    .from('site_assets')
+    .select('*')
+    .order('order_index', { ascending: true });
+
+  if (error || !data || data.length === 0) return null;
+  return data as SiteAsset[];
 }
 
 export async function fetchActiveAssetsBySection(section: SiteAssetSection): Promise<SiteAsset[]> {
