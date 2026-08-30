@@ -18,25 +18,39 @@
 | Hygiène code | ✅ | 0 `debugger`, 0 TODO/FIXME, 0 CSS mort (`.fade-in-scroll` supprimé IMP-11), 1 `console.log` justifié (bascule presse-papiers admin) |
 | Migration SQL Supabase (vidéo produit) | ✅ exécutée | colonnes `video_url` / `video_public_id` (IMP-08) |
 
-> Note roadmap : la validation « 57 tests » mentionnée initialement correspondait au compte Phase 1. Compte réel au gel : **132 unitaires + 55 E2E**.
+> Note roadmap : la validation « 57 tests » mentionnée initialement correspondait au compte Phase 1. Compte réel au gel : **132 unitaires + 7 tests E2E (14 exécutions : Desktop + Pixel 5)**.
 
 ## 2. À exécuter LOCALEMENT avant le go (obligatoire)
 
-### 2.1 Tests E2E (55 tests : 35 responsive + 20 sécurité-routes)
+### 2.1 Tests E2E — 7 tests / 14 exécutions (4 responsive + 3 sécurité, × Desktop Chrome + Pixel 5)
+
+> **Correctif FIX-E2E (30/08)** : les E2E échouaient en local pour deux causes environnementales, sans aucun défaut applicatif — (1) le dev server Turbopack compile la home à froid → timeout 30 s des premiers tests ; (2) `fullyParallel` × vidéo hero **4K 36 Mo autoplay** → `Page crashed` (mémoire). La config lance désormais un **build de production** et exécute les tests en **séquentiel** : 14/14 verts en ~15 s (vérifié). La page `/` n'a aucun débordement (scrollWidth = viewport, testé isolément).
 
 ```powershell
 # Une seule fois : installer les navigateurs Playwright
 npx playwright install
 
-# Lancer (la config démarre seule `npm run dev` sur localhost:3000,
-# projets : Desktop Chrome + Pixel 5)
+# Lancer — la config build puis démarre seule le serveur de production
+# sur localhost:3000 (un serveur déjà lancé sur :3000 est réutilisé)
 npm run test:e2e
 
 # OU la chaîne complète (unitaires + E2E)
 npm run test
 ```
 
-☐ 55/55 E2E verts (0 flaky — sinon relancer une fois et noter l'échec résiduel)
+☐ 14/14 exécutions E2E vertes (0 flaky — sinon relancer une fois et noter l'échec résiduel)
+
+### 2.1 bis — Recommandation vidéo hero (fort gain Lighthouse, à faire localement)
+
+La vidéo hero (`public/assets/backgrounds/7679830-uhd_4096_2160_25fps.mp4`) pèse **36 Mo en 4K** : c'est le principal risque pour le seuil Lighthouse mobile ≥ 85 (§2.2) et pour les données mobiles des visiteurs. Recommandation (optionnel, hors patch — fichier binaire) : produire une version 1080p (~3-6 Mo) et remplacer le fichier :
+
+```powershell
+# Avec ffmpeg installé localement (https://ffmpeg.org) :
+ffmpeg -i public/assets/backgrounds/7679830-uhd_4096_2160_25fps.mp4 -vf scale=-2:1080 -r 25 -c:v libx264 -crf 23 -preset slow -an public/assets/backgrounds/hero-1080p.mp4
+# puis remplacer l'ancien fichier par le nouveau (même nom ou mise à jour du réglage hero_video_url dans l'admin)
+```
+
+☐ Vidéo hero recompressée (recommandé avant Lighthouse §2.2)
 
 ### 2.2 Lighthouse mobile ≥ 85
 
