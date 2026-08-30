@@ -8,7 +8,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import {Play,  X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 
 const SWIPE_THRESHOLD = 45;
 const ZOOM_SCALE = 2.2;
@@ -18,10 +18,17 @@ interface ProductLightboxProps {
   startIndex: number;
   productName: string;
   onClose: () => void;
+  video?: string;
 }
 
-export function ProductLightbox({ images, startIndex, productName, onClose }: ProductLightboxProps) {
-  const [index, setIndex] = useState(Math.min(Math.max(startIndex, 0), images.length - 1));
+export function ProductLightbox({ images, startIndex, productName, onClose, video }: ProductLightboxProps) {
+  const total = images.length + (video ? 1 : 0);
+  const videoSlideIndex = video ? images.length : -1;
+  const [autoPlayVideo] = useState(
+    () => typeof window === 'undefined' || !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+  const [index, setIndex] = useState(Math.min(Math.max(startIndex, 0), Math.max(total - 1, 0)));
+  const isVideoSlide = Boolean(video) && index === videoSlideIndex;
   const [zoom, setZoom] = useState(false);
   const [origin, setOrigin] = useState('50% 50%');
   const drag = useRef({ startX: 0, active: false });
@@ -30,8 +37,8 @@ export function ProductLightbox({ images, startIndex, productName, onClose }: Pr
 
   const go = useCallback((delta: number) => {
     setZoom(false);
-    setIndex((current) => (images.length ? (current + delta + images.length) % images.length : 0));
-  }, [images.length]);
+    setIndex((current) => (total ? (current + delta + total) % total : 0));
+  }, [total]);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -69,6 +76,8 @@ export function ProductLightbox({ images, startIndex, productName, onClose }: Pr
       swiped.current = false;
       return;
     }
+    // IMP-08 — Pas de zoom sur la slide vidéo (lecture gérée par <video>).
+    if (isVideoSlide) return;
     if (zoom) {
       setZoom(false);
       return;
@@ -98,10 +107,10 @@ export function ProductLightbox({ images, startIndex, productName, onClose }: Pr
       </button>
 
       <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 font-bebas tracking-[3px] text-white/80 text-lg">
-        {index + 1} / {images.length}
+        {index + 1} / {total}
       </div>
 
-      {images.length > 1 && (
+      {total > 1 && (
         <>
           <button
             type="button"
@@ -128,6 +137,19 @@ export function ProductLightbox({ images, startIndex, productName, onClose }: Pr
         onPointerUp={handlePointerUp}
         onClick={handleToggleZoom}
       >
+        {isVideoSlide && video ? (
+          <video
+            key={video}
+            src={video}
+            className="h-full w-full rounded-2xl bg-black object-contain"
+            controls
+            autoPlay={autoPlayVideo}
+            muted
+            playsInline
+            preload="metadata"
+            aria-label={`Vidéo — ${productName}`}
+          />
+        ) : (
         <div
           className="lightbox-zoom absolute inset-0"
           style={{
@@ -145,12 +167,15 @@ export function ProductLightbox({ images, startIndex, productName, onClose }: Pr
             draggable={false}
           />
         </div>
-        <div className="absolute bottom-3 right-3 z-10 p-2 bg-[#0A0A0A]/60 text-white/80 rounded-full pointer-events-none">
-          {zoom ? <ZoomOut size={16} /> : <ZoomIn size={16} />}
-        </div>
+        )}
+        {!isVideoSlide && (
+          <div className="absolute bottom-3 right-3 z-10 p-2 bg-[#0A0A0A]/60 text-white/80 rounded-full pointer-events-none">
+            {zoom ? <ZoomOut size={16} /> : <ZoomIn size={16} />}
+          </div>
+        )}
       </div>
 
-      {images.length > 1 && (
+      {total > 1 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2.5 overflow-x-auto max-w-[90vw] px-2 py-1 scrollbar-none">
           {images.map((image, imageIndex) => (
             <button
@@ -168,6 +193,24 @@ export function ProductLightbox({ images, startIndex, productName, onClose }: Pr
               <Image src={image} alt="" fill sizes="56px" className="object-cover" />
             </button>
           ))}
+          {video && (
+            <button
+              type="button"
+              onClick={() => { setZoom(false); setIndex(videoSlideIndex); }}
+              aria-label="Voir la vidéo"
+              aria-current={isVideoSlide}
+              className={`relative w-12 sm:w-14 aspect-[3/4] flex-shrink-0 overflow-hidden rounded-lg border-2 cursor-pointer transition-all duration-(--motion-fast) ${
+                isVideoSlide
+                  ? 'border-brand-gold opacity-100'
+                  : 'border-white/20 opacity-60 hover:opacity-100 hover:border-white/50'
+              }`}
+            >
+              <Image src={images[0]} alt="" fill sizes="56px" className="object-cover opacity-50" />
+              <span className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
+                <Play size={14} className="text-brand-gold" />
+              </span>
+            </button>
+          )}
         </div>
       )}
     </div>
