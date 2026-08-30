@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,7 +10,8 @@ import { useCart } from '@/context/CartContext';
 import { usePublicSettings } from '@/context/PublicSettingsContext';
 import { openWhatsApp } from '@/services/whatsappService';
 import { Product, Size } from '@/types';
-import { ArrowLeft, MessageSquareCode, ShoppingBag, Check } from 'lucide-react';
+import { ArrowLeft, MessageSquareCode, ShoppingBag, Check, Maximize2 } from 'lucide-react';
+import { ProductLightbox } from '@/components/public/ProductLightbox';
 import { safeJsonLd } from '@/utils/safeJsonLd';
 
 interface ProductDetailContentProps {
@@ -30,6 +31,34 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
   );
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [isAddedToCart, setIsAddedToCart] = useState<boolean>(false);
+  // IMP-07 — Galerie : lightbox + swipe in-page (tap distingué du swipe, seuil 45px).
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const galleryDrag = useRef({ startX: 0, active: false });
+  const gallerySwiped = useRef(false);
+  const selectedIndex = Math.max(product.images.indexOf(selectedImage), 0);
+
+  const handleGalleryPointerDown = (event: React.PointerEvent) => {
+    galleryDrag.current = { startX: event.clientX, active: true };
+  };
+
+  const handleGalleryPointerUp = (event: React.PointerEvent) => {
+    if (!galleryDrag.current.active) return;
+    const delta = event.clientX - galleryDrag.current.startX;
+    galleryDrag.current.active = false;
+    if (Math.abs(delta) > 45) {
+      gallerySwiped.current = true;
+      const next = (selectedIndex + (delta < 0 ? 1 : -1) + product.images.length) % product.images.length;
+      setSelectedImage(product.images[next]);
+    }
+  };
+
+  const openLightbox = () => {
+    if (gallerySwiped.current) {
+      gallerySwiped.current = false;
+      return;
+    }
+    setLightboxIndex(selectedIndex);
+  };
 
   const handleAddToCart = () => {
     if (!selectedSize) {
@@ -125,7 +154,17 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start mb-24">
         {/* Gallery Section - Enhanced Premium Depth & Interactive Thumbnails */}
         <div className="lg:col-span-6 space-y-4">
-          <div className="relative w-full aspect-[3/4] overflow-hidden rounded-3xl border border-brand-gold/15 bg-brand-bg-alt shadow-[0_20px_50px_rgba(10,10,10,0.5)] group">
+          <div
+            className="relative w-full aspect-[3/4] overflow-hidden rounded-3xl border border-brand-gold/15 bg-brand-bg-alt shadow-[0_20px_50px_rgba(10,10,10,0.5)] group cursor-zoom-in select-none touch-pan-y"
+            onPointerDown={handleGalleryPointerDown}
+            onPointerUp={handleGalleryPointerUp}
+            onClick={openLightbox}
+          >
+            {/* IMP-07 — Squelette de chargement + indication d’agrandissement */}
+            <div className="skeleton-media" aria-hidden="true" />
+            <div className="absolute top-3 right-3 z-30 p-2 bg-[#0A0A0A]/60 text-white/85 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-(--motion-fast)">
+              <Maximize2 size={15} />
+            </div>
             {selectedImage && (
               <Image
                 src={selectedImage}
@@ -133,7 +172,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover transition-transform duration-[850ms] ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.05]"
+                className="relative z-10 object-cover transition-transform duration-(--motion-reveal) ease-out-luxe group-hover:scale-[1.05]"
               />
             )}
 
@@ -158,7 +197,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
                   onClick={() => setSelectedImage(image)}
                   aria-label={`Sélectionner l'angle ${index + 1} pour ${product.name}`}
                   title={`Angle ${index + 1}`}
-                  className={`relative w-20 sm:w-24 aspect-[3/4] flex-shrink-0 overflow-hidden rounded-2xl border-2 cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-95 ${
+                  className={`relative w-20 sm:w-24 aspect-[3/4] flex-shrink-0 overflow-hidden rounded-2xl border-2 cursor-pointer transition-all duration-(--motion-fast) ease-out-luxe active:scale-95 ${
                     isSelected 
                       ? 'border-brand-gold shadow-[0_0_15px_rgba(184,149,42,0.35)] scale-[1.02]' 
                       : 'border-brand-gold/15 hover:border-brand-gold/50 opacity-70 hover:opacity-100 hover:scale-[1.01]'
@@ -214,7 +253,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
                     key={size}
                     disabled={isOutOfStock}
                     onClick={() => setSelectedSize(size)}
-                    className={`relative px-5 py-3 font-bebas text-lg tracking-wider rounded-2xl border transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 ${
+                    className={`relative px-5 py-3 font-bebas text-lg tracking-wider rounded-2xl border transition-all duration-(--motion-fast) ease-out-luxe active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 ${
                       isOutOfStock
                         ? 'border-gray-800 text-gray-600 bg-gray-900/40 line-through cursor-not-allowed opacity-40'
                         : isSelected
@@ -244,7 +283,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
                     key={color}
                     disabled={isOutOfStock}
                     onClick={() => setSelectedColor(color)}
-                    className={`relative px-6 py-3 font-bebas text-lg tracking-wider rounded-full border transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-95 cursor-pointer flex items-center justify-center gap-2 ${
+                    className={`relative px-6 py-3 font-bebas text-lg tracking-wider rounded-full border transition-all duration-(--motion-fast) ease-out-luxe active:scale-95 cursor-pointer flex items-center justify-center gap-2 ${
                       isOutOfStock
                         ? 'border-gray-800 text-gray-600 bg-gray-900/40 line-through cursor-not-allowed opacity-40'
                         : isSelected
@@ -271,7 +310,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
             <button
               onClick={handleAddToCart}
               disabled={!product.inStock}
-              className={`w-full py-4.5 font-bebas text-xl uppercase tracking-widest rounded-2xl transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center gap-2.5 cursor-pointer border active:scale-[0.98] ${
+              className={`w-full py-4.5 font-bebas text-xl uppercase tracking-widest rounded-2xl transition-all duration-(--motion-smooth) ease-out-luxe flex items-center justify-center gap-2.5 cursor-pointer border active:scale-[0.98] ${
                 !product.inStock
                   ? 'border-gray-800 bg-gray-900 text-gray-600 cursor-not-allowed'
                   : isAddedToCart
@@ -294,7 +333,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
 
             <button
               onClick={handleDealWhatsApp}
-              className="w-full py-4.5 bg-brand-gold hover:bg-brand-gold-light active:bg-[#9F7F1F] text-[#0A0A0A] font-bebas text-xl uppercase tracking-widest rounded-2xl transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] shadow-[0_15px_30px_-10px_rgba(184,149,42,0.4)] hover:shadow-[0_20px_40px_-12px_rgba(184,149,42,0.6)] flex items-center justify-center gap-2.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full py-4.5 bg-brand-gold hover:bg-brand-gold-light active:bg-[#9F7F1F] text-[#0A0A0A] font-bebas text-xl uppercase tracking-widest rounded-2xl transition-all duration-(--motion-smooth) ease-out-luxe shadow-[0_15px_30px_-10px_rgba(184,149,42,0.4)] hover:shadow-[0_20px_40px_-12px_rgba(184,149,42,0.6)] flex items-center justify-center gap-2.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
             >
               <MessageSquareCode size={20} />
               Deal avec Vioutou
@@ -302,6 +341,16 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
           </div>
         </div>
       </div>
+
+      {/* IMP-07 — Lightbox galerie produit */}
+      {lightboxIndex !== null && (
+        <ProductLightbox
+          images={product.images}
+          startIndex={lightboxIndex}
+          productName={product.name}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
 
       {/* Suggestions Section - Harmonized Premium Collection Cards */}
       <section className="border-t border-brand-gold/15 pt-20">
@@ -317,7 +366,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
             <Link
               key={suggestion.id}
               href={`/produit/${suggestion.id}`}
-              className="relative group bg-brand-bg-alt border border-brand-gold/10 rounded-3xl overflow-hidden shadow-xl flex flex-col justify-between hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] ring-1 ring-inset ring-brand-gold/5 hover:ring-brand-gold/25 transition-all duration-[600ms] ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-[1.02] hover:-translate-y-1 cursor-pointer"
+              className="relative group bg-brand-bg-alt border border-brand-gold/10 rounded-3xl overflow-hidden shadow-xl flex flex-col justify-between hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] ring-1 ring-inset ring-brand-gold/5 hover:ring-brand-gold/25 transition-all duration-(--motion-raise) ease-out-luxe hover:scale-[1.02] hover:-translate-y-1 cursor-pointer"
             >
               <div className="relative w-full aspect-[3/4] overflow-hidden bg-brand-bg">
                 <Image
@@ -325,11 +374,11 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
                   alt={suggestion.name}
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                  className="object-cover transition-transform duration-[850ms] ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.08]"
+                  className="object-cover transition-transform duration-(--motion-reveal) ease-out-luxe group-hover:scale-[1.08]"
                 />
                 
                 {/* Premium subtle inner gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-(--motion-smooth) z-10" />
 
                 {!suggestion.inStock && (
                   <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px] flex items-center justify-center z-20">
@@ -350,7 +399,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
               </div>
 
               {/* Premium subtle bottom accent line */}
-              <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-brand-gold/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-30" />
+              <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-brand-gold/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-(--motion-smooth) z-30" />
             </Link>
           ))}
         </div>
