@@ -13,6 +13,7 @@ const MIGRATED = [
   // IMP-07 : fiche produit + lightbox ajoutées (durées toutes sur tokens).
   'src/app/produit/[id]/product-detail-client.tsx',
   'src/components/public/ProductLightbox.tsx',
+  'src/components/public/LookModal.tsx',
   'src/components/public/layout/Navbar.tsx',
   'src/components/public/home/CategoryGrid.tsx',
   'src/components/public/home/OutfitCarousel.tsx',
