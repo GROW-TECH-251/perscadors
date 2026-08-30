@@ -15,6 +15,7 @@ export interface Product {
   inStock: boolean;
   description: string;
   isPopular?: boolean;
+  video?: string;
 }
 
 export interface CatalogCategory {

@@ -47,6 +47,8 @@ export interface AdminProduct {
   visible: boolean;
   slug: string;
   isPopular: boolean;
+  video_url?: string | null;
+  video_public_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -57,6 +59,8 @@ export interface ProductFormData {
   price: number;
   image_url: string;
   images?: string[];
+  video_url?: string | null;
+  video_public_id?: string | null;
   sizes: string[];
   colors: string[];
   outOfStockSizes?: string[];

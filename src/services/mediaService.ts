@@ -210,6 +210,23 @@ export async function uploadProductImage(
   return await uploadImage(BUCKETS.PRODUCT_IMAGES, file, filePath);
 }
 
+// IMP-08 — Vidéo produit : livraison via Cloudinary (transcodage MP4 H.264/AAC),
+// pas de bucket Supabase (évite le stockage lourd côté base).
+// deleteProductVideo est best-effort : une suppression Cloudinary échouée
+// ne doit jamais bloquer la mise à jour du produit.
+export async function uploadProductVideo(
+  file: File,
+  productId: string | number = 'draft'
+): Promise<{ url: string; publicId: string; error?: string }> {
+  const safeProductId = ensurePathSegment(String(productId));
+  return await uploadCloudinaryVideo(file, `perscadors/products/${safeProductId}`);
+}
+
+export async function deleteProductVideo(publicId: string | null | undefined): Promise<void> {
+  if (!publicId) return;
+  await deleteCloudinaryVideo(publicId);
+}
+
 export async function uploadOutfitImage(
   file: File,
   outfitId: string | number = 'draft'
