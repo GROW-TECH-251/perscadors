@@ -55,7 +55,7 @@ describe('Unit — IMP-10 Admin analytics polish', () => {
   });
 
   it('aucun nouveau graphique : imports recharts strictement identiques', async () => {
-    const page = await readFile('src/app/admin/analytics/page.tsx', 'utf-8');
+    const page = (await readFile('src/app/admin/analytics/page.tsx', 'utf-8')).replace(/\r\n/g, '\n');
     const expected = `import {
   BarChart,
   Bar,

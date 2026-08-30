@@ -191,18 +191,6 @@ html {
   transform: translate3d(0, 0, 0);
 }
 
-/* Custom animations helper classes */
-.fade-in-scroll {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity var(--motion-reveal) var(--ease-out-expo), transform var(--motion-reveal) var(--ease-out-expo);
-}
-
-.fade-in-scroll.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .outfit-carousel-track {
   scrollbar-width: none;
   -ms-overflow-style: none;

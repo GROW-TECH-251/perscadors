@@ -96,6 +96,7 @@ function normalizeAdminProduct(product: AdminProduct): Product {
     image_url: baseImage,
     images: [baseImage, ...(product.images || []).filter((url) => url && url !== baseImage)],
     video: product.video_url?.trim() || undefined,
+    createdAt: product.created_at,
     sizes: normalizedSizes,
     outOfStockSizes: [],
     colors: product.colors || [],

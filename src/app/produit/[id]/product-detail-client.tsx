@@ -136,7 +136,8 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
             name: product.name,
             description: product.description || `Présentation vidéo du produit ${product.name}.`,
             thumbnailUrl: product.images[0],
-            contentUrl: product.video
+            contentUrl: product.video,
+            ...(product.createdAt ? { uploadDate: product.createdAt } : {})
           }
         }
       : {}),
