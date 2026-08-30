@@ -242,6 +242,33 @@ html {
   animation: skeleton-pulse 1.6s var(--ease-out-expo) infinite;
 }
 
+/* ============================================
+   IMP-06 — Marquee éditorial : piste en CSS
+   transform pur (2 groupes identiques → -50% =
+   boucle parfaite). Conteneur overflow-hidden :
+   aucun débordement horizontal (garde E2E).
+   Pause au survol/focus ; reduced-motion global
+   fige la piste (2 copies identiques = rendu OK).
+   ============================================ */
+@keyframes marquee-scroll {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 28s linear infinite;
+  will-change: transform;
+}
+
+@media (hover: hover) {
+  .marquee:hover .marquee-track,
+  .marquee:focus-within .marquee-track {
+    animation-play-state: paused;
+  }
+}
+
 /* Premium Entry Animations */
 @keyframes slide-up-fade {
   0% {
