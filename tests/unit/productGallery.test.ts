@@ -45,7 +45,7 @@ describe('Unit — IMP-07 Galerie produit', () => {
     expect(page).toContain('handleGalleryPointerDown');
     expect(page).toContain('handleGalleryPointerUp');
     expect(page).toContain('openLightbox');
-    expect(page).toContain('setLightboxIndex(selectedIndex)');
+    expect(page).toContain('setLightboxIndex(videoActive ? videoIndex : selectedIndex)');
   });
 
   it('la galerie ouvre la lightbox au tap et affiche l’indication d’agrandissement', async () => {

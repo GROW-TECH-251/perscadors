@@ -9,9 +9,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminToast, AdminConfirmDialog } from '@/admin/components';
-import { Save, X, Upload } from 'lucide-react';
+import {Video,  Save, X, Upload } from 'lucide-react';
 import { fetchProductById, updateProduct } from '@/services/productService';
-import { BUCKETS, compressImage, deleteImageByUrl, uploadProductImage } from '@/services/mediaService';
+import { BUCKETS, compressImage, deleteImageByUrl, deleteProductVideo, uploadProductImage, uploadProductVideo } from '@/services/mediaService';
 import type { ProductFormData } from '@/admin/types';
 
 export default function EditProductPage() {
@@ -26,6 +26,11 @@ export default function EditProductPage() {
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [fetching, setFetching] = useState(true);
   const [uploading, setUploading] = useState(false);
+  // IMP-08 — Vidéo produit : états d’upload/suppression.
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [pendingVideoDeletion, setPendingVideoDeletion] = useState(false);
+  const [deletingVideo, setDeletingVideo] = useState(false);
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     category: '',
@@ -37,6 +42,8 @@ export default function EditProductPage() {
     demand: 0,
     badge: '',
     description: '',
+    video_url: null,
+    video_public_id: null,
     visible: true
   });
 
@@ -59,6 +66,8 @@ export default function EditProductPage() {
           demand: data.demand || 0,
           badge: data.badge || '',
           description: data.description || '',
+          video_url: data.video_url || null,
+          video_public_id: data.video_public_id || null,
           visible: data.visible
         });
       }
@@ -130,6 +139,56 @@ export default function EditProductPage() {
     } finally { setDeletingImage(false); }
   };
 
+  // IMP-08 — Vidéo produit optionnelle (Cloudinary, MP4 H.264/AAC, ≤ 30 Mo).
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/') && !file.name.match(/\.(mp4|mov|webm)$/i)) {
+      setToast({ message: 'Veuillez sélectionner un fichier vidéo valide (MP4, WebM ou MOV).', variant: 'error' });
+      return;
+    }
+
+    if (file.size > 30 * 1024 * 1024) {
+      setToast({ message: 'La vidéo ne doit pas dépasser 30 Mo.', variant: 'error' });
+      return;
+    }
+
+    setVideoUploading(true);
+    try {
+      const result = await uploadProductVideo(file, productId);
+      if (result.error || !result.url) {
+        setToast({ message: result.error || 'Erreur d’upload vidéo.', variant: 'error' });
+      } else {
+        if (formData.video_public_id) {
+          void deleteProductVideo(formData.video_public_id);
+        }
+        setFormData((currentData) => ({ ...currentData, video_url: result.url, video_public_id: result.publicId }));
+        setToast({ message: 'Vidéo ajoutée au produit.', variant: 'success' });
+      }
+    } catch (error: unknown) {
+      console.error('Erreur upload vidéo:', error);
+      setToast({ message: 'Erreur lors de l’upload de la vidéo.', variant: 'error' });
+    } finally {
+      setVideoUploading(false);
+      if (videoInputRef.current) {
+        videoInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleConfirmRemoveVideo = async () => {
+    setPendingVideoDeletion(false);
+    setDeletingVideo(true);
+    try {
+      await deleteProductVideo(formData.video_public_id);
+      setFormData((currentData) => ({ ...currentData, video_url: null, video_public_id: null }));
+      setToast({ message: 'Vidéo supprimée du produit.', variant: 'success' });
+    } finally {
+      setDeletingVideo(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -180,6 +239,7 @@ export default function EditProductPage() {
     <div className="space-y-6">
       {toast && <AdminToast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
       <AdminConfirmDialog isOpen={pendingImageDeletion} title="Supprimer cette image ?" description="Cette image sera retirée du produit et supprimée du stockage. Cette action est irréversible." loading={deletingImage} onCancel={() => setPendingImageDeletion(false)} onConfirm={handleConfirmRemoveImage} />
+      <AdminConfirmDialog isOpen={pendingVideoDeletion} title="Supprimer cette vidéo ?" description="Cette vidéo sera retirée du produit et supprimée de Cloudinary. Cette action est irréversible." loading={deletingVideo} onCancel={() => setPendingVideoDeletion(false)} onConfirm={handleConfirmRemoveVideo} />
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
@@ -270,6 +330,62 @@ export default function EditProductPage() {
         </AdminCard>
 
         <AdminCard>
+          <h2 className="font-bebas text-xl text-brand-text uppercase mb-4 flex items-center gap-2">
+            <Video size={18} />
+            Vidéo du produit (optionnelle)
+          </h2>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                onChange={handleVideoUpload}
+                disabled={videoUploading}
+                className="hidden"
+                id="edit-video-upload"
+              />
+              <label
+                htmlFor="edit-video-upload"
+                className="flex items-center gap-2 px-4 py-2 bg-brand-gold text-[#0A0A0A] rounded-lg cursor-pointer hover:bg-brand-gold-light transition-colors font-medium"
+              >
+                <Upload size={18} />
+                {videoUploading ? 'Upload en cours...' : 'Uploader une vidéo'}
+              </label>
+
+              {formData.video_url && (
+                <button
+                  type="button"
+                  onClick={() => setPendingVideoDeletion(true)}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+                >
+                  Supprimer la vidéo
+                </button>
+              )}
+            </div>
+
+            {formData.video_url && (
+              <div className="max-w-xs border-2 border-brand-gold/20 rounded-lg overflow-hidden bg-brand-bg">
+                <video
+                  src={formData.video_url}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  aria-label="Aperçu de la vidéo du produit"
+                  className="w-full aspect-video bg-black object-contain"
+                />
+                <div className="px-2 py-1 text-xs text-green-500 text-center">✓ Vidéo uploadée</div>
+              </div>
+            )}
+
+            <p className="text-xs text-brand-text-muted">
+              Formats acceptés: MP4, WebM, MOV • Taille max: 30 Mo • Transcodage automatique en MP4 H.264/AAC
+            </p>
+          </div>
+        </AdminCard>
+
+        <AdminCard>
           <h2 className="font-bebas text-xl text-brand-text uppercase mb-4">Tailles</h2>
           <div className="flex gap-2 mb-4">
             <select
@@ -312,7 +428,7 @@ export default function EditProductPage() {
         </AdminCard>
 
         <div className="flex gap-4">
-          <AdminButton type="submit" variant="primary" size="lg" loading={loading || uploading} className="flex-1">
+          <AdminButton type="submit" variant="primary" size="lg" loading={loading || uploading || videoUploading} className="flex-1">
             <Save size={20} /> Mettre à jour
           </AdminButton>
           <AdminButton type="button" variant="secondary" size="lg" onClick={() => router.push('/admin/produits')}>Annuler</AdminButton>

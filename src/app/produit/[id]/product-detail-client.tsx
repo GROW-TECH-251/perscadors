@@ -10,7 +10,7 @@ import { useCart } from '@/context/CartContext';
 import { usePublicSettings } from '@/context/PublicSettingsContext';
 import { openWhatsApp } from '@/services/whatsappService';
 import { Product, Size } from '@/types';
-import { ArrowLeft, MessageSquareCode, ShoppingBag, Check, Maximize2 } from 'lucide-react';
+import {Play,  ArrowLeft, MessageSquareCode, ShoppingBag, Check, Maximize2 } from 'lucide-react';
 import { ProductLightbox } from '@/components/public/ProductLightbox';
 import { safeJsonLd } from '@/utils/safeJsonLd';
 
@@ -36,6 +36,11 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
   const galleryDrag = useRef({ startX: 0, active: false });
   const gallerySwiped = useRef(false);
   const selectedIndex = Math.max(product.images.indexOf(selectedImage), 0);
+  // IMP-08 — Vidéo produit : dernier média de la galerie (optionnel).
+  const hasVideo = Boolean(product.video);
+  const videoIndex = product.images.length;
+  const mediaCount = product.images.length + (hasVideo ? 1 : 0);
+  const [videoActive, setVideoActive] = useState(false);
 
   const handleGalleryPointerDown = (event: React.PointerEvent) => {
     galleryDrag.current = { startX: event.clientX, active: true };
@@ -47,8 +52,14 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
     galleryDrag.current.active = false;
     if (Math.abs(delta) > 45) {
       gallerySwiped.current = true;
-      const next = (selectedIndex + (delta < 0 ? 1 : -1) + product.images.length) % product.images.length;
-      setSelectedImage(product.images[next]);
+      const activeIndex = videoActive ? videoIndex : selectedIndex;
+      const next = (activeIndex + (delta < 0 ? 1 : -1) + mediaCount) % mediaCount;
+      if (hasVideo && next === videoIndex) {
+        setVideoActive(true);
+      } else {
+        setVideoActive(false);
+        setSelectedImage(product.images[next]);
+      }
     }
   };
 
@@ -57,7 +68,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
       gallerySwiped.current = false;
       return;
     }
-    setLightboxIndex(selectedIndex);
+    setLightboxIndex(videoActive ? videoIndex : selectedIndex);
   };
 
   const handleAddToCart = () => {
@@ -118,6 +129,17 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
       "@type": "Brand",
       "name": "HP Collection"
     },
+    ...(product.video
+      ? {
+          subjectOf: {
+            "@type": "VideoObject",
+            name: product.name,
+            description: product.description || `Présentation vidéo du produit ${product.name}.`,
+            thumbnailUrl: product.images[0],
+            contentUrl: product.video
+          }
+        }
+      : {}),
     "offers": {
       "@type": "Offer",
       "url": `https://perscadors.vercel.app/produit/${product.id}`,
@@ -165,7 +187,18 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
             <div className="absolute top-3 right-3 z-30 p-2 bg-[#0A0A0A]/60 text-white/85 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-(--motion-fast)">
               <Maximize2 size={15} />
             </div>
-            {selectedImage && (
+            {videoActive && hasVideo ? (
+              <video
+                key={product.video}
+                src={product.video}
+                poster={product.images[0]}
+                controls
+                playsInline
+                preload="metadata"
+                aria-label={`Vidéo du produit ${product.name}`}
+                className="relative z-10 h-full w-full bg-black object-contain transition-opacity duration-(--motion-smooth) ease-out-luxe"
+              />
+            ) : selectedImage && (
               <Image
                 src={selectedImage}
                 alt={product.name}
@@ -213,6 +246,29 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
                 </button>
               );
             })}
+            {hasVideo && (
+              <button
+                onClick={() => setVideoActive(true)}
+                aria-label={`Lire la vidéo de ${product.name}`}
+                title="Vidéo"
+                className={`relative w-20 sm:w-24 aspect-[3/4] flex-shrink-0 overflow-hidden rounded-2xl border-2 cursor-pointer transition-all duration-(--motion-fast) ease-out-luxe active:scale-95 ${
+                  videoActive
+                    ? 'border-brand-gold shadow-[0_0_15px_rgba(184,149,42,0.35)] scale-[1.02]'
+                    : 'border-brand-gold/15 hover:border-brand-gold/50 opacity-70 hover:opacity-100 hover:scale-[1.01]'
+                }`}
+              >
+                <Image
+                  src={product.images[0]}
+                  alt=""
+                  fill
+                  sizes="96px"
+                  className="object-cover opacity-50"
+                />
+                <span className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
+                  <Play size={20} className="text-brand-gold" />
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -346,6 +402,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
       {lightboxIndex !== null && (
         <ProductLightbox
           images={product.images}
+          video={hasVideo ? product.video : undefined}
           startIndex={lightboxIndex}
           productName={product.name}
           onClose={() => setLightboxIndex(null)}
