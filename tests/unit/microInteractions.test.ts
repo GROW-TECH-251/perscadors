@@ -10,6 +10,9 @@ import { readFile } from 'fs/promises';
 
 // IMP-03 : Navbar.tsx ajoutée aux migrées (dernière exclue par IMP-02).
 const MIGRATED = [
+  // IMP-07 : fiche produit + lightbox ajoutées (durées toutes sur tokens).
+  'src/app/produit/[id]/product-detail-client.tsx',
+  'src/components/public/ProductLightbox.tsx',
   'src/components/public/layout/Navbar.tsx',
   'src/components/public/home/CategoryGrid.tsx',
   'src/components/public/home/OutfitCarousel.tsx',

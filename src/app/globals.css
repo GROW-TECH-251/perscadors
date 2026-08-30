@@ -269,6 +269,24 @@ html {
   }
 }
 
+/* ============================================
+   IMP-07 — Lightbox produit : entrée en fondu
+   (opacity seule) + transition de zoom sur
+   tokens. Neutralisés par prefers-reduced-motion.
+   ============================================ */
+@keyframes lightbox-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lightbox-fade-in {
+  animation: lightbox-in var(--motion-fast) ease-out both;
+}
+
+.lightbox-zoom {
+  transition: transform var(--motion-smooth) var(--ease-out-expo);
+}
+
 /* Premium Entry Animations */
 @keyframes slide-up-fade {
   0% {
