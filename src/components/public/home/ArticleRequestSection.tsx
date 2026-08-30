@@ -4,6 +4,8 @@ import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { buildWhatsAppUrl } from '@/services/whatsappService';
+import { shareFileWithText } from '@/services/whatsappShareService';
 import type { ShopSettings } from '@/admin/types';
 import { SearchX, Upload, MessageCircle, Loader2 } from 'lucide-react';
 
@@ -216,7 +218,7 @@ function ArticleSubmissionModal({
             </div>
 
             <p className="text-[11px] leading-relaxed text-[#555555]">
-              Le message sera envoyé via WhatsApp au numéro {settings.whatsapp_phone || '22967280018'}. {imagePreview ? 'La photo sera uploadée et le lien inclus automatiquement.' : 'Ajoutez une photo pour une demande plus précise.'}
+              Le message sera envoyé via WhatsApp au numéro {settings.whatsapp_phone || '22967280018'}. {imagePreview ? 'Sur mobile, la photo sera jointe directement au message ; ailleurs, elle sera mise en ligne et son lien ajouté automatiquement.' : 'Ajoutez une photo pour une demande plus précise.'}
             </p>
           </div>
         </div>
@@ -317,11 +319,6 @@ export const ArticleRequestSection: React.FC = () => {
   const handleSubmitArticle = async () => {
     setIsUploading(true);
 
-    // FIX PUB-FUNC-01 : Upload image avec lien
-    // Avant : imagePreview base64 local non envoyable via wa.me (texte uniquement)
-    // Après : upload vers Supabase Storage article-requests via API service_role → URL publique → incluse dans message WhatsApp
-    const uploadedImageUrl = await uploadImageIfNeeded();
-
     const clientPhone = normalizePhoneDigits(settings.whatsapp_phone || '22967280018');
     const lines = [
       'Bonjour Vioutou 👋',
@@ -337,14 +334,42 @@ export const ArticleRequestSection: React.FC = () => {
       `Urgence : ${articleForm.urgency || 'Standard'}`,
       `Remarques : ${articleForm.notes || 'Aucune remarque'}`,
       '',
-      uploadedImageUrl ? `📸 Photo : ${uploadedImageUrl}` : imagePreview ? 'Photo jointe : oui (upload échoué, à envoyer manuellement)' : 'Photo : pas encore jointe',
-      '',
       'Merci de me confirmer si vous pouvez le trouver, le commander ou me proposer une alternative.',
       '',
       'Merci beaucoup ! 🙌',
     ];
 
-    const url = `https://wa.me/${clientPhone}?text=${encodeURIComponent(lines.join('\n'))}`;
+    // PERF-04 — Mobile : la photo part en MÉDIA RÉEL. wa.me ne transmet que
+    // du texte ; si le navigateur sait partager un fichier, on ouvre la
+    // feuille système avec la photo + le message — l'utilisateur choisit
+    // WhatsApp et la photo est JOINTE. Annulation = formulaire conservé.
+    if (selectedFile) {
+      const nativeShare = await shareFileWithText(selectedFile, lines.join('\n'));
+      if (nativeShare.shared) {
+        setIsUploading(false);
+        closeArticleForm();
+        return;
+      }
+      if (nativeShare.reason === 'aborted') {
+        setIsUploading(false);
+        return;
+      }
+      // 'unsupported' / 'failed' -> flux historique ci-dessous.
+    }
+
+    // Flux historique (desktop / navigateurs sans partage de fichiers) :
+    // upload Supabase -> URL publique incluse dans le message wa.me.
+    const uploadedImageUrl = await uploadImageIfNeeded();
+    const fullLines = [
+      ...lines.slice(0, 12),
+      '',
+      uploadedImageUrl ? `📸 Photo : ${uploadedImageUrl}` : imagePreview ? 'Photo jointe : oui (upload échoué, à envoyer manuellement)' : 'Photo : pas encore jointe',
+      ...lines.slice(12),
+    ];
+
+    // PERF-04 : passage par buildWhatsAppUrl = normalisation NFC + coupe
+    // sûre (fin des � dus aux troncatures d'URL longues).
+    const url = buildWhatsAppUrl(fullLines.join('\n'), clientPhone);
     window.open(url, '_blank', 'noopener,noreferrer');
     setIsUploading(false);
     closeArticleForm();
