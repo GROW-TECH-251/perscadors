@@ -74,7 +74,7 @@ export function getDefaultShopSettings(): ShopSettings {
     logo_url: '',
     hero_title: 'Vioutou t\'habille. Tu règnes.',
     hero_subtitle: 'La marque de mode streetwear premium. Statut, style, modernité et une élégance sans compromis. Impose ta présence dans la rue.',
-    hero_video_url: '/assets/backgrounds/7679830-uhd_4096_2160_25fps.mp4',
+    hero_video_url: '/assets/backgrounds/hero-1080p.mp4', // PERF-01 : variante 6,5 Mo (l'ancienne 4K de 36 Mo est mappée par Hero.tsx)
     footer_description: 'La marque de mode streetwear premium au Bénin. Statut, style, modernité et une élégance sans compromis.',
     floating_whatsapp_text: 'Bonjour Vioutou ! Je viens du site HP Collection et j\'aimerais discuter de vos outfits.',
     social_title: 'HP Collection | Boutique Streetwear Premium',
