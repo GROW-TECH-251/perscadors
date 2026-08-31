@@ -28,7 +28,13 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     const s = await readFile('src/components/public/intro/IntroStage.tsx', 'utf-8');
     expect(s).toContain("'use client'");
     expect(s).toContain('const AUTO_ADVANCE_MS = 2_200;');
-    expect(s).toContain("const SEEN_KEY = 'pescador-intro-seen';");
+    // OV-3c : session utilisateur CROSS-ONGLET (localStorage + TTL 30 min).
+    expect(s).toContain("const SEEN_KEY = 'pescador-intro-at';");
+    expect(s).toContain('const SEEN_TTL_MS = 1_800_000;');
+    expect(s).toContain("window.localStorage.setItem(SEEN_KEY, String(Date.now()))");
+    // Soft-navigation : re-check au montage (le gate pré-paint ne court qu'au
+    // chargement du document).
+    expect(s).toContain('Date.now() - seenAt < SEEN_TTL_MS');
     expect(s).toContain('navigator.webdriver');
     // Auto-advance = auto-scroll scripté CANCELABLE ; annulé au premier geste.
     expect(s).toContain("['wheel', 'touchmove', 'pointerdown']");
@@ -39,6 +45,10 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     // Skip utilisateur : collapse + scrollIntoView du bloc VISUEL suivant.
     expect(s).toContain('nextElementSibling');
     expect(s).toContain('scrollIntoView');
+    // OV-3c : skip + indicateur de scroll fusionnés (chevron + « Passer »).
+    expect(s).toContain('intro-cue-chevron');
+    expect(s).toContain('<span>Passer</span>');
+    expect(s).toContain('text-white/40');
     // Sortie naturelle : IntersectionObserver marque la session.
     expect(s).toContain('IntersectionObserver');
   });
@@ -52,16 +62,17 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     expect(s).toContain('fetchPriority="high"');
     expect(s).toContain('aria-hidden="true"');
     expect(s).toContain('data-intro-logo');
-    // Seul élément focusable du stage : le bouton « Passer ».
-    expect(s).toContain('Passer l&apos;introduction');
+    // Seul élément focusable du stage : le bouton « Passer » (discret).
+    expect(s).toContain('aria-label="Passer l\'introduction"');
   });
 
   it('layout : script inline des gates AVANT le rendu (session, motion, data, param)', async () => {
     const s = await readFile('src/app/layout.tsx', 'utf-8');
-    expect(s).toContain('pescador-intro-seen');
-    // FIX C : le reset ?intro=1 doit précéder le calcul de off (sinon le
-    // paramètre ne force la séquence qu'avec un cran de retard).
-    expect(s.indexOf("pescador-intro-seen','0'")).toBeLessThan(s.indexOf('var v='));
+    expect(s).toContain('pescador-intro-at');
+    expect(s).toContain('18e5');
+    expect(s).not.toContain('sessionStorage');
+    // FIX C : le reset ?intro=1 doit précéder le calcul de off.
+    expect(s.indexOf("pescador-intro-at','0'")).toBeLessThan(s.indexOf('var v='));
     // reduced-motion ne gate plus : intro STATIQUE (politique marque).
     expect(s).not.toContain("m=window.matchMedia");
     expect(s).toContain('navigator.connection&&navigator.connection.saveData');

@@ -36,6 +36,7 @@ import {
   getIntroRuntimeConfig,
   localProgress,
   logoState,
+  clamp01,
   parallaxFactor,
   pickOutfits,
   scrollProgress,
@@ -47,10 +48,14 @@ import {
 } from './introMotion';
 
 const AUTO_ADVANCE_MS = 2_200;
+/** Session utilisateur : 30 minutes glissantes, PARTAGÉES entre onglets
+ *  (localStorage) — cohérent reload/nouvel onglet, contrairement au
+ *  sessionStorage par onglet de la OV-1. */
+const SEEN_TTL_MS = 1_800_000;
 const AUTO_ADVANCE_DURATION_MS = 1_600;
 /** portion de viewport au-delà du sticky pour RÉVÉLER le hero en fin d'auto-advance */
 const AUTO_ADVANCE_REVEAL = 0.55;
-const SEEN_KEY = 'pescador-intro-seen';
+const SEEN_KEY = 'pescador-intro-at';
 const NON_VISUAL_SIBLING_TAGS = ['SCRIPT', 'NOSCRIPT', 'LINK', 'STYLE', 'TEMPLATE'];
 const MAX_VIGNETTES = 8;
 const MOBILE_VISIBLE = 5;
@@ -63,6 +68,7 @@ export function IntroStage() {
 
   const fieldRef = useRef<HTMLDivElement | null>(null);
   const logoRef = useRef<HTMLImageElement | null>(null);
+  const cueRef = useRef<HTMLButtonElement | null>(null);
   const nodesRef = useRef<Array<HTMLDivElement | null>>([]);
   const seenMarked = useRef(false);
 
@@ -77,10 +83,13 @@ export function IntroStage() {
   const markSeen = useCallback(() => {
     if (seenMarked.current) return;
     seenMarked.current = true;
+    // La vue est consommée : ce document n'est plus « porteur » de l'intro —
+    // un retour par soft-navigation la retrouvera masquée (cohérent reload).
+    (window as unknown as { __PESCADOR_INTRO_OWNER__?: number }).__PESCADOR_INTRO_OWNER__ = 0;
     try {
-      window.sessionStorage.setItem(SEEN_KEY, '1');
+      window.localStorage.setItem(SEEN_KEY, String(Date.now()));
     } catch {
-      /* sessionStorage indisponible : l'intro ressortira, sans gravité */
+      /* localStorage indisponible : l'intro ressortira, sans gravité */
     }
   }, []);
 
@@ -118,6 +127,25 @@ export function IntroStage() {
     // dans l'effet — règle react-hooks/set-state-in-effect.)
     if (document.documentElement.getAttribute('data-pescador-intro') === 'off') {
       return;
+    }
+
+    // Soft-navigation (p.ex. /looks -> /) : le gate pré-paint n'est évalué
+    // qu'au chargement du document — on re-vérifie la session ici et l'on
+    // masque la section sans animation ni déplacement (cohérence totale
+    // avec le reload). Aucun setState : mutation DOM directe post-mount.
+    try {
+      // « Porteur » = document où le gate a laissé l'intro jouer au chargement
+      // (marque d'arrivée posée par le script inline). Les AUTRES documents/
+      // soft-navigations de la session trouvent une marque fraîche -> masqués.
+      const owner =
+        (window as unknown as { __PESCADOR_INTRO_OWNER__?: number }).__PESCADOR_INTRO_OWNER__ === 1;
+      const seenAt = Number(window.localStorage.getItem(SEEN_KEY) || 0);
+      if (!owner && seenAt && Date.now() - seenAt < SEEN_TTL_MS) {
+        document.getElementById('pescador-intro')?.style.setProperty('display', 'none');
+        return;
+      }
+    } catch {
+      /* localStorage indisponible : comportement historique */
     }
 
     let autoTimer = 0;
@@ -292,6 +320,16 @@ export function IntroStage() {
         logo.style.transform = `scale(${state.scale.toFixed(4)})`;
       }
 
+      // Indicateur/skip : s'efface dès les premiers pixels de scroll — sa
+      // raison d'être (« l'expérience continue vers le bas ») s'éteint
+      // d'elle-même une fois l'utilisateur en mouvement.
+      const cue = cueRef.current;
+      if (cue) {
+        const cueFade = 1 - clamp01(p * 5);
+        cue.style.opacity = cueFade.toFixed(3);
+        cue.style.visibility = cueFade <= 0.05 ? 'hidden' : 'visible';
+      }
+
       raf = requestAnimationFrame(frame);
     };
 
@@ -366,7 +404,7 @@ export function IntroStage() {
               }}
               className={`absolute left-0 top-0 overflow-hidden rounded-xl ring-1 ring-white/10 will-change-transform ${
                 index >= MOBILE_VISIBLE ? 'hidden lg:block' : ''
-              } ${seed.depth === 0 ? 'lg:blur-[1.5px]' : ''}`}
+              } ${seed.depth === 0 ? 'lg:blur-[2px]' : ''}`}
               style={{ ...size, opacity: 0, zIndex: 10 + seed.depth }}
             >
               <Image
@@ -403,12 +441,26 @@ export function IntroStage() {
           </p>
         </div>
 
+      </div>
+
+      {/* OV-3c — Skip + indication de scroll FUSIONNÉS : un seul élément
+          discret bas-centre. Chevron (fonction UX : « ça continue en bas »,
+          dérive douce neutralisée par reduced-motion) + mot « Passer ».
+          Opacité de repos 0.4, or au survol, cible tactile ≥ 44 px, focus
+          visible conservé (seul élément focusable du stage). S'efface dès
+          le premier scroll (voir boucle rAF). */}
+      <div className="absolute inset-x-0 bottom-5 z-30 flex justify-center">
         <button
+          ref={cueRef}
           type="button"
           onClick={() => skip()}
-          className="cursor-pointer rounded-full border border-white/25 px-6 py-2.5 text-xs font-medium tracking-[0.18em] text-white/70 uppercase transition-colors duration-200 hover:border-brand-gold/60 hover:text-brand-gold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-gold"
+          aria-label="Passer l'introduction"
+          className="flex cursor-pointer flex-col items-center gap-1.5 px-6 py-3 text-[10px] font-medium tracking-[0.32em] text-white/40 uppercase transition-colors duration-300 hover:text-brand-gold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-gold"
         >
-          Passer l&apos;introduction
+          <svg className="intro-cue-chevron h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 6l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span>Passer</span>
         </button>
       </div>
     </div>

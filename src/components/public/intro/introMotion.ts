@@ -1,27 +1,57 @@
 // src/components/public/intro/introMotion.ts
 // OV-2 — Maths PURES du champ organique (aucune dépendance React/DOM :
 // entièrement testables unitairement, exécutables côté serveur).
+// OV-3 — Convergence & transition (scrub sticky).
+// OV-3c — Composition en COQUES jitterées (taille ∝ profondeur, ellipse
+//         adaptée à l'aspect, entrée back-to-front) : le champ occupe
+//         réellement l'espace, les vignettes proches frôlent le logo.
 //
 // Principes anti « carrousel mécanique » :
 // - angle doré (137,508°) entre voisins + jitter individuel ±28° :
 //   jamais un cercle parfait, jamais une rotation continue ;
-// - rayons / échelles / profondeurs / dérives individuels (seed par id) ;
+// - TROIS coques qui se CHEVAUCHENT (proche/médiane/lointaine) : le rayon,
+//   l'échelle, le flou, la vitesse de dérive et la parallaxe sont tous
+//   corrélés à la profondeur -> l'espace est lisible ;
 // - dérive = 2 sinusoïdes INCOMMENSURABLES (Lissajous) : la scène vit
 //   sans boucle perceptible ;
-// - cascade d'entrée décalée : l'univers se CONSTRUIT progressivement.
+// - cascade d'entrée back-to-front : l'arrière-plan se construit d'abord.
 //
 // Déterminisme total : same id -> same orbite (re-rendu stable, SSR sûr).
 
 export const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)); // ≈ 2,39996 rad = 137,508°
-export const RADIUS_RATIO_MIN = 0.3;
-export const RADIUS_RATIO_MAX = 0.48;
-export const SCALE_MIN = 0.85;
-export const SCALE_MAX = 1.15;
+export const RADIUS_RATIO_MIN = 0.2;
+export const RADIUS_RATIO_MAX = 0.62;
+export const SCALE_MIN = 0.62;
+export const SCALE_MAX = 1.3;
 export const ANGLE_JITTER_MAX = (28 * Math.PI) / 180;
 export const ENTRANCE_DURATION_MS = 700;
 export const OUTFIT_IMAGE_RATIO = 1086 / 828; // portrait source des visuels looks
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+
+// -------------------------------------------
+// Coques de profondeur (rayon / échelle / dérive corrélés, bornes qui se
+// chevauchent volontairement : jamais trois « anneaux » lisibles).
+// -------------------------------------------
+export interface IntroShell {
+  radiusMin: number;
+  radiusMax: number;
+  scaleMin: number;
+  scaleMax: number;
+  driftAmpMin: number;
+  driftAmpMax: number;
+  driftPeriodMin: number;
+  driftPeriodMax: number;
+}
+
+export const INTRO_SHELLS: Record<0 | 1 | 2, IntroShell> = {
+  // lointaine : externe, petite, floue (desktop), lente
+  0: { radiusMin: 0.44, radiusMax: 0.62, scaleMin: 0.62, scaleMax: 0.82, driftAmpMin: 3, driftAmpMax: 8, driftPeriodMin: 9, driftPeriodMax: 13 },
+  // médiane
+  1: { radiusMin: 0.32, radiusMax: 0.48, scaleMin: 0.88, scaleMax: 1.08, driftAmpMin: 5, driftAmpMax: 12, driftPeriodMin: 8, driftPeriodMax: 11 },
+  // proche : interne, grande, vive — mord la zone du logo (derrière lui)
+  2: { radiusMin: 0.2, radiusMax: 0.34, scaleMin: 1.08, scaleMax: 1.3, driftAmpMin: 8, driftAmpMax: 16, driftPeriodMin: 7, driftPeriodMax: 10 },
+};
 
 // -------------------------------------------
 // Config par contexte (résolue avec window, jamais pendant le rendu)
@@ -79,7 +109,7 @@ export interface OrbitSeed {
   angle: number;
   radiusRatio: number;
   scale: number;
-  /** 0 = lointain, 1 = intermédiaire, 2 = proche */
+  /** 0 = lointaine, 1 = médiane, 2 = proche */
   depth: 0 | 1 | 2;
   ampX: number;
   ampY: number;
@@ -90,33 +120,41 @@ export interface OrbitSeed {
   entranceDelayMs: number;
 }
 
-const DRIFT_AMP_MIN = 4;
-const DRIFT_AMP_MAX = 14;
-const DRIFT_PERIOD_MAX = 13;
-const ENTRANCE_STAGGER_MS = 110;
-const ENTRANCE_BASE_MS = 350;
+const ENTRANCE_BASE_MS = 300;
+const ENTRANCE_DEPTH_STAGGER_MS = 220;
 
 export function buildOrbitSeed(key: string | number, index: number): OrbitSeed {
   const angle = index * GOLDEN_ANGLE + (rand01(key, 1) - 0.5) * 2 * ANGLE_JITTER_MAX;
-  const radiusRatio = lerp(RADIUS_RATIO_MIN, RADIUS_RATIO_MAX, rand01(key, 2));
-  const scale = lerp(SCALE_MIN, SCALE_MAX, rand01(key, 3));
-  const depthRoll = rand01(key, 4);
-  const depth: 0 | 1 | 2 = depthRoll < 0.35 ? 0 : depthRoll < 0.75 ? 1 : 2;
 
-  // Périodes incommensurables garanties : périodes de bases différentes
-  // (7-10 s et 10-13 s) -> le Lissajous ne se referme jamais visuellement.
+  // Profondeur pondérée (30 % lointaines / 45 % médianes / 25 % proches),
+  // puis TOUT le caractère visuel dérive de la coque : cohérence spatiale.
+  const depthRoll = rand01(key, 4);
+  const depth: 0 | 1 | 2 = depthRoll < 0.3 ? 0 : depthRoll < 0.75 ? 1 : 2;
+  const shell = INTRO_SHELLS[depth];
+
+  const radiusRatio = lerp(shell.radiusMin, shell.radiusMax, rand01(key, 2));
+  const scale = lerp(shell.scaleMin, shell.scaleMax, rand01(key, 3));
+
+  // Périodes incommensurables GARANTIES : periodY toujours décalé de
+  // periodX d'au moins 1,2 s (le Lissajous ne se referme jamais).
+  const periodX = lerp(shell.driftPeriodMin, shell.driftPeriodMax, rand01(key, 7));
+  const periodY = periodX + lerp(1.2, 3, rand01(key, 8));
   return {
     angle,
     radiusRatio,
     scale,
     depth,
-    ampX: lerp(DRIFT_AMP_MIN, DRIFT_AMP_MAX, rand01(key, 5)),
-    ampY: lerp(DRIFT_AMP_MIN, DRIFT_AMP_MAX, rand01(key, 6)),
-    periodX: lerp(7, 10, rand01(key, 7)),
-    periodY: lerp(10, DRIFT_PERIOD_MAX, rand01(key, 8)),
+    ampX: lerp(shell.driftAmpMin, shell.driftAmpMax, rand01(key, 5)),
+    ampY: lerp(shell.driftAmpMin, shell.driftAmpMax, rand01(key, 6)),
+    periodX,
+    periodY,
     phaseX: rand01(key, 9) * Math.PI * 2,
     phaseY: rand01(key, 10) * Math.PI * 2,
-    entranceDelayMs: ENTRANCE_BASE_MS + index * ENTRANCE_STAGGER_MS + rand01(key, 11) * 80,
+    // Back-to-front : l'arrière-plan (lointaines, floues) se construit
+    // d'abord, les proches émergent en dernier (la profondeur devient un
+    // récit d'entrée).
+    entranceDelayMs:
+      ENTRANCE_BASE_MS + depth * ENTRANCE_DEPTH_STAGGER_MS + rand01(key, 11) * 120,
   };
 }
 
@@ -141,18 +179,24 @@ export function entranceProgress(seed: OrbitSeed, tMs: number): number {
 }
 
 // -------------------------------------------
-// Position centrale (px, relative au centre du conteneur)
+// Position centrale (px, relative au centre du conteneur).
+// OV-3c : champ ELLIPTIQUE adapté à l'aspect — en paysage le champ
+// s'élargit (×1.06 / 0.82) pour occuper l'écran large ; en portrait il
+// se resserre horizontalement (×0.86) pour préserver la lisibilité.
 // -------------------------------------------
 export function computePlacement(seed: OrbitSeed, width: number, height: number): { x: number; y: number } {
+  const landscape = width >= height;
+  const ax = landscape ? 1.06 : 0.86;
+  const ay = landscape ? 0.82 : 1;
   const radius = seed.radiusRatio * Math.min(width, height);
-  return { x: Math.cos(seed.angle) * radius, y: Math.sin(seed.angle) * radius };
+  return { x: Math.cos(seed.angle) * radius * ax, y: Math.sin(seed.angle) * radius * ay };
 }
 
 // -------------------------------------------
-// Profondeur -> facteurs (parallaxe, z)
+// Profondeur -> facteurs (parallaxe croissante avec la proximité)
 // -------------------------------------------
 export function parallaxFactor(depth: 0 | 1 | 2): number {
-  return depth === 2 ? 1 : depth === 1 ? 0.7 : 0.35;
+  return depth === 2 ? 1.15 : depth === 1 ? 0.7 : 0.35;
 }
 
 // -------------------------------------------
@@ -175,7 +219,7 @@ export function pickOutfits<T extends { id: string }>(outfits: T[], count: numbe
 
 // -------------------------------------------
 // Taille CSS d'une vignette : clamp responsif UNIQUE (SSR stable),
-// bornes multipliées par l'échelle seedée.
+// bornes multipliées par l'échelle seedée (∝ profondeur).
 // -------------------------------------------
 export function vignetteSizeStyle(seed: OrbitSeed): { width: string; height: string } {
   const min = Math.round(96 * seed.scale);
@@ -209,17 +253,17 @@ export function scrollProgress(scrollY: number, sectionTop: number, course: numb
 }
 
 /**
- * Délai individuel de convergence : les vignettes LOINTAINES convergent en
- * premier, les proches en dernier (l'orbite se ferme comme une main).
+ * Délai individuel de convergence : les vignettes LOINTAINES (coque externe)
+ * partent en PREMIER — elles ont la plus grande distance à parcourir et
+ * l'orbite se ferme « comme une main » — les proches ferment la marche.
  * Borné par CONVERGENCE_STAGGER pour que tout soit convergé à p=1.
  */
 export const CONVERGENCE_STAGGER = 0.25;
 
 export function convergenceDelay(seed: OrbitSeed): number {
   const norm = (seed.radiusRatio - RADIUS_RATIO_MIN) / (RADIUS_RATIO_MAX - RADIUS_RATIO_MIN);
-  // norm ~0 = lointaine -> délai court (converge en premier) ;
-  // norm ~1 = proche -> délai maximal (ferme la main en dernier).
-  return clamp01(norm) * CONVERGENCE_STAGGER;
+  // norm ~1 = lointaine -> délai court ; norm ~0 = proche -> délai maximal.
+  return (1 - clamp01(norm)) * CONVERGENCE_STAGGER;
 }
 
 /** Sous-progression locale d'une vignette (0 avant son délai, 1 à p=1). */

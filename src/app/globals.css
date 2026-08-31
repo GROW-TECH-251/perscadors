@@ -383,3 +383,11 @@ html[data-pescador-intro='off'] .pescador-intro {
    IntroStage — positions finales immédiates, aucune boucle rAF, aucun
    auto-advance). La règle display:none a été retirée : la signature de
    marque s'offre à tous, sans mouvements pour ceux qui les refusent. */
+
+/* OV-3c — Indicateur de scroll / skip de l'intro : chevron à la dérive
+   verticale douce (keyframe existante scroll-cue-float), neutralisé par la
+   règle globale prefers-reduced-motion. Fonction UX : « l'expérience
+   continue vers le bas » — s'efface dès le premier scroll (IntroStage). */
+.intro-cue-chevron {
+  animation: scroll-cue-float 2.4s var(--ease-out-luxe) infinite;
+}

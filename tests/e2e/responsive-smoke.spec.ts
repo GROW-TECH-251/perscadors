@@ -35,7 +35,23 @@ test.describe('SEC-9 / E2E — smoke responsive', () => {
 });
 
 // OV-1 — Fondation de l'intro HP Collection (statique, gates pré-paint).
-// Chaque test a un contexte frais -> sessionStorage vide -> intro visible.
+// Chaque test a un contexte frais (localStorage vide) -> intro visible.
+
+// Chaque test a un contexte frais (localStorage vide) -> intro visible.
+
+// Gèle le timer d'auto-advance de l'intro (AUTO_ADVANCE_MS = 2_200 dans
+// IntroStage.tsx) : les tests ne doivent pas courir contre lui. Test-only,
+// aucun impact prod — le timer neutralisé n'appelle jamais son callback.
+async function freezeIntroAutoAdvance(page: import('@playwright/test').Page) {
+  await page.addInitScript(() => {
+    const original = window.setTimeout.bind(window);
+    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) =>
+      timeout === 2200
+        ? original(() => {}, 2_000_000_000)
+        : original(handler, timeout, ...args)) as typeof window.setTimeout;
+  });
+}
+
 test.describe('OV-1 — Intro HP Collection', () => {
   test('intro visible au premier chargement, aucun débordement', async ({ page }) => {
     await page.goto('/');
@@ -147,7 +163,7 @@ test.describe('OV-3 — Convergence & transition', () => {
     await page.goto('/?intro=1');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
-    expect(await page.evaluate(() => sessionStorage.getItem('pescador-intro-seen'))).toBe('1');
+    expect(await page.evaluate(() => Number(localStorage.getItem('pescador-intro-at') || 0))).toBeGreaterThan(0);
     const gone = await page.evaluate(() => {
       const section = document.getElementById('pescador-intro');
       if (!section) return true;
@@ -196,8 +212,56 @@ test.describe('FIX — intro statique (reduced-motion) + ?intro=1', () => {
       window.scrollTo(0, section!.offsetTop + section!.offsetHeight);
     });
     await page.waitForTimeout(600);
-    expect(await page.evaluate(() => sessionStorage.getItem('pescador-intro-seen'))).toBe('1');
+    expect(await page.evaluate(() => Number(localStorage.getItem('pescador-intro-at') || 0))).toBeGreaterThan(0);
     await page.goto('/?intro=1');
     await expect(page.locator('#pescador-intro')).toBeVisible(); // gate ON malgré seen
+  });
+});
+
+// OV-3c — Session utilisateur cohérente (localStorage + TTL 30 min,
+// PARTAGÉE entre onglets) et composition organique vérifiable.
+test.describe('OV-3c — Session cross-onglet + composition', () => {
+  test('deuxième onglet de la même session navigateur -> hero direct', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const first = await context.newPage();
+    await first.goto('/');
+    await expect(first.locator('#pescador-intro')).toBeVisible(); // 1re vue consommée
+    const second = await context.newPage(); // nouvel onglet, MÊME localStorage
+    await second.goto('/');
+    await expect(second.locator('#pescador-intro')).toBeHidden();
+    await context.close();
+  });
+
+  test('retour > 30 min plus tard -> l\'intro revient (TTL)', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const page = await context.newPage();
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('pescador-intro-at', String(Date.now() - 31 * 60 * 1000)));
+    await page.reload();
+    await expect(page.locator('#pescador-intro')).toBeVisible();
+    await context.close();
+  });
+
+  test('composition : hiérarchie de tailles des vignettes (3 coques)', async ({ page }) => {
+    await page.goto('/?intro=1');
+    // Vignettes = données catalogue hydratées côté client : on attend le
+    // montage et la fin de la cascade d'entrée (≤ 860 ms + marge).
+    await expect(page.locator('[data-vignette]').first()).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(1500);
+    // La profondeur s'écrit dans la TAILLE (width: clamp(·) ∝ scale de la
+    // coque) — le scale() du transform est réservé à l'entrée/parallaxe.
+    // On mesure les largeurs calculées des vignettes visibles.
+    const sizes = await page.locator('[data-vignette]').evaluateAll((nodes) =>
+      nodes
+        .filter((node) => getComputedStyle(node).display !== 'none')
+        .map((node) => Math.round(parseFloat(getComputedStyle(node).width)))
+        .filter((value) => value > 0)
+    );
+    // 5 visibles en mobile (8 desktop). Champ organique = tailles étalées :
+    // plusieurs valeurs distinctes, rapport grand/petit net (≈ 1,8 mesuré ;
+    // seuil prudent 1,4 — l'uniformité serait la régression).
+    expect(sizes.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(sizes).size).toBeGreaterThanOrEqual(3);
+    expect(Math.max(...sizes) / Math.min(...sizes)).toBeGreaterThanOrEqual(1.4);
   });
 });

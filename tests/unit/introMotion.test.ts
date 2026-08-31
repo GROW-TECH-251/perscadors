@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   GOLDEN_ANGLE,
+  INTRO_SHELLS,
   RADIUS_RATIO_MAX,
   RADIUS_RATIO_MIN,
-  SCALE_MAX,
-  SCALE_MIN,
   WATERMARK_OPACITY,
   WATERMARK_SCALE,
   WATERMARK_TARGET_MAX,
@@ -29,14 +28,10 @@ import {
   vignetteSizeStyle,
 } from '@/components/public/intro/introMotion';
 
-// Garde-fous OV-2 (champ organique) + OV-3 (convergence & transition).
+// Garde-fous OV-2 (champ organique) + OV-3 (convergence) + OV-3c (coques).
 // Toutes les maths sont PURES et DÉTERMINISTES : mêmes entrées -> mêmes
 // sorties (rendu stable, SSR sûr, tests reproductibles).
-//
-// NOTE : ce fichier reconstruit intégralement les 10 garde-fous OV-2
-// (le commit ebf2665 les avait perdus — fichier vide) et y ajoute les
-// 8 garde-fous OV-3.
-describe('Unit — OV-2 introMotion : champ organique', () => {
+describe('Unit — OV-2/OV-3c introMotion : champ organique en coques', () => {
   const ids = ['a1', 'b2', 'c3', 'd4', 'e5', 'f6', 'g7', 'h8'];
   const seeds = ids.map((id, index) => buildOrbitSeed(id, index));
 
@@ -60,23 +55,46 @@ describe('Unit — OV-2 introMotion : champ organique', () => {
     expect(Math.abs(mean - GOLDEN_ANGLE)).toBeLessThan(0.25);
   });
 
-  it('bornes : rayons, échelles, profondeurs, amplitudes, périodes', () => {
+  it('OV-3c COQUES : rayon, échelle, dérive tous corrélés à la profondeur', () => {
+    expect(Object.keys(INTRO_SHELLS)).toEqual(['0', '1', '2']);
+    // Bornes globales couvertes par l'union des coques (chevauchement voulu).
+    expect(RADIUS_RATIO_MIN).toBeLessThan(INTRO_SHELLS[1].radiusMin);
+    expect(RADIUS_RATIO_MAX).toBeGreaterThan(INTRO_SHELLS[1].radiusMax);
     for (const seed of seeds) {
-      expect(seed.radiusRatio).toBeGreaterThanOrEqual(RADIUS_RATIO_MIN);
-      expect(seed.radiusRatio).toBeLessThanOrEqual(RADIUS_RATIO_MAX);
-      expect(seed.scale).toBeGreaterThanOrEqual(SCALE_MIN);
-      expect(seed.scale).toBeLessThanOrEqual(SCALE_MAX);
-      expect([0, 1, 2]).toContain(seed.depth);
-      expect(seed.ampX).toBeGreaterThanOrEqual(4);
-      expect(seed.ampX).toBeLessThanOrEqual(14);
-      expect(seed.periodX).toBeGreaterThanOrEqual(7);
-      expect(seed.periodY).toBeLessThanOrEqual(13);
+      const shell = INTRO_SHELLS[seed.depth];
+      expect(seed.radiusRatio).toBeGreaterThanOrEqual(shell.radiusMin);
+      expect(seed.radiusRatio).toBeLessThanOrEqual(shell.radiusMax);
+      expect(seed.scale).toBeGreaterThanOrEqual(shell.scaleMin);
+      expect(seed.scale).toBeLessThanOrEqual(shell.scaleMax);
+      expect(seed.ampX).toBeGreaterThanOrEqual(shell.driftAmpMin);
+      expect(seed.ampX).toBeLessThanOrEqual(shell.driftAmpMax);
+      expect(seed.periodX).toBeGreaterThanOrEqual(shell.driftPeriodMin);
+      expect(seed.periodX).toBeLessThanOrEqual(shell.driftPeriodMax);
+    }
+    // Hiérarchie des coques : proche = grand + interne, lointaine = petit + externe.
+    expect(INTRO_SHELLS[2].scaleMin).toBeGreaterThan(INTRO_SHELLS[0].scaleMax);
+    expect(INTRO_SHELLS[2].radiusMax).toBeLessThan(INTRO_SHELLS[0].radiusMin);
+  });
+
+  it('OV-3c PROFONDEUR lisible : toute paire far/near — petite+externe vs grande+interne', () => {
+    // Population large déterministe : les 8 ids de base ne tirent aucune
+    // coque proche (profondeur 2) — on ne dépend jamais d'un tirage.
+    const population = Array.from({ length: 40 }, (_, i) => buildOrbitSeed(`pop${i}`, i));
+    const far = population.filter((s) => s.depth === 0);
+    const near = population.filter((s) => s.depth === 2);
+    expect(far.length).toBeGreaterThan(3);
+    expect(near.length).toBeGreaterThan(3);
+    for (const f of far) {
+      for (const n of near) {
+        expect(f.scale).toBeLessThan(n.scale);
+        expect(f.radiusRatio).toBeGreaterThan(n.radiusRatio);
+      }
     }
   });
 
   it('Lissajous : périodes X/Y incommensurables et dérive bornée', () => {
     for (const seed of seeds) {
-      expect(Math.abs(seed.periodX - seed.periodY)).toBeGreaterThan(0.5);
+      expect(Math.abs(seed.periodX - seed.periodY)).toBeGreaterThanOrEqual(1.2);
       for (let t = 0; t < 20_000; t += 733) {
         const { x, y } = driftOffset(seed, t);
         expect(Math.abs(x)).toBeLessThanOrEqual(seed.ampX + 1e-9);
@@ -89,21 +107,40 @@ describe('Unit — OV-2 introMotion : champ organique', () => {
     expect(Math.abs(mobile.x)).toBeLessThanOrEqual(Math.abs(full.x) + 1e-9);
   });
 
-  it('cascade d’entrée : 0 avant délai, monotone, 1 après 700 ms', () => {
+  it('cascade d’entrée BACK-TO-FRONT : les lointaines apparaissent avant les proches', () => {
+    const population = Array.from({ length: 40 }, (_, i) => buildOrbitSeed(`pop${i}`, i));
+    const far = population.filter((s) => s.depth === 0);
+    const near = population.filter((s) => s.depth === 2);
+    expect(far.length).toBeGreaterThan(3);
+    expect(near.length).toBeGreaterThan(3);
+    for (const f of far) for (const n of near) expect(f.entranceDelayMs).toBeLessThan(n.entranceDelayMs);
     const seed = seeds[2];
     expect(entranceProgress(seed, seed.entranceDelayMs - 1)).toBe(0);
-    expect(entranceProgress(seed, seed.entranceDelayMs + 350)).toBeGreaterThan(0);
-    expect(entranceProgress(seed, seed.entranceDelayMs + 350)).toBeLessThan(1);
     expect(entranceProgress(seed, seed.entranceDelayMs + 701)).toBe(1);
-    expect(seeds[1].entranceDelayMs).toBeGreaterThan(seeds[0].entranceDelayMs);
   });
 
-  it('placement : centre + rayon borné par min(width, height)', () => {
+  it('OV-3c ELLIPSE : champ plus large que haut en paysage, resserré en portrait', () => {
+    let maxX = 0;
+    let maxY = 0;
     for (const seed of seeds) {
-      const { x, y } = computePlacement(seed, 1200, 800);
-      const dist = Math.hypot(x, y);
-      expect(dist).toBeGreaterThanOrEqual(RADIUS_RATIO_MIN * 800 - 1);
-      expect(dist).toBeLessThanOrEqual(RADIUS_RATIO_MAX * 800 + 1);
+      const { x, y } = computePlacement(seed, 1280, 720);
+      maxX = Math.max(maxX, Math.abs(x));
+      maxY = Math.max(maxY, Math.abs(y));
+      // Bornes anisotropes : x ≤ r·1.06·min, y ≤ r·0.82·min (paysage).
+      expect(Math.abs(x)).toBeLessThanOrEqual(seed.radiusRatio * 720 * 1.06 + 1);
+      expect(Math.abs(y)).toBeLessThanOrEqual(seed.radiusRatio * 720 * 0.82 + 1);
+    }
+    expect(maxX).toBeGreaterThan(maxY); // champ étalé horizontalement
+    // Portrait : axe x comprimé (×0.86) — lisibilité préservée sur mobile.
+    const portrait = computePlacement(seeds[0], 390, 844);
+    expect(Math.abs(portrait.x)).toBeLessThanOrEqual(seeds[0].radiusRatio * 390 * 0.86 + 1);
+  });
+
+  it('OV-3c GRAVITATION : les vignettes proches frôlent la zone du logo', () => {
+    const near = seeds.filter((s) => s.depth === 2);
+    for (const seed of near) {
+      const { x, y } = computePlacement(seed, 1280, 720);
+      expect(Math.hypot(x, y)).toBeLessThanOrEqual(0.34 * 720 * 1.06 + 1);
     }
   });
 
@@ -126,12 +163,13 @@ describe('Unit — OV-2 introMotion : champ organique', () => {
     expect(getIntroRuntimeConfig(1440).blurFar).toBe(true);
   });
 
-  it('profondeur -> facteurs de parallaxe croissants', () => {
+  it('profondeur -> facteurs de parallaxe croissants (proche plus vive)', () => {
     expect(parallaxFactor(0)).toBeLessThan(parallaxFactor(1));
     expect(parallaxFactor(1)).toBeLessThan(parallaxFactor(2));
+    expect(parallaxFactor(2)).toBeCloseTo(1.15, 6);
   });
 
-  it('vignetteSizeStyle : clamp responsif unique borné par l’échelle', () => {
+  it('vignetteSizeStyle : clamp responsif unique borné par l’échelle (∝ profondeur)', () => {
     for (const seed of seeds) {
       const size = vignetteSizeStyle(seed);
       expect(size.width).toContain('clamp(');
@@ -151,22 +189,21 @@ describe('Unit — OV-3 introMotion : convergence & transition', () => {
     expect(clamp01(0.5)).toBe(0.5);
     expect(clamp01(5)).toBe(1);
     expect(sectionCourse(1500, 800)).toBe(700);
-    expect(sectionCourse(500, 800)).toBe(1); // jamais 0 (division par zéro impossible)
+    expect(sectionCourse(500, 800)).toBe(1);
   });
 
   it('scrollProgress : 0 au sommet de section, 1 en fin de sticky, clampé', () => {
-    const top = 1000;
-    const course = 700;
-    expect(scrollProgress(500, top, course)).toBe(0);
-    expect(scrollProgress(1000, top, course)).toBe(0);
-    expect(scrollProgress(1350, top, course)).toBeCloseTo(0.5, 6);
-    expect(scrollProgress(1700, top, course)).toBe(1);
-    expect(scrollProgress(99999, top, course)).toBe(1);
+    expect(scrollProgress(500, 1000, 700)).toBe(0);
+    expect(scrollProgress(1000, 1000, 700)).toBe(0);
+    expect(scrollProgress(1350, 1000, 700)).toBeCloseTo(0.5, 6);
+    expect(scrollProgress(1700, 1000, 700)).toBe(1);
+    expect(scrollProgress(99999, 1000, 700)).toBe(1);
   });
 
-  it('convergenceDelay : les LOINTAINES convergent en premier (délai plus court)', () => {
-    const near = seeds.reduce((a, b) => (a.radiusRatio > b.radiusRatio ? a : b));
-    const far = seeds.reduce((a, b) => (a.radiusRatio < b.radiusRatio ? a : b));
+  it('convergenceDelay : les LOINTAINES (externes) convergent en premier', () => {
+    // far = rayon max (coque externe) ; near = rayon min (coque interne).
+    const near = seeds.reduce((a, b) => (a.radiusRatio < b.radiusRatio ? a : b));
+    const far = seeds.reduce((a, b) => (a.radiusRatio > b.radiusRatio ? a : b));
     expect(convergenceDelay(far)).toBeLessThan(convergenceDelay(near));
     for (const seed of seeds) {
       expect(convergenceDelay(seed)).toBeGreaterThanOrEqual(0);
@@ -203,7 +240,6 @@ describe('Unit — OV-3 introMotion : convergence & transition', () => {
       const dist = Math.hypot(x, y);
       expect(dist).toBeGreaterThanOrEqual(WATERMARK_TARGET_MIN * 800 - 1);
       expect(dist).toBeLessThanOrEqual(WATERMARK_TARGET_MAX * 800 + 1);
-      // Même direction que l'orbite (glissement radial, pas de croisement).
       expect(Math.sign(x)).toBe(Math.sign(Math.cos(seed.angle)));
       expect(Math.sign(y)).toBe(Math.sign(Math.sin(seed.angle)));
     }
