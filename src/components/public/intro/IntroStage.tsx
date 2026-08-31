@@ -40,10 +40,13 @@ import {
   logoState,
   breathScale,
   clamp01,
+  FADE_OUT_MS,
   parallaxFactor,
   pickOutfits,
+  rotationCounter,
   scrollProgress,
   sectionCourse,
+  slotFade,
   vignetteSizeStyle,
   WATERMARK_OPACITY,
   WATERMARK_SCALE,
@@ -51,8 +54,8 @@ import {
 } from './introMotion';
 
 const NON_VISUAL_SIBLING_TAGS = ['SCRIPT', 'NOSCRIPT', 'LINK', 'STYLE', 'TEMPLATE'];
-const MAX_VIGNETTES = 8;
-const MOBILE_VISIBLE = 5;
+const MAX_VIGNETTES = 9;
+const MOBILE_VISIBLE = 6;
 const SEEN_AT_PROGRESS = 0.98;
 
 export function IntroStage() {
@@ -66,13 +69,28 @@ export function IntroStage() {
   const nodesRef = useRef<Array<HTMLDivElement | null>>([]);
   const seenMarked = useRef(false);
 
-  // Orbites déterministes, indépendantes du viewport (rendu SSR stable).
+  // ── OV-3f — SLOTS tournants : le champ montre MAX_VIGNETTES slots ; à
+  // l'arrêt (avant scroll), un slot « rend » son look et en accueille un
+  // autre de la GALERIE COMPLÈTE (fondu 550/700 ms), round-robin — tout le
+  // catalogue HP LOOKS vit autour du logo, sans monotonic. Les orbites
+  // restent déterministes par (id, slot) : un look revient toujours à la
+  // même place. Statique sous reduced-motion (aucune rotation).
+  const [slots, setSlots] = useState<Array<{ id: string; phase: 'in' | 'idle' | 'out'; since: number; nextId: string | null }>>([]);
   const picked = useMemo(() => pickOutfits(outfits ?? [], MAX_VIGNETTES), [outfits]);
+  const outfitById = useMemo(() => new Map((outfits ?? []).map((o) => [o.id, o])), [outfits]);
   const seeds = useMemo<OrbitSeed[]>(
-    () => picked.map((outfit, index) => buildOrbitSeed(outfit.id, index)),
-    [picked]
+    () => slots.map((slot, index) => buildOrbitSeed(slot.id, index)),
+    [slots]
   );
-  const fieldKey = useMemo(() => picked.map((outfit) => outfit.id).join('|'), [picked]);
+  // Refs miroirs : la boucle rAF lit l'état SANS se réexécuter à chaque
+  // remplacement (aucun teardown/redémarrage de boucle lors des swaps).
+  const seedsRef = useRef(seeds);
+  seedsRef.current = seeds;
+  const slotsRef = useRef(slots);
+  slotsRef.current = slots;
+  const outfitsRef = useRef(outfits ?? []);
+  outfitsRef.current = outfits ?? [];
+  const poolRef = useRef(0); // pointeur round-robin dans la galerie
 
   const markSeen = useCallback(() => {
     if (seenMarked.current) return;
@@ -109,6 +127,14 @@ export function IntroStage() {
     },
     [markSeen]
   );
+
+  // Initialisation des slots dès que le catalogue est hydraté (une fois).
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || picked.length === 0) return;
+    seededRef.current = true;
+    setSlots(picked.map((outfit) => ({ id: outfit.id, phase: 'idle' as const, since: 0, nextId: null })));
+  }, [picked]);
 
   // ── OV-1/OV-3 : gates / auto-advance / Échap / marquage session ─────
   useEffect(() => {
@@ -160,9 +186,13 @@ export function IntroStage() {
     if (document.documentElement.getAttribute('data-pescador-intro') === 'off') return;
     const field = fieldRef.current;
     const section = document.getElementById('pescador-intro');
-    if (!field || !section || seeds.length === 0 || dismissed.current) return;
+    if (!field || !section || seedsRef.current.length === 0 || dismissed.current) return;
 
     const cfg = getIntroRuntimeConfig(window.innerWidth);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const effectStart = performance.now();
+    const slotCount = seedsRef.current.length;
+    let lastSwapCounter = 0;
 
     let raf = 0;
     let running = false;
@@ -181,10 +211,11 @@ export function IntroStage() {
     // STATIC (reduced-motion) : positions finales posées UNE fois — aucune
     // boucle rAF, aucune dérive, aucun parallaxe, aucun auto-advance. La
     // signature reste visible ; le mouvement est simplement absent.
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      for (let i = 0; i < seeds.length; i += 1) {
+    if (reduce) {
+      // STATIQUE : pas de rotation non plus — le champ reste figé.
+      for (let i = 0; i < seedsRef.current.length; i += 1) {
         const node = nodesRef.current[i];
-        const seed = seeds[i];
+        const seed = seedsRef.current[i];
         if (!node) continue;
         const place = computePlacement(seed, width, height);
         node.style.transform = `translate3d(${(place.x - (sizes[i]?.w ?? 0) / 2).toFixed(1)}px, ${(place.y - (sizes[i]?.h ?? 0) / 2).toFixed(1)}px, 0)`;
@@ -213,6 +244,43 @@ export function IntroStage() {
       const p = scrollProgress(window.scrollY, sectionTop, course);
       if (p >= SEEN_AT_PROGRESS) markSeen();
 
+      // OV-3f — Rotation de galerie (micro-animation INTERNE, à l'arrêt
+      // uniquement) : un slot par intervalle, round-robin. Jamais pendant
+      // la convergence (p < 0,1), jamais sous reduced-motion, jamais après
+      // sortie — et la boucle s'arrête hors écran/onglet caché, donc la
+      // rotation se met en pause avec elle.
+      if (!reduce && p < 0.1 && !dismissed.current) {
+        const counter = rotationCounter(t - effectStart);
+        if (counter > lastSwapCounter) {
+          lastSwapCounter = counter;
+          const index = counter % slotCount;
+          setSlots((prev) => {
+            const slot = prev[index];
+            if (!slot || slot.phase !== 'idle' || prev.length !== slotCount) return prev;
+            const gallery = outfitsRef.current;
+            if (gallery.length <= slotCount) return prev; // galerie entière déjà affichée
+            const busy = new Set<string>();
+            prev.forEach((sl) => {
+              busy.add(sl.id);
+              if (sl.nextId) busy.add(sl.nextId);
+            });
+            let candidate: { id: string } | null = null;
+            for (let k = 0; k < gallery.length; k += 1) {
+              const outfit = gallery[(poolRef.current + k) % gallery.length];
+              if (!busy.has(outfit.id)) {
+                candidate = outfit;
+                poolRef.current = (poolRef.current + k + 1) % gallery.length;
+                break;
+              }
+            }
+            if (!candidate) return prev;
+            const copy = [...prev];
+            copy[index] = { ...slot, phase: 'out', since: performance.now(), nextId: candidate.id };
+            return copy;
+          });
+        }
+      }
+
       parallax.x += (parallax.tx - parallax.x) * 0.08;
       parallax.y += (parallax.ty - parallax.y) * 0.08;
 
@@ -225,6 +293,22 @@ export function IntroStage() {
         if (entrance === 0) {
           node.style.opacity = '0';
           continue;
+        }
+
+        // Fondu de rotation : sortie -> remplacement -> entrée (commit
+        // exactement quand la sortie est terminée : zéro chevauchement).
+        const slot = slotsRef.current[i];
+        let fade = 1;
+        if (slot && slot.phase !== 'idle') {
+          fade = slotFade(slot.phase, slot.since, t);
+          if (slot.phase === 'out' && slot.nextId && t - slot.since >= FADE_OUT_MS) {
+            const nextId = slot.nextId;
+            setSlots((prev) => {
+              const copy = [...prev];
+              copy[i] = { id: nextId, phase: 'in', since: performance.now(), nextId: null };
+              return copy;
+            });
+          }
         }
 
         // Convergence : sous-progression locale, décalée par la distance
@@ -241,7 +325,7 @@ export function IntroStage() {
         const y =
           place.y + (target.y - place.y) * local + drift.y + parallax.y * pointer - (sizes[i]?.h ?? 0) / 2;
         const scale = breathScale(seed, t) * (0.92 + 0.08 * entrance) * (1 + (WATERMARK_SCALE - 1) * local);
-        const opacity = entrance * (1 + (WATERMARK_OPACITY - 1) * local);
+        const opacity = entrance * fade * (1 + (WATERMARK_OPACITY - 1) * local);
 
         node.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
         node.style.opacity = opacity.toFixed(3);
@@ -319,7 +403,10 @@ export function IntroStage() {
       window.removeEventListener('resize', refreshBox);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [fieldKey, seeds, markSeen]);
+    // Dépendances MINIMALES : la boucle lit slots/seeds via refs — les
+    // remplacements de la rotation ne la relancent pas. slotCount ne
+    // change qu'une fois (0 -> 9 à l'hydratation du catalogue).
+  }, [markSeen, slots.length]);
 
   if (hidden) return null;
 
@@ -332,12 +419,14 @@ export function IntroStage() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-10 overflow-hidden"
       >
-        {picked.map((outfit, index) => {
+        {slots.map((slot, index) => {
+          const outfit = outfitById.get(slot.id);
+          if (!outfit) return null;
           const seed = seeds[index];
           const size = vignetteSizeStyle(seed);
           return (
             <div
-              key={outfit.id}
+              key={slot.id}
               data-vignette
               ref={(node) => {
                 nodesRef.current[index] = node;
@@ -351,7 +440,7 @@ export function IntroStage() {
                 src={outfit.image}
                 alt=""
                 fill
-                sizes="(max-width: 767px) 32vw, 20vw"
+                sizes="(max-width: 767px) 30vw, 18vw"
                 loading={index < 3 ? 'eager' : 'lazy'}
                 className="object-cover"
               />

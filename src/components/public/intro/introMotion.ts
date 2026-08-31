@@ -48,12 +48,14 @@ export interface IntroShell {
 }
 
 export const INTRO_SHELLS: Record<0 | 1 | 2, IntroShell> = {
-  // lointaine : externe, petite, floue (desktop), dérive lente et ample
-  0: { radiusMin: 0.44, radiusMax: 0.62, scaleMin: 0.62, scaleMax: 0.82, driftAmpMin: 6, driftAmpMax: 14, driftPeriodMin: 9, driftPeriodMax: 13, breathMin: 0.012, breathMax: 0.02 },
-  // médiane
-  1: { radiusMin: 0.32, radiusMax: 0.48, scaleMin: 0.88, scaleMax: 1.08, driftAmpMin: 10, driftAmpMax: 22, driftPeriodMin: 8, driftPeriodMax: 11, breathMin: 0.018, breathMax: 0.028 },
-  // proche : interne, grande, vive — mord la zone du logo (derrière lui)
-  2: { radiusMin: 0.2, radiusMax: 0.34, scaleMin: 1.08, scaleMax: 1.3, driftAmpMin: 14, driftAmpMax: 30, driftPeriodMin: 7, driftPeriodMax: 10, breathMin: 0.025, breathMax: 0.04 },
+  // OV-3f — occupation PLEINE de l'écran : lointaine poussée vers les bords
+  // (0,55-0,88 × min(w,h), ellipse ×1,18 en x -> léger bleed hors cadre),
+  // échelles resserrées (0,72-0,92) pour mettre PLUS de looks en valeur.
+  0: { radiusMin: 0.55, radiusMax: 0.88, scaleMin: 0.72, scaleMax: 0.92, driftAmpMin: 6, driftAmpMax: 14, driftPeriodMin: 9, driftPeriodMax: 13, breathMin: 0.012, breathMax: 0.02 },
+  // médiane : couronne intermédiaire élargie
+  1: { radiusMin: 0.38, radiusMax: 0.6, scaleMin: 0.95, scaleMax: 1.12, driftAmpMin: 10, driftAmpMax: 22, driftPeriodMin: 8, driftPeriodMax: 11, breathMin: 0.018, breathMax: 0.028 },
+  // proche : interne, la plus grande — frôle le logo sans le masquer
+  2: { radiusMin: 0.22, radiusMax: 0.38, scaleMin: 1.14, scaleMax: 1.32, driftAmpMin: 14, driftAmpMax: 30, driftPeriodMin: 7, driftPeriodMax: 10, breathMin: 0.025, breathMax: 0.04 },
 };
 
 // Stratification des coques PAR INDEX (constat utilisateur : avec la coque
@@ -64,7 +66,7 @@ export const INTRO_SHELLS: Record<0 | 1 | 2, IntroShell> = {
 // (52°/242°) — le champ est équilibré autour du logo PAR CONSTRUCTION,
 // pour n'importe quel hash des amplitudes. Le premier quintet (mobile)
 // reste lui aussi équilibré (1 loin / 3 médianes / 1 proche).
-const SHELL_PATTERN: Array<0 | 1 | 2> = [1, 0, 1, 2, 1, 0, 1, 2];
+const SHELL_PATTERN: Array<0 | 1 | 2> = [1, 2, 0, 1, 1, 2, 0, 2, 1];
 
 // -------------------------------------------
 // Config par contexte (résolue avec window, jamais pendant le rendu)
@@ -205,9 +207,12 @@ export function entranceProgress(seed: OrbitSeed, tMs: number): number {
 // se resserre horizontalement (×0.86) pour préserver la lisibilité.
 // -------------------------------------------
 export function computePlacement(seed: OrbitSeed, width: number, height: number): { x: number; y: number } {
+  // OV-3f : ellipse ÉLARGIE — le champ occupe tout l'écran (léger bleed
+  // horizontal en paysage, vertical contenu), au lieu d'un périmètre
+  // resserré autour du logo.
   const landscape = width >= height;
-  const ax = landscape ? 1.06 : 0.86;
-  const ay = landscape ? 0.82 : 1;
+  const ax = landscape ? 1.18 : 0.88;
+  const ay = landscape ? 0.74 : 1.06;
   const radius = seed.radiusRatio * Math.min(width, height);
   // Position angulaire FIXE (pas de révolution circulaire) : la vie du champ
   // vient de la dérive Lissajous + la respiration d'échelle (voir
@@ -222,6 +227,34 @@ export function computePlacement(seed: OrbitSeed, width: number, height: number)
 // -------------------------------------------
 export function breathScale(seed: OrbitSeed, tMs: number): number {
   return 1 + seed.breathAmp * Math.sin((tMs / seed.breathPeriodMs) * Math.PI * 2 + seed.phaseX);
+}
+
+// -------------------------------------------
+// OV-3f — Rotation de la GALERIE : à l'arrêt (avant le scroll), un slot
+// « rend » son look et en accueille un autre de la galerie complète, en
+// fondu (sortie 550 ms, entrée 700 ms). Micro-animation INTERNE : elle ne
+// fait JAMAIS avancer la page (aucun scroll), se met en pause avec la
+// boucle rAF (hors écran / onglet caché) et est désactivée sous
+// prefers-reduced-motion. Un seul remplacement à la fois, round-robin.
+// -------------------------------------------
+export const ROTATION_INTERVAL_MS = 5_200;
+export const FADE_OUT_MS = 550;
+export const FADE_IN_MS = 700;
+
+/** index de remplacement déterministe : 0,1,2,… slots par intervalle écoulé */
+export function rotationCounter(tMs: number, intervalMs = ROTATION_INTERVAL_MS): number {
+  return Math.max(0, Math.floor(tMs / intervalMs));
+}
+
+/** opacité de slot (0-1) selon sa phase d'entrée/sortie en fondu */
+export function slotFade(
+  phase: 'in' | 'idle' | 'out',
+  sinceMs: number,
+  nowMs: number
+): number {
+  if (phase === 'idle') return 1;
+  const u = clamp01((nowMs - sinceMs) / (phase === 'out' ? FADE_OUT_MS : FADE_IN_MS));
+  return phase === 'out' ? 1 - easeInOutCubic(u) : easeInOutCubic(u);
 }
 
 // -------------------------------------------

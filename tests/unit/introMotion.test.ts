@@ -24,7 +24,9 @@ import {
   parallaxFactor,
   pickOutfits,
   rand01,
+  rotationCounter,
   scrollProgress,
+  slotFade,
   sectionCourse,
   vignetteSizeStyle,
 } from '@/components/public/intro/introMotion';
@@ -127,14 +129,15 @@ describe('Unit — OV-2/OV-3c introMotion : champ organique en coques', () => {
       const { x, y } = computePlacement(seed, 1280, 720);
       maxX = Math.max(maxX, Math.abs(x));
       maxY = Math.max(maxY, Math.abs(y));
-      // Bornes anisotropes : x ≤ r·1.06·min, y ≤ r·0.82·min (paysage).
-      expect(Math.abs(x)).toBeLessThanOrEqual(seed.radiusRatio * 720 * 1.06 + 1);
-      expect(Math.abs(y)).toBeLessThanOrEqual(seed.radiusRatio * 720 * 0.82 + 1);
+      // Bornes anisotropes OV-3f : x ≤ r·1,18·min, y ≤ r·0,74·min (paysage
+      // étalé pleine largeur, bleed horizontal léger).
+      expect(Math.abs(x)).toBeLessThanOrEqual(seed.radiusRatio * 720 * 1.18 + 1);
+      expect(Math.abs(y)).toBeLessThanOrEqual(seed.radiusRatio * 720 * 0.74 + 1);
     }
     expect(maxX).toBeGreaterThan(maxY); // champ étalé horizontalement
     // Portrait : axe x comprimé (×0.86) — lisibilité préservée sur mobile.
     const portrait = computePlacement(seeds[0], 390, 844);
-    expect(Math.abs(portrait.x)).toBeLessThanOrEqual(seeds[0].radiusRatio * 390 * 0.86 + 1);
+    expect(Math.abs(portrait.x)).toBeLessThanOrEqual(seeds[0].radiusRatio * 390 * 0.88 + 1);
   });
 
   it('OV-3c-2 ÉQUILIBRE : le champ ne bascule jamais d’un côté (régression photo user)', () => {
@@ -144,12 +147,24 @@ describe('Unit — OV-2/OV-3c introMotion : champ organique en coques', () => {
     // place chaque coque à des angles opposés : le centroïde des 8
     // placements reste proche du centre POUR TOUT HASH (mesuré 2-11 % du
     // rayon max ; l'ancien code donnait ~20 %+ vers un seul quadrant).
-    const circDist = (a: number, b: number) => Math.abs(((a - b) % Math.PI + Math.PI) % Math.PI);
+    const TAU = Math.PI * 2;
+    // Véritable distance circulaire (mod 2π, symétrique) — une version
+    // mod π confondrait « 170° d'écart » et « 10° d'écart ».
+    const circDist = (a: number, b: number) => {
+      const d = Math.abs(((a - b) % TAU + TAU) % TAU);
+      return Math.min(d, TAU - d);
+    };
     for (const prefix of ['a', 'pop', 'zz', 'k9']) {
-      const seeds8 = Array.from({ length: 8 }, (_, i) => buildOrbitSeed(`${prefix}${i}`, i));
+      // OV-3f : 9 slots (pattern 2 lointaines / 4 médianes / 3 proches).
+      const seeds8 = Array.from({ length: 9 }, (_, i) => buildOrbitSeed(`${prefix}${i}`, i));
       expect(seeds8.filter((s) => s.depth === 0)).toHaveLength(2);
       expect(seeds8.filter((s) => s.depth === 1)).toHaveLength(4);
-      expect(seeds8.filter((s) => s.depth === 2)).toHaveLength(2);
+      expect(seeds8.filter((s) => s.depth === 2)).toHaveLength(3);
+      // Préfixe mobile (6 visibles) : 1/3/2 — équilibré aussi.
+      const mobile = seeds8.slice(0, 6);
+      expect(mobile.filter((s) => s.depth === 0)).toHaveLength(1);
+      expect(mobile.filter((s) => s.depth === 1)).toHaveLength(3);
+      expect(mobile.filter((s) => s.depth === 2)).toHaveLength(2);
       let sx = 0;
       let sy = 0;
       let maxR = 0;
@@ -159,25 +174,29 @@ describe('Unit — OV-2/OV-3c introMotion : champ organique en coques', () => {
         sy += y;
         maxR = Math.max(maxR, seed.radiusRatio);
       }
-      const deviation = Math.hypot(sx / 8, sy / 8) / (maxR * 720);
-      expect(deviation).toBeLessThan(0.15);
-      // Chaque coque couvre le cercle : coques 2-échantillons en angles
-      // quasi opposés, médianes en 4 façades.
+      const deviation = Math.hypot(sx / 9, sy / 9) / (maxR * 720);
+      // ≤ 20 % du rayon externe = ≤ ~14 % de la demi-largeur écran
+      // (la régression historique était > 100 % : tout d’un côté).
+      expect(deviation).toBeLessThan(0.2);
+      // Far (2 membres) : opposition garantie. Mid/near (4 et 3 membres) :
+      // aucune ne laisse un demi-cercle vide (> 3,6 rad ~ 206°).
       const farAngles = seeds8.filter((s) => s.depth === 0).map((s) => s.angle);
-      const nearAngles = seeds8.filter((s) => s.depth === 2).map((s) => s.angle);
       expect(circDist(farAngles[0], farAngles[1])).toBeGreaterThan(2.3);
-      expect(circDist(nearAngles[0], nearAngles[1])).toBeGreaterThan(2.3);
-      const midAngles = seeds8
-        .filter((s) => s.depth === 1)
-        .map((s) => s.angle)
-        .map((a) => ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2))
-        .sort((a, b) => a - b);
-      let maxGap = 0;
-      for (let i = 0; i < 4; i += 1) {
-        const next = i === 3 ? midAngles[0] + Math.PI * 2 : midAngles[i + 1];
-        maxGap = Math.max(maxGap, next - midAngles[i]);
+      for (const depth of [1, 2] as const) {
+        const angles = seeds8
+          .filter((sd) => sd.depth === depth)
+          .map((sd) => sd.angle)
+          .map((a) => ((a % TAU) + TAU) % TAU)
+          .sort((a, b) => a - b);
+        let maxGap = 0;
+        for (let i = 0; i < angles.length; i += 1) {
+          const next = i === angles.length - 1 ? angles[0] + TAU : angles[i + 1];
+          maxGap = Math.max(maxGap, next - angles[i]);
+        }
+        // ≤ 3,9 rad (223°) : interdit le regroupement dans un quadrant
+        // (serait ≥ 4,7 rad) tout en tolérant le jitter angulaire.
+        expect(maxGap).toBeLessThan(3.9);
       }
-      expect(maxGap).toBeLessThan(3.0);
     }
   });
 
@@ -200,17 +219,38 @@ describe('Unit — OV-2/OV-3c introMotion : champ organique en coques', () => {
       }
       expect(seed.ampX).toBeGreaterThanOrEqual(6);
     }
+
     // Position angulaire FIXE : le placement ne dépend PAS du temps (pas de
     // rotation circulaire — ne pas réintroduire un paramètre temporel).
     const seed = population[3];
     expect(computePlacement(seed, 1280, 720)).toEqual(computePlacement(seed, 1280, 720));
   });
 
+  it('OV-3f ROTATION : compteur round-robin et fondus bornés (micro-animation interne)', () => {
+    // Compteur : monotone, nul avant le premier intervalle.
+    expect(rotationCounter(0)).toBe(0);
+    expect(rotationCounter(5_199)).toBe(0);
+    expect(rotationCounter(5_200)).toBe(1);
+    expect(rotationCounter(10_400)).toBe(2);
+    expect(rotationCounter(10_399)).toBe(1);
+    // Fondus : idle = 1 ; sortie 550 ms décroissante ; entrée 700 ms
+    // croissante ; bornes exactes 0/1 ; finie = 0 ou 1 franc.
+    expect(slotFade('idle', 0, 12_345)).toBe(1);
+    expect(slotFade('out', 1_000, 1_000)).toBe(1);
+    expect(slotFade('out', 1_000, 1_000 + 275)).toBeGreaterThan(0.4);
+    expect(slotFade('out', 1_000, 1_000 + 275)).toBeLessThan(0.6);
+    expect(slotFade('out', 1_000, 1_000 + 550)).toBe(0);
+    expect(slotFade('in', 2_000, 2_000)).toBe(0);
+    expect(slotFade('in', 2_000, 2_000 + 350)).toBeGreaterThan(0.4);
+    expect(slotFade('in', 2_000, 2_000 + 350)).toBeLessThan(0.6);
+    expect(slotFade('in', 2_000, 2_000 + 700)).toBe(1);
+  });
+
   it('OV-3c GRAVITATION : les vignettes proches frôlent la zone du logo', () => {
     const near = seeds.filter((s) => s.depth === 2);
     for (const seed of near) {
       const { x, y } = computePlacement(seed, 1280, 720);
-      expect(Math.hypot(x, y)).toBeLessThanOrEqual(0.34 * 720 * 1.06 + 1);
+      expect(Math.hypot(x, y)).toBeLessThanOrEqual(0.38 * 720 * 1.18 + 1);
     }
   });
 

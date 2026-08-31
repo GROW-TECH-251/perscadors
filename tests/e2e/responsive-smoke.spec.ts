@@ -84,7 +84,7 @@ test.describe('OV-1 — Intro HP Collection', () => {
 // LOOKS, eager IMP-06). On compare « avec intro » vs « sans intro (?intro=0) »
 // dans des contextes frais : le delta = le coût propre de l'intro (≤ 8).
 test.describe('OV-2 — Champ organique', () => {
-  test('vignettes présentes (5-8), delta images intro ≤ 8, zéro requête REST', async ({ browser, page }) => {
+  test('vignettes présentes (6-9), delta images intro ≤ 9, zéro requête REST', async ({ browser, page }) => {
     const countOutfitRequests = async (url: string) => {
       const context = await browser.newContext();
       const p = await context.newPage();
@@ -107,10 +107,16 @@ test.describe('OV-2 — Champ organique', () => {
     });
     await page.goto('/');
     await expect(page.locator('#pescador-intro')).toBeVisible();
+    // Les slots montent après hydratation du catalogue (useCatalog) :
+    // on attend leur apparition avant de compter (sinon course).
+    await page.waitForSelector('#pescador-intro [data-vignette]', { timeout: 15_000 });
 
     const vignettes = await page.locator('#pescador-intro [data-vignette]').count();
-    expect(vignettes).toBeGreaterThanOrEqual(5);
-    expect(vignettes).toBeLessThanOrEqual(8);
+    // OV-3f : 9 slots (6 visibles en mobile, les 3 autres masqués par CSS
+    // ne chargent pas leurs images). La fenêtre de mesure (1,5 s) précède
+    // la première rotation (5,2 s) : budget initial inchangé par la rotation.
+    expect(vignettes).toBeGreaterThanOrEqual(6);
+    expect(vignettes).toBeLessThanOrEqual(9);
 
     expect(rest).toHaveLength(0);
 
@@ -118,7 +124,7 @@ test.describe('OV-2 — Champ organique', () => {
       countOutfitRequests('/?intro=1'),
       countOutfitRequests('/?intro=0'),
     ]);
-    expect(withIntro - withoutIntro).toBeLessThanOrEqual(8);
+    expect(withIntro - withoutIntro).toBeLessThanOrEqual(9);
     expect(withIntro).toBeGreaterThanOrEqual(withoutIntro);
   });
 });
@@ -329,6 +335,38 @@ test.describe('OV-3d — Replay par document + composition', () => {
     await expect(page.locator('#pescador-intro')).toBeVisible();
   });
 
+  test('rotation de galerie : à l\'arrêt, les looks sont remplacés par fondu (toute la galerie vit)', async ({ page }) => {
+    await page.goto('/?intro=1');
+    await page.waitForSelector('[data-vignette]', { timeout: 15_000 });
+    // NB : evaluate ne sérialise pas les Set — on retourne un tableau et
+    // on reconstruit l'ensemble côté Node.
+    const urls = () =>
+      page.evaluate(() =>
+        [
+          ...new Set(
+            [...document.querySelectorAll('#pescador-intro [data-vignette] img')]
+              .map((img) => {
+                const el = img as HTMLImageElement;
+                return el.currentSrc || el.getAttribute('src') || '';
+              })
+              .filter(Boolean)
+          ),
+        ]
+      );
+    await page.waitForTimeout(2_500); // montage complet des 9 slots
+    const before = new Set(await urls());
+    await page.waitForTimeout(13_000); // ≥ 2 remplacements (1 par 5,2 s)
+    const after = new Set(await urls());
+    // La rotation remplace le CONTENU : de NOUVELLES images (absentes de
+    // l'instant d'avant) sont chargées en fondu — on compare les MEMBRES,
+    // pas les cardinaux (il y a toujours 9 slots).
+    const nouveaux = [...after].filter((url) => !before.has(url));
+    expect(nouveaux.length).toBeGreaterThanOrEqual(2);
+    // Et la page n'a toujours pas bougé d'elle-même (règle OV-3e).
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(page.locator('#pescador-intro')).toBeVisible();
+  });
+
   test('respiration : micro-mouvement subtil, sans révolution circulaire', async ({ page }) => {
     await page.goto('/?intro=1');
     await page.waitForSelector('[data-vignette]', { timeout: 15_000 });
@@ -343,7 +381,9 @@ test.describe('OV-3d — Replay par document + composition', () => {
           })
       );
     const a = await read();
-    await page.waitForTimeout(5_000);
+    // Fenêtre de 3 s : précède la première rotation de galerie (~6 s après
+    // le montage) — on mesure la dérive, pas un remplacement.
+    await page.waitForTimeout(3_000);
     const b = await read();
     // Le champ VIT (dérive 6-30 px par axe) mais subtilement — et le
     // CENTROÏDE ne dérive pas (pas de rotation d'ensemble).
