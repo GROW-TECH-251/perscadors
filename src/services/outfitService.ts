@@ -10,7 +10,33 @@ import type { AdminOutfit, OutfitFormData, ApiResponse } from '@/admin/types';
 const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
 
+// ============================================
+// PERF-05 — Requête bornée + cache de session admin (TTL 60 s, invalidé
+// par les mutations — mêmes garanties que categories).
+const ADMIN_OUTFITS_TTL_MS = 60_000;
+let adminOutfitsCache: { value: AdminOutfit[]; expiresAt: number } | null = null;
+let adminOutfitsInFlight: Promise<AdminOutfit[]> | null = null;
+
+export function invalidateAdminOutfitsCache(): void {
+  adminOutfitsCache = null;
+}
+
 export async function fetchAdminOutfits(): Promise<AdminOutfit[]> {
+  if (adminOutfitsCache && adminOutfitsCache.expiresAt > Date.now()) {
+    return adminOutfitsCache.value;
+  }
+  if (!adminOutfitsInFlight) {
+    adminOutfitsInFlight = fetchAdminOutfitsUncached().then((outfits) => {
+      adminOutfitsCache = { value: outfits, expiresAt: Date.now() + ADMIN_OUTFITS_TTL_MS };
+      return outfits;
+    }).finally(() => {
+      adminOutfitsInFlight = null;
+    });
+  }
+  return adminOutfitsInFlight;
+}
+
+async function fetchAdminOutfitsUncached(): Promise<AdminOutfit[]> {
   if (!isSupabaseConfigured || !supabase) {
     console.warn('Lecture HP Looks indisponible : Supabase non configuré.');
     return [];
@@ -19,7 +45,8 @@ export async function fetchAdminOutfits(): Promise<AdminOutfit[]> {
   const { data, error } = await supabase
     .from('outfits')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(200);
 
   if (error) {
     logSupabaseWarning('outfitService', error.message || 'erreur inconnue');
@@ -46,6 +73,7 @@ export async function fetchOutfitById(id: number | string): Promise<AdminOutfit 
 }
 
 export async function createOutfit(formData: OutfitFormData): Promise<ApiResponse<AdminOutfit>> {
+  invalidateAdminOutfitsCache();
   if (!supabase) {
     return { data: null, error: USER_ERROR_MSG };
   }
@@ -78,6 +106,7 @@ export async function updateOutfit(
   id: number | string,
   formData: Partial<OutfitFormData>
 ): Promise<ApiResponse<AdminOutfit>> {
+  invalidateAdminOutfitsCache();
   if (!supabase) {
     return { data: null, error: USER_ERROR_MSG };
   }
@@ -103,6 +132,7 @@ export async function updateOutfit(
 }
 
 export async function deleteOutfit(id: number | string): Promise<ApiResponse<boolean>> {
+  invalidateAdminOutfitsCache();
   if (!supabase) {
     return { data: false, error: USER_ERROR_MSG };
   }

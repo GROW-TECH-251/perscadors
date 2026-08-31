@@ -2,7 +2,7 @@
 
 import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Quote } from 'lucide-react';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
@@ -58,6 +58,34 @@ export const Testimonials: React.FC = () => {
     void loadTestimonials();
   });
 
+  // PERF-03 — Les vidéos témoignages (3,9 Mo au total) sont BELOW-FOLD :
+  // on ne monte les <video> qu'à l'approche du viewport (IntersectionObserver,
+  // marge 300 px). Avant : rendues au chargement initial, elles se
+  // téléchargeaient pendant que l'utilisateur regarde encore le hero.
+  // Dégradation : sans IntersectionObserver (très anciens navigateurs),
+  // montage immédiat — comportement historique.
+  const videosSectionRef = useRef<HTMLDivElement | null>(null);
+  const [videosVisible, setVideosVisible] = useState(false);
+
+  useEffect(() => {
+    const node = videosSectionRef.current;
+    if (!node || typeof IntersectionObserver === 'undefined') {
+      setVideosVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVideosVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '300px' }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   const screenshotUrl = testimonials.screenshot_url;
   const videos = pickVideos(testimonials);
   const hasScreenshot = Boolean(screenshotUrl);
@@ -104,19 +132,23 @@ export const Testimonials: React.FC = () => {
 
         {/* Vidéos de validation clients (schéma stocké) */}
         {hasVideos && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          <div ref={videosSectionRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
             {videos.map((video, index) => (
               <div
                 key={video.src || index}
                 className="bg-brand-bg border border-brand-gold/10 rounded-2xl shadow-lg overflow-hidden"
               >
-                <video
-                  src={video.src}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="w-full aspect-video object-contain bg-black"
-                />
+                {videosVisible ? (
+                  <video
+                    src={video.src}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="w-full aspect-video object-contain bg-black"
+                  />
+                ) : (
+                  <div className="w-full aspect-video bg-brand-bg-alt skeleton-media" aria-busy="true" />
+                )}
                 <div className="p-5">
                   <h4 className="font-bebas text-lg text-brand-gold mb-1">{video.title}</h4>
                   {video.description && (

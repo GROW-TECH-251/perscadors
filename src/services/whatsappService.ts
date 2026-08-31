@@ -58,13 +58,35 @@ export function resolveWhatsAppPhone(settingsPhone?: string | null): string {
 
 export function openWhatsApp(message: string, phoneDigits?: string) {
   const cleaned = resolveWhatsAppPhone(phoneDigits);
-  const encoded = encodeURIComponent(message);
+  const encoded = encodeURIComponent(normalizeWhatsAppMessage(message));
   const url = `https://wa.me/${cleaned}?text=${encoded}`;
   window.open(url, '_blank');
 }
 
 export function buildWhatsAppUrl(message: string, phoneDigits?: string): string {
   const cleaned = resolveWhatsAppPhone(phoneDigits);
-  const encoded = encodeURIComponent(message);
+  const encoded = encodeURIComponent(normalizeWhatsAppMessage(message));
   return `https://wa.me/${cleaned}?text=${encoded}`;
+}
+
+// ============================================
+// PERF-04 — Robustesse d'encodage des messages WhatsApp.
+// Les caracteres � observés provenaient de messages longs coupés entre deux
+// « surrogate halves » d'un emoji (toute troncature naive d'un texte contenant
+// 👋/📸/🙌 produit un demi-caractère invalide). Deux gardes :
+// 1) normalisation NFC (forme composée : moins d'unites de code, rendu stable) ;
+// 2) plafond appliqué CÔTÉ CLIENT avec coupe sûre — jamais au milieu d'une
+//    paire de surrogate, de preference sur une frontière mot/ligne.
+const WHATSAPP_MESSAGE_MAX_CHARS = 1600;
+
+export function normalizeWhatsAppMessage(message: string): string {
+  const nfc = message.normalize('NFC');
+  if (nfc.length <= WHATSAPP_MESSAGE_MAX_CHARS) return nfc;
+
+  const bound = nfc.slice(0, WHATSAPP_MESSAGE_MAX_CHARS);
+  // Retire un éventuel demi-emoji de fin (surrogate haut orphelin).
+  const safe = /[\uD800-\uDBFF]$/.test(bound) ? bound.slice(0, -1) : bound;
+  const lastBreak = Math.max(safe.lastIndexOf('\n'), safe.lastIndexOf(' '));
+  const cutAt = lastBreak > WHATSAPP_MESSAGE_MAX_CHARS * 0.6 ? lastBreak : safe.length;
+  return `${safe.slice(0, cutAt).trimEnd()}…`;
 }

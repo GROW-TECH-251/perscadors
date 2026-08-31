@@ -2,7 +2,7 @@
 
 import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
@@ -10,7 +10,26 @@ import { fetchActiveAssetBySection } from '@/services/mediaService';
 import { ChevronDown } from 'lucide-react';
 import type { ShopSettings } from '@/admin/types';
 
-const DEFAULT_HERO_VIDEO = '/assets/backgrounds/7679830-uhd_4096_2160_25fps.mp4';
+const LEGACY_HERO_VIDEO_4K = '/assets/backgrounds/7679830-uhd_4096_2160_25fps.mp4';
+// PERF-01 — Variantes allégées de la même vidéo (identité visuelle conservée) :
+// 1080p = 6,5 Mo (desktop) / 720p = 2,8 Mo (mobile) contre 36 Mo en 4K.
+// Faststart + sans piste audio (vidéo de fond muette).
+const HERO_VIDEO_1080P = '/assets/backgrounds/hero-1080p.mp4';
+const HERO_VIDEO_720P = '/assets/backgrounds/hero-720p.mp4';
+
+// PERF-01 — Le hero ne doit JAMAIS attendre la base pour peindre : la
+// variante par défaut est choisie au premier rendu (720p si mobile), le
+// poster est rendu immédiatement, la vidéo démarre en parallèle des fetch.
+function resolveDefaultHeroVideo(): string {
+  if (typeof window === 'undefined') return HERO_VIDEO_1080P;
+  return window.matchMedia('(max-width: 767px)').matches ? HERO_VIDEO_720P : HERO_VIDEO_1080P;
+}
+
+// Les réglages/admin peuvent encore référencer l'ancienne 4K : on la mappe
+// vers la variante adaptée au lieu de re-télécharger 36 Mo.
+function mapLegacyHeroVideo(url: string): string {
+  return url === LEGACY_HERO_VIDEO_4K ? resolveDefaultHeroVideo() : url;
+}
 // IMP-04 — Poster par défaut du Hero : peint immédiatement (chargement),
 // remplit le letterbox desktop en flou, et constitue le fallback net si la
 // vidéo échoue. Aucun champ poster n'existe dans shop_settings ; asset local.
@@ -19,13 +38,17 @@ const DEFAULT_HERO_POSTER = '/assets/collections/articles/BASKET POUR HOMME/IMG-
 type HeroMediaType = 'video' | 'image';
 
 export const Hero: React.FC = () => {
-  const [mediaUrl, setMediaUrl] = useState<string>('');
+  const [mediaUrl, setMediaUrl] = useState<string>(resolveDefaultHeroVideo);
   const [mediaType, setMediaType] = useState<HeroMediaType>('video');
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
   const [realtimeVersion, setRealtimeVersion] = useState(0);
   // IMP-04 — Fin de l'écran vide : si la vidéo échoue, l'image poster
   // (nette) prend le relais au lieu de laisser un fond noir.
   const [videoFailed, setVideoFailed] = useState(false);
+  // PERF-01 — Fondu poster → vidéo : la vidéo n'apparaît qu'à canplay
+  // (transition opacity sur token motion, neutralisée en reduced-motion).
+  const [videoReady, setVideoReady] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -44,20 +67,28 @@ export const Hero: React.FC = () => {
         setSettings(settingsData);
       }
 
+      // PERF-01 — Ne remplacer le média par défaut QUE s'il est différent
+      // (l'ancienne 4K est mappée vers la variante allégée) : aucun
+      // re-téléchargement ni scintillement quand les données confirment les
+      // défauts. L'état initial (poster + vidéo variante) est déjà affiché.
       if (assetData) {
-        setMediaUrl(assetData.url);
-        setMediaType(assetData.type === 'image' ? 'image' : 'video');
+        if (assetData.type === 'image') {
+          setMediaType('image');
+          setMediaUrl(assetData.url);
+          return;
+        }
+        setMediaType('video');
+        const nextUrl = mapLegacyHeroVideo(assetData.url);
+        setMediaUrl((current) => (current === nextUrl ? current : nextUrl));
         return;
       }
 
       if (settingsData?.hero_video_url) {
-        setMediaUrl(settingsData.hero_video_url);
         setMediaType('video');
+        const nextUrl = mapLegacyHeroVideo(settingsData.hero_video_url);
+        setMediaUrl((current) => (current === nextUrl ? current : nextUrl));
         return;
       }
-
-      setMediaUrl(DEFAULT_HERO_VIDEO);
-      setMediaType('video');
     }
 
     loadHero();
@@ -65,6 +96,25 @@ export const Hero: React.FC = () => {
       isMounted = false;
     };
   }, [realtimeVersion]);
+
+  // PERF-01 — Application impératif de la variante : l'hydratation React ne
+  // patche PAS un attribut src divergent (le HTML servi contient la variante
+  // serveur 1080p) ; sans load() explicite, le mobile continuerait à décoder
+  // le 1080p. Au montage et à chaque changement, on aligne src puis on recharge.
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element || !mediaUrl) return;
+    if (element.getAttribute('src') !== mediaUrl) {
+      element.setAttribute('src', mediaUrl);
+      element.load();
+    }
+    // PERF-01 — Si la vidéo est déjà prête avant l'hydratation, l'événement
+    // canplay a été manqué par le handler React : déclencher le fondu via
+    // rAF (asynchrone, pas de rendu en cascade).
+    if (element.readyState >= 3) {
+      requestAnimationFrame(() => setVideoReady(true));
+    }
+  }, [mediaUrl]);
 
   const heroTitleParts = useMemo(() => {
     const titleParts = settings.hero_title.split('.');
@@ -101,16 +151,18 @@ export const Hero: React.FC = () => {
             className="absolute inset-0 scale-125 object-cover opacity-70 blur-lg lg:blur-xl"
           />
           <video
+            ref={videoRef}
+            src={mediaUrl}
             poster={DEFAULT_HERO_POSTER}
             onError={() => setVideoFailed(true)}
+            onCanPlay={() => setVideoReady(true)}
             autoPlay
             loop
             muted
             playsInline
-            preload="metadata"
-            className="absolute inset-0 h-full w-full object-cover lg:object-contain opacity-90"
+            preload="auto"
+            className={`absolute inset-0 h-full w-full object-cover lg:object-contain transition-opacity duration-(--motion-reveal) ease-out-luxe ${videoReady ? 'opacity-90' : 'opacity-0'}`}
           >
-            <source src={mediaUrl} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
         </>
