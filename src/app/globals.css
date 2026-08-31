@@ -369,3 +369,18 @@ button:not(:disabled):active { transform: scale(0.98); }
     display: none !important;
   }
 }
+
+/* ============================================
+   OV-1 — Intro HP Collection : gates pré-paint.
+   Le script inline du layout pose data-pescador-intro avant le premier
+   rendu ; ces règles masquent la section sans flash ni shift. La variante
+   prefers-reduced-motion couvre aussi le cas « JS désactivé » (zéro-JS).
+   ============================================ */
+html[data-pescador-intro='off'] .pescador-intro {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pescador-intro {
+    display: none;
+  }
+}

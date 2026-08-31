@@ -17,6 +17,7 @@ import { fetchServerCatalogSnapshot } from '@/services/publicCatalogService';
 import { fetchServerPublicShopSettings } from '@/services/settingsService';
 import { fetchServerSiteAssets } from '@/services/mediaService';
 import { DataHydrator } from '@/components/public/DataHydrator';
+import { IntroSection } from '@/components/public/intro/IntroSection';
 
 // PERF-02 — cache() déduplique les lectures serveur au sein d'une même
 // requête (metadata/layout/pages) : un seul aller-retour Supabase.
@@ -99,6 +100,10 @@ export default async function HomePage() {
   return (
     <PublicLayout>
       <DataHydrator snapshot={snapshot} settings={settings} siteAssets={siteAssets} />
+      {/* OV-1 — Séquence d'introduction HP Collection : section in-flow
+          sticky AVANT le hero. Gates pré-paint (session/reduced-motion/
+          Save-Data/?intro=0) -> display:none, aucune image chargée. */}
+      <IntroSection />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(storeSchema) }}
