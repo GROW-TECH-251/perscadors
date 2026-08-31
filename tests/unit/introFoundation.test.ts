@@ -28,13 +28,15 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     const s = await readFile('src/components/public/intro/IntroStage.tsx', 'utf-8');
     expect(s).toContain("'use client'");
     expect(s).toContain('const AUTO_ADVANCE_MS = 2_200;');
-    // OV-3c : session utilisateur CROSS-ONGLET (localStorage + TTL 30 min).
-    expect(s).toContain("const SEEN_KEY = 'pescador-intro-at';");
-    expect(s).toContain('const SEEN_TTL_MS = 1_800_000;');
-    expect(s).toContain("window.localStorage.setItem(SEEN_KEY, String(Date.now()))");
+// OV-3d : AUCUN stockage persistant — la fin de séquence est marquée en
+    // MÉMOIRE du document ; refresh et nouvel onglet rejouent l'intro.
+    expect(s).toContain('__PESCADOR_INTRO_DONE__');
+    expect(s).not.toContain('localStorage');
+    expect(s).not.toContain('SEEN_KEY');
+    expect(s).not.toContain('SEEN_TTL_MS');
     // Soft-navigation : re-check au montage (le gate pré-paint ne court qu'au
-    // chargement du document).
-    expect(s).toContain('Date.now() - seenAt < SEEN_TTL_MS');
+    // chargement du document) lisant le drapeau mémoire du document.
+    expect(s).toContain('__PESCADOR_INTRO_DONE__ === 1');
     expect(s).toContain('navigator.webdriver');
     // Auto-advance = auto-scroll scripté CANCELABLE ; annulé au premier geste.
     expect(s).toContain("['wheel', 'touchmove', 'pointerdown']");
@@ -66,18 +68,25 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     expect(s).toContain('aria-label="Passer l\'introduction"');
   });
 
-  it('layout : script inline des gates AVANT le rendu (session, motion, data, param)', async () => {
+  it('layout : script inline des gates AVANT le rendu (data-conn, param)', async () => {
     const s = await readFile('src/app/layout.tsx', 'utf-8');
-    expect(s).toContain('pescador-intro-at');
-    expect(s).toContain('18e5');
+// OV-3d : le gate ne lit NI n'écrit aucun stockage — seuls Save-Data et
+    // ?intro=0 coupent l'intro avant paint ; elle se rejoue sinon à chaque
+    // chargement de document.
+    expect(s).not.toContain('localStorage');
     expect(s).not.toContain('sessionStorage');
-    // FIX C : le reset ?intro=1 doit précéder le calcul de off.
-    expect(s.indexOf("pescador-intro-at','0'")).toBeLessThan(s.indexOf('var v='));
+    expect(s).not.toContain('pescador-intro-at');
+    expect(s).not.toContain('18e5');
+    expect(s).toContain('saveData');
+    expect(s).toContain('data-pescador-intro');
+
     // reduced-motion ne gate plus : intro STATIQUE (politique marque).
     expect(s).not.toContain("m=window.matchMedia");
     expect(s).toContain('navigator.connection&&navigator.connection.saveData');
     expect(s).toContain("q==='0'");
-    expect(s).toContain("q==='1'");
+    // OV-3d : plus de gate de session — ?intro=1 est sans objet (ON est le
+    // défaut) ; le script ne contient donc plus de branche q==='1'.
+    expect(s).not.toContain("q==='1'");
     expect(s).toContain('data-pescador-intro');
     // Le script doit précéder les providers (premier enfant du body).
     expect(s.indexOf('dangerouslySetInnerHTML')).toBeLessThan(s.indexOf('<CatalogProvider>'));

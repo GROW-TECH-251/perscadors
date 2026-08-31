@@ -76,7 +76,7 @@ export default function RootLayout({
             / ?intro=0 -> off ; ?intro=1 -> force la séquence. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var d=document.documentElement,q=new URLSearchParams(location.search).get('intro'),L=window.localStorage,T=18e5,n=Date.now();if(q==='1'){try{L.setItem('pescador-intro-at','0')}catch(r){}}var v=+(L.getItem('pescador-intro-at')||0),c=navigator.connection&&navigator.connection.saveData,off=q==='0'||c||(n-v)<T;d.setAttribute('data-pescador-intro',off?'off':'on');if(!off){window.__PESCADOR_INTRO_OWNER__=1;try{L.setItem('pescador-intro-at',String(n))}catch(r){}}}catch(t){}})();`,
+            __html: `(function(){try{var d=document.documentElement,q=new URLSearchParams(location.search).get('intro'),c=navigator.connection&&navigator.connection.saveData;d.setAttribute('data-pescador-intro',q==='0'||c?'off':'on');}catch(t){}})();`,
           }}
         />
         <CatalogProvider>

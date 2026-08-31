@@ -16,7 +16,9 @@
 // - auto-advance 2,2 s : auto-scroll scripté CANCELABLE (une seule et même
 //   pipeline de rendu — la convergence se joue via le scroll lui-même) ;
 // - Échap / « Passer » : saut direct en bas de section ;
-// - session marquée dès p >= 0,98 (séquence vue).
+// - fin de séquence marquée EN MÉMOIRE du document (p >= 0,98 / skip /
+//   scroll-past) : refresh et nouvel onglet REJOUENT l'intro (OV-3d),
+//   la soft-navigation ne la rejoue pas.
 //
 // Performance : UNE boucle rAF (IO + visibilitychange), lectures de layout
 // uniquement au resize (positions/typo précalculées), écritures
@@ -48,14 +50,9 @@ import {
 } from './introMotion';
 
 const AUTO_ADVANCE_MS = 2_200;
-/** Session utilisateur : 30 minutes glissantes, PARTAGÉES entre onglets
- *  (localStorage) — cohérent reload/nouvel onglet, contrairement au
- *  sessionStorage par onglet de la OV-1. */
-const SEEN_TTL_MS = 1_800_000;
 const AUTO_ADVANCE_DURATION_MS = 1_600;
 /** portion de viewport au-delà du sticky pour RÉVÉLER le hero en fin d'auto-advance */
 const AUTO_ADVANCE_REVEAL = 0.55;
-const SEEN_KEY = 'pescador-intro-at';
 const NON_VISUAL_SIBLING_TAGS = ['SCRIPT', 'NOSCRIPT', 'LINK', 'STYLE', 'TEMPLATE'];
 const MAX_VIGNETTES = 8;
 const MOBILE_VISIBLE = 5;
@@ -83,14 +80,11 @@ export function IntroStage() {
   const markSeen = useCallback(() => {
     if (seenMarked.current) return;
     seenMarked.current = true;
-    // La vue est consommée : ce document n'est plus « porteur » de l'intro —
-    // un retour par soft-navigation la retrouvera masquée (cohérent reload).
-    (window as unknown as { __PESCADOR_INTRO_OWNER__?: number }).__PESCADOR_INTRO_OWNER__ = 0;
-    try {
-      window.localStorage.setItem(SEEN_KEY, String(Date.now()));
-    } catch {
-      /* localStorage indisponible : l'intro ressortira, sans gravité */
-    }
+    // OV-3d — mémoire du DOCUMENT uniquement (aucun stockage persistant) :
+    // l'intro est la première scène du site, rejouée à chaque chargement de
+    // document (refresh, nouvel onglet) ; une soft-navigation vers la home
+    // ne la rejoue pas (le re-check au montage lit ce drapeau).
+    (window as unknown as { __PESCADOR_INTRO_DONE__?: number }).__PESCADOR_INTRO_DONE__ = 1;
   }, []);
 
   // Dismissal par l'utilisateur : collapse + saut au bloc suivant.
@@ -130,22 +124,13 @@ export function IntroStage() {
     }
 
     // Soft-navigation (p.ex. /looks -> /) : le gate pré-paint n'est évalué
-    // qu'au chargement du document — on re-vérifie la session ici et l'on
-    // masque la section sans animation ni déplacement (cohérence totale
-    // avec le reload). Aucun setState : mutation DOM directe post-mount.
-    try {
-      // « Porteur » = document où le gate a laissé l'intro jouer au chargement
-      // (marque d'arrivée posée par le script inline). Les AUTRES documents/
-      // soft-navigations de la session trouvent une marque fraîche -> masqués.
-      const owner =
-        (window as unknown as { __PESCADOR_INTRO_OWNER__?: number }).__PESCADOR_INTRO_OWNER__ === 1;
-      const seenAt = Number(window.localStorage.getItem(SEEN_KEY) || 0);
-      if (!owner && seenAt && Date.now() - seenAt < SEEN_TTL_MS) {
-        document.getElementById('pescador-intro')?.style.setProperty('display', 'none');
-        return;
-      }
-    } catch {
-      /* localStorage indisponible : comportement historique */
+    // qu'au chargement du document. Si la séquence a déjà été consommée dans
+    // CE document, on masque la section sans animation — un refresh, lui,
+    // rejoue l'intro (nouveau document, drapeau absent). Aucun setState :
+    // mutation DOM directe post-mount.
+    if ((window as unknown as { __PESCADOR_INTRO_DONE__?: number }).__PESCADOR_INTRO_DONE__ === 1) {
+      document.getElementById('pescador-intro')?.style.setProperty('display', 'none');
+      return;
     }
 
     let autoTimer = 0;

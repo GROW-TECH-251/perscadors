@@ -35,9 +35,11 @@ test.describe('SEC-9 / E2E — smoke responsive', () => {
 });
 
 // OV-1 — Fondation de l'intro HP Collection (statique, gates pré-paint).
-// Chaque test a un contexte frais (localStorage vide) -> intro visible.
+// Contexte frais par test -> intro visible (OV-3d : elle se joue à
+// CHAQUE chargement de document — refresh et nouvel onglet inclus).
 
-// Chaque test a un contexte frais (localStorage vide) -> intro visible.
+// Contexte frais par test -> intro visible (OV-3d : elle se joue à
+// CHAQUE chargement de document — refresh et nouvel onglet inclus).
 
 // Gèle le timer d'auto-advance de l'intro (AUTO_ADVANCE_MS = 2_200 dans
 // IntroStage.tsx) : les tests ne doivent pas courir contre lui. Test-only,
@@ -62,12 +64,13 @@ test.describe('OV-1 — Intro HP Collection', () => {
     expect(width).toBeLessThanOrEqual(viewport + 5);
   });
 
-  test('« Passer » masque l’intro et la mémorise pour la session', async ({ page }) => {
+  test('« Passer » masque l’intro ; un refresh la REJOUE (première scène à chaque document)', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /passer l'introduction/i }).click();
     await expect(page.locator('#pescador-intro')).toBeHidden();
+    // OV-3d : aucun stockage — le rechargement est une NOUVELLE entrée.
     await page.reload();
-    await expect(page.locator('#pescador-intro')).toBeHidden();
+    await expect(page.locator('#pescador-intro')).toBeVisible();
   });
 
   test('?intro=0 désactive la section (gate pré-paint)', async ({ page }) => {
@@ -163,7 +166,11 @@ test.describe('OV-3 — Convergence & transition', () => {
     await page.goto('/?intro=1');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
-    expect(await page.evaluate(() => Number(localStorage.getItem('pescador-intro-at') || 0))).toBeGreaterThan(0);
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __PESCADOR_INTRO_DONE__?: number }).__PESCADOR_INTRO_DONE__
+      )
+    ).toBe(1); // OV-3d : mémoire du document
     const gone = await page.evaluate(() => {
       const section = document.getElementById('pescador-intro');
       if (!section) return true;
@@ -212,34 +219,48 @@ test.describe('FIX — intro statique (reduced-motion) + ?intro=1', () => {
       window.scrollTo(0, section!.offsetTop + section!.offsetHeight);
     });
     await page.waitForTimeout(600);
-    expect(await page.evaluate(() => Number(localStorage.getItem('pescador-intro-at') || 0))).toBeGreaterThan(0);
-    await page.goto('/?intro=1');
-    await expect(page.locator('#pescador-intro')).toBeVisible(); // gate ON malgré seen
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __PESCADOR_INTRO_DONE__?: number }).__PESCADOR_INTRO_DONE__
+      )
+    ).toBe(1); // OV-3d : mémoire du document
+    await page.goto('/');
+    await expect(page.locator('#pescador-intro')).toBeVisible(); // rejeu : nouveau document
   });
 });
 
-// OV-3c — Session utilisateur cohérente (localStorage + TTL 30 min,
-// PARTAGÉE entre onglets) et composition organique vérifiable.
-test.describe('OV-3c — Session cross-onglet + composition', () => {
-  test('deuxième onglet de la même session navigateur -> hero direct', async ({ browser }) => {
+// OV-3d — Politique « première scène » : l'intro se rejoue à CHAQUE
+// chargement de document (refresh, nouvel onglet) ; seule la navigation
+// interne (soft-nav) ne la rejoue pas. Plus aucun stockage persistant.
+test.describe('OV-3d — Replay par document + composition', () => {
+  test('nouvel onglet -> l\'intro se rejoue (aucun stockage partagé)', async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     const first = await context.newPage();
     await first.goto('/');
-    await expect(first.locator('#pescador-intro')).toBeVisible(); // 1re vue consommée
-    const second = await context.newPage(); // nouvel onglet, MÊME localStorage
+    await expect(first.locator('#pescador-intro')).toBeVisible();
+    await first.getByRole('button', { name: /passer l'introduction/i }).click();
+    await expect(first.locator('#pescador-intro')).toBeHidden();
+    const second = await context.newPage(); // nouvel onglet : NOUVELLE entrée
     await second.goto('/');
-    await expect(second.locator('#pescador-intro')).toBeHidden();
+    await expect(second.locator('#pescador-intro')).toBeVisible();
     await context.close();
   });
 
-  test('retour > 30 min plus tard -> l\'intro revient (TTL)', async ({ browser }) => {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-    const page = await context.newPage();
+  test('soft-navigation (/ -> /looks -> /) -> PAS de rejeu', async ({ page }) => {
     await page.goto('/');
-    await page.evaluate(() => localStorage.setItem('pescador-intro-at', String(Date.now() - 31 * 60 * 1000)));
-    await page.reload();
-    await expect(page.locator('#pescador-intro')).toBeVisible();
-    await context.close();
+    await page.getByRole('button', { name: /passer l'introduction/i }).click();
+    await expect(page.locator('#pescador-intro')).toBeHidden();
+    // Le lien HP Looks vit dans la nav (desktop) ou le burger (mobile) ;
+    // plusieurs ancres /looks existent dans le DOM (footer) : on cible la
+    // première VISIBLE.
+    const burger = page.getByRole('button', { name: /menu principal de navigation/i });
+    if (await burger.isVisible().catch(() => false)) await burger.click();
+    await page.locator('a[href="/looks"]:visible').first().click();
+    await page.waitForTimeout(700);
+    await page.locator('a[href="/"]:visible').first().click(); // logo
+    await page.waitForTimeout(900);
+    // Drapeau en mémoire du document : la home revenue masque l'intro.
+    await expect(page.locator('#pescador-intro')).toBeHidden();
   });
 
   test('composition : hiérarchie de tailles des vignettes (3 coques)', async ({ page }) => {
