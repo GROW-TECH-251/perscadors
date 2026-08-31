@@ -32,6 +32,9 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     expect(s).toContain('navigator.webdriver');
     // Auto-advance = auto-scroll scripté CANCELABLE ; annulé au premier geste.
     expect(s).toContain("['wheel', 'touchmove', 'pointerdown']");
+    // STATIC (reduced-motion) : ni auto-advance, ni boucle — positions finales.
+    expect(s).toContain('!navigator.webdriver && !reduce');
+    expect(s).toMatch(/positions finales pos\u00e9es UNE fois[\s\S]{0,900}opacity = '1';/);
     expect(s).toContain("if (event.key === 'Escape') skip(true);");
     // Skip utilisateur : collapse + scrollIntoView du bloc VISUEL suivant.
     expect(s).toContain('nextElementSibling');
@@ -56,7 +59,11 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
   it('layout : script inline des gates AVANT le rendu (session, motion, data, param)', async () => {
     const s = await readFile('src/app/layout.tsx', 'utf-8');
     expect(s).toContain('pescador-intro-seen');
-    expect(s).toContain('prefers-reduced-motion: reduce');
+    // FIX C : le reset ?intro=1 doit précéder le calcul de off (sinon le
+    // paramètre ne force la séquence qu'avec un cran de retard).
+    expect(s.indexOf("pescador-intro-seen','0'")).toBeLessThan(s.indexOf('var v='));
+    // reduced-motion ne gate plus : intro STATIQUE (politique marque).
+    expect(s).not.toContain("m=window.matchMedia");
     expect(s).toContain('navigator.connection&&navigator.connection.saveData');
     expect(s).toContain("q==='0'");
     expect(s).toContain("q==='1'");
@@ -68,7 +75,8 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
   it('globals.css : gates display:none (data-attr + reduced-motion zero-JS)', async () => {
     const s = await readFile('src/app/globals.css', 'utf-8');
     expect(s).toContain("html[data-pescador-intro='off'] .pescador-intro");
-    expect(s).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*{\s*\.pescador-intro\s*{\s*display: none;/);
+    // Politique reduced-motion = intro STATIQUE (plus de display:none).
+    expect(s).not.toMatch(/prefers-reduced-motion[\s\S]{0,120}\.pescador-intro[\s\S]{0,60}display: none/);
   });
 
   it('page.tsx : IntroSection insérée une seule fois, en tête de home', async () => {

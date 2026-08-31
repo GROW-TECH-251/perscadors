@@ -379,8 +379,7 @@ button:not(:disabled):active { transform: scale(0.98); }
 html[data-pescador-intro='off'] .pescador-intro {
   display: none;
 }
-@media (prefers-reduced-motion: reduce) {
-  .pescador-intro {
-    display: none;
-  }
-}
+/* prefers-reduced-motion : l'intro reste visible mais STATIQUE (voir
+   IntroStage — positions finales immédiates, aucune boucle rAF, aucun
+   auto-advance). La règle display:none a été retirée : la signature de
+   marque s'offre à tous, sans mouvements pour ceux qui les refusent. */

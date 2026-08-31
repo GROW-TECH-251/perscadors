@@ -170,3 +170,34 @@ test.describe('OV-3 — Convergence & transition', () => {
     expect(broken).toBe(false);
   });
 });
+
+// FIX OV-3 — Politique reduced-motion = intro STATIQUE + ?intro=1 corrigé.
+test.describe('FIX — intro statique (reduced-motion) + ?intro=1', () => {
+  test('reduced-motion : intro visible et STATIQUE (aucune animation, pas d’auto-advance)', async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1280, height: 720 } });
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('#pescador-intro')).toBeVisible();
+    await expect(page.locator('[data-intro-logo]')).toBeVisible();
+    await page.waitForTimeout(3000); // au-delà de l'auto-advance (2,2 s)
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    const opacity = await page
+      .locator('[data-vignette]')
+      .first()
+      .evaluate((el) => parseFloat(el.style.opacity || '0'));
+    expect(opacity).toBeGreaterThan(0.9); // visibles immédiatement (pas de cascade)
+    await context.close();
+  });
+
+  test('?intro=1 force la séquence même après une sortie (fix ordre du script inline)', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+      const section = document.getElementById('pescador-intro');
+      window.scrollTo(0, section!.offsetTop + section!.offsetHeight);
+    });
+    await page.waitForTimeout(600);
+    expect(await page.evaluate(() => sessionStorage.getItem('pescador-intro-seen'))).toBe('1');
+    await page.goto('/?intro=1');
+    await expect(page.locator('#pescador-intro')).toBeVisible(); // gate ON malgré seen
+  });
+});

@@ -155,7 +155,9 @@ export function IntroStage() {
       autoRaf = requestAnimationFrame(step);
     };
 
-    if (!navigator.webdriver && window.scrollY < 8) {
+    // STATIC (reduced-motion) : aucun auto-advance — l'utilisateur scrolle.
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!navigator.webdriver && !reduce && window.scrollY < 8) {
       autoTimer = window.setTimeout(() => {
         if (!dismissed.current) startAutoAdvance();
       }, AUTO_ADVANCE_MS);
@@ -211,6 +213,22 @@ export function IntroStage() {
     );
 
     const parallax = { tx: 0, ty: 0, x: 0, y: 0 };
+
+    // STATIC (reduced-motion) : positions finales posées UNE fois — aucune
+    // boucle rAF, aucune dérive, aucun parallaxe, aucun auto-advance. La
+    // signature reste visible ; le mouvement est simplement absent.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      for (let i = 0; i < seeds.length; i += 1) {
+        const node = nodesRef.current[i];
+        const seed = seeds[i];
+        if (!node) continue;
+        const place = computePlacement(seed, width, height);
+        node.style.transform = `translate3d(${(place.x - (sizes[i]?.w ?? 0) / 2).toFixed(1)}px, ${(place.y - (sizes[i]?.h ?? 0) / 2).toFixed(1)}px, 0)`;
+        node.style.opacity = '1';
+      }
+      if (logoRef.current) logoRef.current.style.opacity = '1';
+      return;
+    }
 
     const refreshBox = () => {
       width = field.clientWidth;
