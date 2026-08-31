@@ -9,7 +9,8 @@ import {
   findCatalogProductsByCategory,
   getFallbackCatalogSnapshot,
   searchCatalogProducts,
-  type CatalogSource
+  type CatalogSource,
+  type PublicCatalogSnapshot
 } from '@/services/publicCatalogService';
 
 interface CatalogContextValue {
@@ -26,12 +27,31 @@ const CatalogContext = createContext<CatalogContextValue | undefined>(undefined)
 
 const fallbackSnapshot = getFallbackCatalogSnapshot();
 
+// PERF-02 — Hydratation serveur -> client : les pages serveur possèdent déjà
+// le snapshot (ISR/metadata) ; DataHydrator l'injecte ici AVANT l'effet de
+// montage du provider (effets enfants d'abord), qui l'applique sans AUCUN
+// fetch réseau. Garde source === 'supabase' : un snapshot fallback (serveur
+// sans base) laisse le client fetcher comme avant — dégradation propre.
+let injectedCatalogSnapshot: PublicCatalogSnapshot | null = null;
+
+export function hydrateCatalogSnapshot(snapshot: PublicCatalogSnapshot): void {
+  if (snapshot?.source === 'supabase') {
+    injectedCatalogSnapshot = snapshot;
+  }
+}
+
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [catalog, setCatalog] = useState(fallbackSnapshot);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const loadCatalog = useCallback(async () => {
     try {
+      // PERF-02 : snapshot injecté par le serveur -> zéro requête REST au
+      // chargement ; le realtime conserve la fraîcheur par la suite.
+      if (injectedCatalogSnapshot) {
+        setCatalog(injectedCatalogSnapshot);
+        return;
+      }
       const snapshot = await fetchPublicCatalogSnapshot();
       setCatalog(snapshot);
     } catch {

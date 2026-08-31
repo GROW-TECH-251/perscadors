@@ -4,7 +4,7 @@
 
 export const revalidate = 60;
 
-import React from 'react';
+import React, { cache } from 'react';
 import dynamic from 'next/dynamic';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { Hero } from '@/components/public/home/Hero';
@@ -13,6 +13,16 @@ import { Marquee } from '@/components/public/home/Marquee';
 import { CuratedCollections } from '@/components/public/home/CuratedCollections';
 import { StatsStrip } from '@/components/public/home/StatsStrip';
 import { safeJsonLd } from '@/utils/safeJsonLd';
+import { fetchServerCatalogSnapshot } from '@/services/publicCatalogService';
+import { fetchServerPublicShopSettings } from '@/services/settingsService';
+import { fetchServerSiteAssets } from '@/services/mediaService';
+import { DataHydrator } from '@/components/public/DataHydrator';
+
+// PERF-02 — cache() déduplique les lectures serveur au sein d'une même
+// requête (metadata/layout/pages) : un seul aller-retour Supabase.
+const getServerSnapshot = cache(fetchServerCatalogSnapshot);
+const getServerSettings = cache(fetchServerPublicShopSettings);
+const getServerSiteAssets = cache(fetchServerSiteAssets);
 
 // Dynamic imports pour code splitting — gain perf / risque faible
 // Ces composants sont lourds (carousel 64 images, grille, témoignages, FAQ, demande article)
@@ -32,7 +42,11 @@ const FAQ = dynamic(() => import('@/components/public/home/FAQ').then((m) => m.F
   loading: () => <div className="py-16 bg-brand-bg animate-pulse h-64" />,
 });
 
-export default function HomePage() {
+export default async function HomePage() {
+  // PERF-02 — Le serveur possède les données : on les injecte aux contextes
+  // clients (zéro re-fetch REST au chargement, fin du flicker fallback->DB).
+  const [snapshot, settings, siteAssets] = await Promise.all([getServerSnapshot(), getServerSettings(), getServerSiteAssets()]);
+
   // SEO Local Cotonou / Bénin & Données Structurées JSON-LD (schema.org)
   const storeSchema = {
     "@context": "https://schema.org",
@@ -84,6 +98,7 @@ export default function HomePage() {
 
   return (
     <PublicLayout>
+      <DataHydrator snapshot={snapshot} settings={settings} siteAssets={siteAssets} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(storeSchema) }}

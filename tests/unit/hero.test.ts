@@ -78,4 +78,42 @@ describe('Unit — Hero (hauteur & vidéo responsive)', () => {
     expect(loading).not.toContain('calc(100vh-80px)');
     expect(loading).not.toContain('min-h-[560px]');
   });
+
+  // PERF-01 — Architecture de chargement Hero : rendu immédiat, variantes
+  // allégées, démarrage parallèle, fondu poster->vidéo.
+  it('PERF-01 : aucun état vide — poster + vidéo par défaut au premier rendu', async () => {
+    const hero = await readFile('src/components/public/home/Hero.tsx', 'utf-8');
+    expect(hero).not.toContain("useState<string>('')");
+    expect(hero).toContain('useState<string>(resolveDefaultHeroVideo)');
+    expect(hero).toContain('HERO_VIDEO_1080P');
+    expect(hero).toContain('HERO_VIDEO_720P');
+    expect(hero).toContain("window.matchMedia('(max-width: 767px)')");
+  });
+
+  it('PERF-01 : la 4K legacy (36 Mo) est mappée vers la variante allégée', async () => {
+    const hero = await readFile('src/components/public/home/Hero.tsx', 'utf-8');
+    expect(hero).toContain('LEGACY_HERO_VIDEO_4K');
+    expect(hero).toContain('mapLegacyHeroVideo');
+    const settings = await readFile('src/services/settingsService.ts', 'utf-8');
+    expect(settings).toContain("hero_video_url: '/assets/backgrounds/hero-1080p.mp4'");
+  });
+
+  it('PERF-01 : fondu poster->vidéo à canplay + préchargement immédiat', async () => {
+    const hero = await readFile('src/components/public/home/Hero.tsx', 'utf-8');
+    expect(hero).toContain('onCanPlay={() => setVideoReady(true)}');
+    expect(hero).toContain("videoReady ? 'opacity-90' : 'opacity-0'");
+    expect(hero).toContain('preload="auto"');
+    expect(hero).not.toContain('preload="metadata"');
+    // Un canplay survenu avant l'hydratation doit quand même déclencher le fondu.
+    expect(hero).toContain('element.readyState >= 3');
+  });
+
+  it('PERF-01 : pas de re-téléchargement quand les données confirment les défauts', async () => {
+    const hero = await readFile('src/components/public/home/Hero.tsx', 'utf-8');
+    expect(hero).toContain('current === nextUrl ? current : nextUrl');
+    // src en attribut direct : un changement de mediaUrl recharge nativement
+    // la vidéo (un <source> patché à l'hydratation ne redémarre PAS le chargement).
+    expect(hero).toContain('src={mediaUrl}');
+    expect(hero).not.toContain('<source src={mediaUrl}');
+  });
 });
