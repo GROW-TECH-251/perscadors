@@ -42,18 +42,18 @@ export interface IntroShell {
   driftAmpMax: number;
   driftPeriodMin: number;
   driftPeriodMax: number;
-  /** révolution orbitale (s/tour) : les proches orbitent plus vite */
-  orbitPeriodMin: number;
-  orbitPeriodMax: number;
+  /** respiration d'échelle : amplitude (±) et période, par coque */
+  breathMin: number;
+  breathMax: number;
 }
 
 export const INTRO_SHELLS: Record<0 | 1 | 2, IntroShell> = {
-  // lointaine : externe, petite, floue (desktop), lente — révolution lente
-  0: { radiusMin: 0.44, radiusMax: 0.62, scaleMin: 0.62, scaleMax: 0.82, driftAmpMin: 3, driftAmpMax: 8, driftPeriodMin: 9, driftPeriodMax: 13, orbitPeriodMin: 150, orbitPeriodMax: 190 },
+  // lointaine : externe, petite, floue (desktop), dérive lente et ample
+  0: { radiusMin: 0.44, radiusMax: 0.62, scaleMin: 0.62, scaleMax: 0.82, driftAmpMin: 6, driftAmpMax: 14, driftPeriodMin: 9, driftPeriodMax: 13, breathMin: 0.012, breathMax: 0.02 },
   // médiane
-  1: { radiusMin: 0.32, radiusMax: 0.48, scaleMin: 0.88, scaleMax: 1.08, driftAmpMin: 5, driftAmpMax: 12, driftPeriodMin: 8, driftPeriodMax: 11, orbitPeriodMin: 105, orbitPeriodMax: 135 },
-  // proche : interne, grande, vive — mord la zone du logo, orbite le plus vite
-  2: { radiusMin: 0.2, radiusMax: 0.34, scaleMin: 1.08, scaleMax: 1.3, driftAmpMin: 8, driftAmpMax: 16, driftPeriodMin: 7, driftPeriodMax: 10, orbitPeriodMin: 80, orbitPeriodMax: 105 },
+  1: { radiusMin: 0.32, radiusMax: 0.48, scaleMin: 0.88, scaleMax: 1.08, driftAmpMin: 10, driftAmpMax: 22, driftPeriodMin: 8, driftPeriodMax: 11, breathMin: 0.018, breathMax: 0.028 },
+  // proche : interne, grande, vive — mord la zone du logo (derrière lui)
+  2: { radiusMin: 0.2, radiusMax: 0.34, scaleMin: 1.08, scaleMax: 1.3, driftAmpMin: 14, driftAmpMax: 30, driftPeriodMin: 7, driftPeriodMax: 10, breathMin: 0.025, breathMax: 0.04 },
 };
 
 // Stratification des coques PAR INDEX (constat utilisateur : avec la coque
@@ -131,7 +131,8 @@ export interface OrbitSeed {
   phaseX: number;
   phaseY: number;
   entranceDelayMs: number;
-  orbitPeriodMs: number;
+  breathAmp: number;
+  breathPeriodMs: number;
 }
 
 const ENTRANCE_BASE_MS = 300;
@@ -169,11 +170,11 @@ export function buildOrbitSeed(key: string | number, index: number): OrbitSeed {
     // récit d'entrée).
     entranceDelayMs:
       ENTRANCE_BASE_MS + depth * ENTRANCE_DEPTH_STAGGER_MS + rand01(key, 11) * 120,
-    // Révolution : la vignette DÉCRIT son orbite autour du logo (gravitation
-    // réelle, pas une oscillation sur place). Période hashée dans la bande
-    // de sa coque — proches plus vives que lointaines.
-    orbitPeriodMs:
-      lerp(shell.orbitPeriodMin, shell.orbitPeriodMax, rand01(key, 13)) * 1000,
+    // Respiration : l'échelle oscille très subtilement (± 1,2-4 %), périodes
+    // 7-12 s hashées, désynchronisées — « les images vivent », elles ne
+    // tournent pas (pas de révolution : positions angulaires FIXES).
+    breathAmp: lerp(shell.breathMin, shell.breathMax, rand01(key, 13)),
+    breathPeriodMs: lerp(7_000, 12_000, rand01(key, 14)),
   };
 }
 
@@ -203,21 +204,24 @@ export function entranceProgress(seed: OrbitSeed, tMs: number): number {
 // s'élargit (×1.06 / 0.82) pour occuper l'écran large ; en portrait il
 // se resserre horizontalement (×0.86) pour préserver la lisibilité.
 // -------------------------------------------
-export function computePlacement(
-  seed: OrbitSeed,
-  width: number,
-  height: number,
-  tMs = 0
-): { x: number; y: number } {
+export function computePlacement(seed: OrbitSeed, width: number, height: number): { x: number; y: number } {
   const landscape = width >= height;
   const ax = landscape ? 1.06 : 0.86;
   const ay = landscape ? 0.82 : 1;
   const radius = seed.radiusRatio * Math.min(width, height);
-  // Gravitation : la phase avance uniformément (t / période) — module
-  // constant, seule la position sur l'orbite change. t=0 (défaut) = phase
-  // initiale (mode statique reduced-motion).
-  const angle = seed.angle + (tMs / seed.orbitPeriodMs) * Math.PI * 2;
-  return { x: Math.cos(angle) * radius * ax, y: Math.sin(angle) * radius * ay };
+  // Position angulaire FIXE (pas de révolution circulaire) : la vie du champ
+  // vient de la dérive Lissajous + la respiration d'échelle (voir
+  // driftOffset / breathScale). Coordonnées RELATIVES AU CENTRE du champ —
+  // l'ancrage du nœud DOM doit être left-1/2 top-1/2 (garde unitaire).
+  return { x: Math.cos(seed.angle) * radius * ax, y: Math.sin(seed.angle) * radius * ay };
+}
+
+// -------------------------------------------
+// Respiration d'échelle : oscillation subtile ± breathAmp (1,2-4 %),
+// périodes 7-12 s désynchronisées par phase — transform/opacity only.
+// -------------------------------------------
+export function breathScale(seed: OrbitSeed, tMs: number): number {
+  return 1 + seed.breathAmp * Math.sin((tMs / seed.breathPeriodMs) * Math.PI * 2 + seed.phaseX);
 }
 
 // -------------------------------------------

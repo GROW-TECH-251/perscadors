@@ -10,7 +10,7 @@ import { readFile, stat } from 'fs/promises';
 // - Gates pré-paint : script inline layout (session / reduced-motion /
 //   Save-Data / ?intro=0|1) + règle CSS zero-JS pour reduced-motion.
 // - Stage : logo dimensions fixées (0 CLS), lazy + fetchPriority (jamais
-//   téléchargé si intro désactivée), auto-advance 2,2 s annulable (OV-3),
+//   téléchargé si intro désactivée), AUCUN auto-advance (règle OV-3e),
 //   Échap = saut direct, marquage session au scroll-past.
 // - Zéro librairie d'animation ; HTML serveur de la home inchangé ailleurs.
 describe('Unit — OV-1 Intro : fondation sûre', () => {
@@ -24,10 +24,10 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     expect(s).toContain('aria-label="Introduction HP Collection"');
   });
 
-  it('IntroStage : client, auto-advance 2,2 s annulable, webdriver guard, clé session', async () => {
+  it('IntroStage : client, AUCUN auto-advance (règle OV-3e), drapeau mémoire document', async () => {
     const s = await readFile('src/components/public/intro/IntroStage.tsx', 'utf-8');
     expect(s).toContain("'use client'");
-    expect(s).toContain('const AUTO_ADVANCE_MS = 2_200;');
+    expect(s).not.toContain('AUTO_ADVANCE');
 // OV-3d : AUCUN stockage persistant — la fin de séquence est marquée en
     // MÉMOIRE du document ; refresh et nouvel onglet rejouent l'intro.
     expect(s).toContain('__PESCADOR_INTRO_DONE__');
@@ -37,11 +37,10 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     // Soft-navigation : re-check au montage (le gate pré-paint ne court qu'au
     // chargement du document) lisant le drapeau mémoire du document.
     expect(s).toContain('__PESCADOR_INTRO_DONE__ === 1');
-    expect(s).toContain('navigator.webdriver');
-    // Auto-advance = auto-scroll scripté CANCELABLE ; annulé au premier geste.
-    expect(s).toContain("['wheel', 'touchmove', 'pointerdown']");
-    // STATIC (reduced-motion) : ni auto-advance, ni boucle — positions finales.
-    expect(s).toContain('!navigator.webdriver && !reduce');
+    expect(s).not.toContain('navigator.webdriver');
+    expect(s).not.toContain("['wheel', 'touchmove', 'pointerdown']");
+    // STATIC (reduced-motion) : ni mouvement ni boucle — positions finales.
+    expect(s).toContain('prefers-reduced-motion: reduce');
     expect(s).toMatch(/positions finales pos\u00e9es UNE fois[\s\S]{0,900}opacity = '1';/);
     expect(s).toContain("if (event.key === 'Escape') skip(true);");
     // Skip utilisateur : collapse + scrollIntoView du bloc VISUEL suivant.
@@ -49,8 +48,27 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     expect(s).toContain('scrollIntoView');
     // OV-3c : skip + indicateur de scroll fusionnés (chevron + « Passer »).
     expect(s).toContain('intro-cue-chevron');
+    // OV-3e — l'expérience n'avance JAMAIS seule : aucun timer de passage,
+    // aucun auto-scroll dans le stage (le scroll utilisateur est la seule
+    // commande — garde de non-réintroduction).
+    expect(s).not.toContain('AUTO_ADVANCE');
+    expect(s).not.toContain('window.scrollTo');
+    expect(s).not.toContain('navigator.webdriver');
+    // OV-3e — ancrage du champ : coordonnées relatives au CENTRE ; les nœuds
+    // partent de left-1/2 top-1/2 (régression « tout à gauche » : l'ancrage
+    // coin haut-gauche décalait toute la constellation de (-w/2, -h/2)).
+    expect(s).toContain('left-1/2 top-1/2');
+    expect(s).not.toContain('absolute left-0 top-0');
+    // Champ plein écran : la constellation vit AUTOUR du logo.
+    expect(s).toContain('h-screen w-full flex-col items-center justify-center');
+    // Cue secondaire bas-GAUCHE (le bas-droit appartient au WhatsApp
+    // flottant PERF-05 — collision d'interception pointer).
+    expect(s).toContain('fixed bottom-4 left-4');
+    expect(s).not.toContain('inset-x-0 bottom-5');
+    expect(s).not.toContain('bottom-4 right-4');
+    expect(s).toContain('text-white/35');
     expect(s).toContain('<span>Passer</span>');
-    expect(s).toContain('text-white/40');
+    expect(s).toContain('text-white/35');
     // Sortie naturelle : IntersectionObserver marque la session.
     expect(s).toContain('IntersectionObserver');
   });

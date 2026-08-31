@@ -8,6 +8,7 @@ import {
   WATERMARK_SCALE,
   WATERMARK_TARGET_MAX,
   WATERMARK_TARGET_MIN,
+  breathScale,
   buildOrbitSeed,
   clamp01,
   computePlacement,
@@ -180,29 +181,29 @@ describe('Unit — OV-2/OV-3c introMotion : champ organique en coques', () => {
     }
   });
 
-  it('OV-3c-2 GRAVITATION : chaque vignette DÉCRIT son orbite autour du logo', () => {
-    const seed = buildOrbitSeed('g1', 3);
-    const a = computePlacement(seed, 1280, 720, 0);
-    const b = computePlacement(seed, 1280, 720, 5_000);
-    // Module constant : l'orbite déplace la vignette SUR son cercle,
-    // elle ne déforme pas le champ.
-    const normR = (pt: { x: number; y: number }) => Math.hypot(pt.x / 1.06, pt.y / 0.82);
-    expect(Math.abs(normR(a) - normR(b))).toBeLessThan(0.5);
-    // 5 s -> déplacement net et visible (> 20 px).
-    expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeGreaterThan(20);
-    // t=0 = phase initiale : le mode statique (reduced-motion) est figé.
-    expect(computePlacement(seed, 1280, 720, 0)).toEqual(a);
-    // Vitesses par couche : les proches balaient plus d'angle que les
-    // lointaines à durée égale (bandes 150-190 / 105-135 / 80-105 s).
-    const population = Array.from({ length: 24 }, (_, i) => buildOrbitSeed(`orb${i}`, i));
-    const sweep = (depth: 0 | 1 | 2) =>
-      Math.min(...population.filter((sd) => sd.depth === depth).map((sd) => sd.orbitPeriodMs));
-    expect(sweep(2)).toBeLessThan(sweep(1));
-    expect(sweep(1)).toBeLessThan(sweep(0));
-    for (const sd of population) {
-      expect(sd.orbitPeriodMs).toBeGreaterThanOrEqual(80_000);
-      expect(sd.orbitPeriodMs).toBeLessThanOrEqual(190_000);
+  it('OV-3e RESPIRATION : dérive riche mais bornée, échelle vivante subtile (pas de révolution)', () => {
+    const population = Array.from({ length: 24 }, (_, i) => buildOrbitSeed(`br${i}`, i));
+    for (const seed of population) {
+      expect(seed.breathAmp).toBeGreaterThanOrEqual(0.012);
+      expect(seed.breathAmp).toBeLessThanOrEqual(0.04);
+      expect(seed.breathPeriodMs).toBeGreaterThanOrEqual(7_000);
+      expect(seed.breathPeriodMs).toBeLessThanOrEqual(12_000);
+      for (let t = 0; t < 30_000; t += 997) {
+        const breath = breathScale(seed, t);
+        expect(breath).toBeGreaterThanOrEqual(1 - seed.breathAmp - 1e-9);
+        expect(breath).toBeLessThanOrEqual(1 + seed.breathAmp + 1e-9);
+      }
+      for (let t = 0; t < 30_000; t += 877) {
+        const { x, y } = driftOffset(seed, t);
+        expect(Math.abs(x)).toBeLessThanOrEqual(seed.ampX + 1e-9);
+        expect(Math.abs(y)).toBeLessThanOrEqual(seed.ampY + 1e-9);
+      }
+      expect(seed.ampX).toBeGreaterThanOrEqual(6);
     }
+    // Position angulaire FIXE : le placement ne dépend PAS du temps (pas de
+    // rotation circulaire — ne pas réintroduire un paramètre temporel).
+    const seed = population[3];
+    expect(computePlacement(seed, 1280, 720)).toEqual(computePlacement(seed, 1280, 720));
   });
 
   it('OV-3c GRAVITATION : les vignettes proches frôlent la zone du logo', () => {

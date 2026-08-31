@@ -164,6 +164,9 @@ test.describe('OV-3 — Convergence & transition', () => {
 
   test('Échap -> saut direct, hero visible, session marquée', async ({ page }) => {
     await page.goto('/?intro=1');
+    // Attendre le montage client (vignettes = rendu post-hydratation) pour
+    // que l'écouteur clavier soit actif avant Échap.
+    await expect(page.locator('[data-vignette]').first()).toBeVisible({ timeout: 15_000 });
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
     expect(
@@ -285,28 +288,69 @@ test.describe('OV-3d — Replay par document + composition', () => {
     expect(new Set(sizes).size).toBeGreaterThanOrEqual(3);
     expect(Math.max(...sizes) / Math.min(...sizes)).toBeGreaterThanOrEqual(1.4);
 
-    // Équilibre du champ (régression photo user : tout d'un même côté) :
-    // le centroïde des positions — ramenées au CENTRE de chaque vignette
-    // (le translate3d part du coin haut-gauche) — reste près du logo.
+    // ÉQUILIBRE ABSOLU (OV-3e — la regression « tout a gauche » etait un bug
+    // d'ANCRAGE : nœuds left-0 top-0 + coordonnées centrées => constellation
+    // décalée de (-w/2, -h/2), centroïde mesuré (-648, -169). On mesure
+    // désormais la géométrie RÉELLE : centre de chaque vignette (rect) par
+    // rapport au centre du CHAMP — indépendant du repère des transforms.
+    const field = page.locator('[data-intro-field]');
+    const fieldBox = await field.boundingBox();
+    expect(fieldBox).not.toBeNull();
     const centres = await page.locator('[data-vignette]').evaluateAll((nodes) =>
       nodes
         .filter((node) => getComputedStyle(node).display !== 'none')
         .map((node) => {
-          const match = (node as HTMLElement).style.transform.match(
-            /translate3d\((-?[\d.]+)px, (-?[\d.]+)px/
-          );
-          if (!match) return null;
-          const box = node.getBoundingClientRect();
-          return { x: Number(match[1]) + box.width / 2, y: Number(match[2]) + box.height / 2 };
+          const rect = node.getBoundingClientRect();
+          return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
         })
-        .filter((centre): centre is { x: number; y: number } => centre !== null)
     );
     expect(centres.length).toBeGreaterThanOrEqual(4);
-    const meanX = centres.reduce((sum, c) => sum + c.x, 0) / centres.length;
-    const meanY = centres.reduce((sum, c) => sum + c.y, 0) / centres.length;
-    const maxX = Math.max(...centres.map((c) => Math.abs(c.x)));
-    const maxY = Math.max(...centres.map((c) => Math.abs(c.y)));
+    const originX = fieldBox!.x + fieldBox!.width / 2;
+    const originY = fieldBox!.y + fieldBox!.height / 2;
+    const rel = centres.map((c) => ({ x: c.x - originX, y: c.y - originY }));
+    const meanX = rel.reduce((sum, c) => sum + c.x, 0) / rel.length;
+    const meanY = rel.reduce((sum, c) => sum + c.y, 0) / rel.length;
+    const maxX = Math.max(...rel.map((c) => Math.abs(c.x)));
+    const maxY = Math.max(...rel.map((c) => Math.abs(c.y)));
+    expect(maxX).toBeGreaterThan(150); // le champ occupe l'espace autour du logo
+    expect(maxY).toBeGreaterThan(100);
     expect(Math.abs(meanX)).toBeLessThanOrEqual(maxX * 0.25);
-    expect(Math.abs(meanY)).toBeLessThanOrEqual(maxY * 0.25);
+    expect(Math.abs(meanY)).toBeLessThanOrEqual(maxY * 0.3);
+    // Des deux côtés : au moins une vignette à gauche ET une à droite.
+    expect(rel.some((c) => c.x < -60)).toBe(true);
+    expect(rel.some((c) => c.x > 60)).toBe(true);
+  });
+
+  test('immobilité : sans interaction, la page ne bouge JAMAIS seule (règle OV-3e)', async ({ page }) => {
+    await page.goto('/?intro=1');
+    await page.waitForSelector('[data-vignette]', { timeout: 15_000 });
+    await page.waitForTimeout(4_000); // l'ancien auto-advance déclenchait à 2,2 s
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(page.locator('#pescador-intro')).toBeVisible();
+  });
+
+  test('respiration : micro-mouvement subtil, sans révolution circulaire', async ({ page }) => {
+    await page.goto('/?intro=1');
+    await page.waitForSelector('[data-vignette]', { timeout: 15_000 });
+    await page.waitForTimeout(1_500);
+    const read = () =>
+      page.locator('[data-vignette]').evaluateAll((nodes) =>
+        nodes
+          .filter((node) => getComputedStyle(node).display !== 'none')
+          .map((node) => {
+            const rect = node.getBoundingClientRect();
+            return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+          })
+      );
+    const a = await read();
+    await page.waitForTimeout(5_000);
+    const b = await read();
+    // Le champ VIT (dérive 6-30 px par axe) mais subtilement — et le
+    // CENTROÏDE ne dérive pas (pas de rotation d'ensemble).
+    const moved = a.map((p0, i) => Math.hypot(b[i].x - p0.x, b[i].y - p0.y));
+    expect(Math.max(...moved)).toBeGreaterThan(3); // au moins une vignette dérive
+    expect(Math.max(...moved)).toBeLessThan(90); // jamais une course
+    const meanDX = b.reduce((sum, p1, i) => sum + (p1.x - a[i].x), 0) / b.length;
+    expect(Math.abs(meanDX)).toBeLessThan(30); // pas de translation globale
   });
 });

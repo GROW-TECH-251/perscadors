@@ -13,9 +13,9 @@
 // - à p = 1 : vignettes en filigrane (opacity 0,08, échelle 0,55) DERRIÈRE
 //   le logo -> « les looks composent le logo » ; le relâchement naturel du
 //   sticky révèle ensuite le hero par un scroll continu (zéro saut) ;
-// - auto-advance 2,2 s : auto-scroll scripté CANCELABLE (une seule et même
-//   pipeline de rendu — la convergence se joue via le scroll lui-même) ;
-// - Échap / « Passer » : saut direct en bas de section ;
+// - OV-3e : AUCUN auto-advance — l'expérience n'avance que par le scroll
+//   de l'utilisateur (USER INPUT -> SCROLL PROGRESS -> ANIMATION) ;
+// - Échap / « Passer » (coin bas-droit, secondaire) : sortie directe ;
 // - fin de séquence marquée EN MÉMOIRE du document (p >= 0,98 / skip /
 //   scroll-past) : refresh et nouvel onglet REJOUENT l'intro (OV-3d),
 //   la soft-navigation ne la rejoue pas.
@@ -38,6 +38,7 @@ import {
   getIntroRuntimeConfig,
   localProgress,
   logoState,
+  breathScale,
   clamp01,
   parallaxFactor,
   pickOutfits,
@@ -49,10 +50,6 @@ import {
   type OrbitSeed,
 } from './introMotion';
 
-const AUTO_ADVANCE_MS = 2_200;
-const AUTO_ADVANCE_DURATION_MS = 1_600;
-/** portion de viewport au-delà du sticky pour RÉVÉLER le hero en fin d'auto-advance */
-const AUTO_ADVANCE_REVEAL = 0.55;
 const NON_VISUAL_SIBLING_TAGS = ['SCRIPT', 'NOSCRIPT', 'LINK', 'STYLE', 'TEMPLATE'];
 const MAX_VIGNETTES = 8;
 const MOBILE_VISIBLE = 5;
@@ -133,53 +130,11 @@ export function IntroStage() {
       return;
     }
 
-    let autoTimer = 0;
-    let autoRaf = 0;
-    let autoCancelled = false;
-
-    const cancelAuto = () => {
-      autoCancelled = true;
-      if (autoTimer) {
-        window.clearTimeout(autoTimer);
-        autoTimer = 0;
-      }
-      if (autoRaf) {
-        cancelAnimationFrame(autoRaf);
-        autoRaf = 0;
-      }
-    };
-
-    // Auto-advance : la convergence se JOUE via le scroll (même pipeline de
-    // rendu) — auto-scroll scripté, annulable au premier geste utilisateur.
-    // Désactivé en contexte automatisé (webdriver) : E2E déterministes.
-    const startAutoAdvance = () => {
-      const section = document.getElementById('pescador-intro');
-      if (!section) return;
-      const target =
-        section.offsetTop + section.offsetHeight - Math.round(window.innerHeight * (1 - AUTO_ADVANCE_REVEAL));
-      const from = window.scrollY;
-      const startedAt = performance.now();
-      const step = (now: number) => {
-        if (autoCancelled || dismissed.current) return;
-        const u = Math.min(1, (now - startedAt) / AUTO_ADVANCE_DURATION_MS);
-        window.scrollTo(0, Math.round(from + (target - from) * easeInOutCubic(u)));
-        if (u < 1) autoRaf = requestAnimationFrame(step);
-      };
-      autoRaf = requestAnimationFrame(step);
-    };
-
-    // STATIC (reduced-motion) : aucun auto-advance — l'utilisateur scrolle.
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!navigator.webdriver && !reduce && window.scrollY < 8) {
-      autoTimer = window.setTimeout(() => {
-        if (!dismissed.current) startAutoAdvance();
-      }, AUTO_ADVANCE_MS);
-    }
-
-    const cancelEvents = ['wheel', 'touchmove', 'pointerdown'] as const;
-    cancelEvents.forEach((event) => window.addEventListener(event, cancelAuto, { passive: true }));
+    // OV-3e — RÈGLE : l'expérience n'avance JAMAIS seule. Aucun timer, aucun
+    // auto-scroll : seul le SCROLL de l'utilisateur pilote la convergence
+    // (USER INPUT -> SCROLL PROGRESS -> ANIMATION). Le temps ne sert qu'aux
+    // micro-animations internes (cascade d'entrée, dérive, respiration).
     const onKeyDown = (event: KeyboardEvent) => {
-      cancelAuto();
       if (event.key === 'Escape') skip(true);
     };
     window.addEventListener('keydown', onKeyDown);
@@ -189,17 +144,12 @@ export function IntroStage() {
     let observer: IntersectionObserver | null = null;
     if (section && typeof IntersectionObserver !== 'undefined') {
       observer = new IntersectionObserver((entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) {
-          markSeen();
-          cancelAuto();
-        }
+        if (!entries.some((entry) => entry.isIntersecting)) markSeen();
       });
       observer.observe(section);
     }
 
     return () => {
-      cancelAuto();
-      cancelEvents.forEach((event) => window.removeEventListener(event, cancelAuto));
       window.removeEventListener('keydown', onKeyDown);
       observer?.disconnect();
     };
@@ -226,6 +176,7 @@ export function IntroStage() {
     );
 
     const parallax = { tx: 0, ty: 0, x: 0, y: 0 };
+    let lastCueFade = 1;
 
     // STATIC (reduced-motion) : positions finales posées UNE fois — aucune
     // boucle rAF, aucune dérive, aucun parallaxe, aucun auto-advance. La
@@ -280,7 +231,7 @@ export function IntroStage() {
         // initiale (les lointaines ferment l'orbite en premier).
         const local = easeInOutCubic(localProgress(p, convergenceDelay(seed)));
 
-        const place = computePlacement(seed, width, height, t);
+        const place = computePlacement(seed, width, height);
         const target = convergeTarget(seed, width, height);
         const drift = driftOffset(seed, t, cfg.driftFactor * (1 - local));
         const pointer = parallaxFactor(seed.depth) * cfg.parallaxPx * (1 - p);
@@ -289,7 +240,7 @@ export function IntroStage() {
           place.x + (target.x - place.x) * local + drift.x + parallax.x * pointer - (sizes[i]?.w ?? 0) / 2;
         const y =
           place.y + (target.y - place.y) * local + drift.y + parallax.y * pointer - (sizes[i]?.h ?? 0) / 2;
-        const scale = (0.92 + 0.08 * entrance) * (1 + (WATERMARK_SCALE - 1) * local);
+        const scale = breathScale(seed, t) * (0.92 + 0.08 * entrance) * (1 + (WATERMARK_SCALE - 1) * local);
         const opacity = entrance * (1 + (WATERMARK_OPACITY - 1) * local);
 
         node.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
@@ -307,12 +258,16 @@ export function IntroStage() {
 
       // Indicateur/skip : s'efface dès les premiers pixels de scroll — sa
       // raison d'être (« l'expérience continue vers le bas ») s'éteint
-      // d'elle-même une fois l'utilisateur en mouvement.
+      // d'elle-même une fois l'utilisateur en mouvement. Écriture seulement
+      // au changement (zéro churn de style par frame au repos).
       const cue = cueRef.current;
       if (cue) {
         const cueFade = 1 - clamp01(p * 5);
-        cue.style.opacity = cueFade.toFixed(3);
-        cue.style.visibility = cueFade <= 0.05 ? 'hidden' : 'visible';
+        if (cueFade !== lastCueFade) {
+          lastCueFade = cueFade;
+          cue.style.opacity = cueFade.toFixed(3);
+          cue.style.visibility = cueFade <= 0.05 ? 'hidden' : 'visible';
+        }
       }
 
       raf = requestAnimationFrame(frame);
@@ -369,7 +324,7 @@ export function IntroStage() {
   if (hidden) return null;
 
   return (
-    <div className="relative flex w-full flex-col items-center">
+    <div className="relative flex h-screen w-full flex-col items-center justify-center">
       {/* Champ organique — décoratif, derrière le logo */}
       <div
         ref={fieldRef}
@@ -387,7 +342,7 @@ export function IntroStage() {
               ref={(node) => {
                 nodesRef.current[index] = node;
               }}
-              className={`absolute left-0 top-0 overflow-hidden rounded-xl ring-1 ring-white/10 will-change-transform ${
+              className={`absolute left-1/2 top-1/2 overflow-hidden rounded-xl ring-1 ring-white/10 will-change-transform ${
                 index >= MOBILE_VISIBLE ? 'hidden lg:block' : ''
               } ${seed.depth === 0 ? 'lg:blur-[2px]' : ''}`}
               style={{ ...size, opacity: 0, zIndex: 10 + seed.depth }}
@@ -428,26 +383,27 @@ export function IntroStage() {
 
       </div>
 
-      {/* OV-3c — Skip + indication de scroll FUSIONNÉS : un seul élément
-          discret bas-centre. Chevron (fonction UX : « ça continue en bas »,
-          dérive douce neutralisée par reduced-motion) + mot « Passer ».
-          Opacité de repos 0.4, or au survol, cible tactile ≥ 44 px, focus
-          visible conservé (seul élément focusable du stage). S'efface dès
-          le premier scroll (voir boucle rAF). */}
-      <div className="absolute inset-x-0 bottom-5 z-30 flex justify-center">
-        <button
-          ref={cueRef}
-          type="button"
-          onClick={() => skip()}
-          aria-label="Passer l'introduction"
-          className="flex cursor-pointer flex-col items-center gap-1.5 px-6 py-3 text-[10px] font-medium tracking-[0.32em] text-white/40 uppercase transition-colors duration-300 hover:text-brand-gold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-gold"
-        >
-          <svg className="intro-cue-chevron h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M3 6l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span>Passer</span>
-        </button>
-      </div>
+      {/* OV-3e — Skip secondaire : le SCROLL est l'interaction principale,
+          ce contrôle est un accès rapide discrètement logé en bas à GAUCHE,
+          ANCRÉ AU VIEWPORT (la nav in-flow décale la section de ~90 px : un
+          ancrage absolu au conteneur plaçait le cue SOUS la ligne de
+          flottaison à l'arrivée) ; bas-droit réservé au WhatsApp flottant
+          PERF-05 (collision d'interception évitée).
+          Chevron « ça continue en bas » + « Passer », opacité de repos
+          0.35, or au survol, cible ≥ 44 px, focus visible (seul élément
+          focusable). S'efface dès le premier scroll (boucle rAF). */}
+      <button
+        ref={cueRef}
+        type="button"
+        onClick={() => skip()}
+        aria-label="Passer l'introduction"
+        className="fixed bottom-4 left-4 z-30 flex cursor-pointer flex-col items-center gap-1.5 px-4 py-3 text-[9px] font-medium tracking-[0.32em] text-white/35 uppercase transition-colors duration-300 hover:text-brand-gold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-gold"
+      >
+        <svg className="intro-cue-chevron h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 6l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span>Passer</span>
+      </button>
     </div>
   );
 }
