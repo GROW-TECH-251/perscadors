@@ -185,3 +185,71 @@ export function vignetteSizeStyle(seed: OrbitSeed): { width: string; height: str
     height: `clamp(${Math.round(min * OUTFIT_IMAGE_RATIO)}px, calc(31.5vw * ${seed.scale.toFixed(2)}), ${Math.round(max * OUTFIT_IMAGE_RATIO)}px)`,
   };
 }
+
+// -------------------------------------------
+// OV-3 — Convergence & transition (scrub sticky)
+// -------------------------------------------
+export const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+export function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+/** Course utile du sticky : hauteur de section moins un viewport (>0). */
+export function sectionCourse(sectionHeight: number, viewportHeight: number): number {
+  return Math.max(1, sectionHeight - viewportHeight);
+}
+
+/**
+ * Progression de la séquence : p=0 quand le haut de la section atteint le
+ * haut du viewport, p=1 à la fin du sticky (scroll 100 % natif).
+ */
+export function scrollProgress(scrollY: number, sectionTop: number, course: number): number {
+  return clamp01((scrollY - sectionTop) / course);
+}
+
+/**
+ * Délai individuel de convergence : les vignettes LOINTAINES convergent en
+ * premier, les proches en dernier (l'orbite se ferme comme une main).
+ * Borné par CONVERGENCE_STAGGER pour que tout soit convergé à p=1.
+ */
+export const CONVERGENCE_STAGGER = 0.25;
+
+export function convergenceDelay(seed: OrbitSeed): number {
+  const norm = (seed.radiusRatio - RADIUS_RATIO_MIN) / (RADIUS_RATIO_MAX - RADIUS_RATIO_MIN);
+  // norm ~0 = lointaine -> délai court (converge en premier) ;
+  // norm ~1 = proche -> délai maximal (ferme la main en dernier).
+  return clamp01(norm) * CONVERGENCE_STAGGER;
+}
+
+/** Sous-progression locale d'une vignette (0 avant son délai, 1 à p=1). */
+export function localProgress(p: number, delay: number): number {
+  return clamp01((p - delay) / (1 - delay));
+}
+
+/**
+ * Cible de convergence : la vignette glisse LE LONG de son rayon d'origine
+ * vers un halo resserré derrière le monogramme (pas un empilement en un
+ * point : les looks COMPOSENT le logo).
+ */
+export const WATERMARK_TARGET_MIN = 0.05;
+export const WATERMARK_TARGET_MAX = 0.15;
+
+export function convergeTarget(seed: OrbitSeed, width: number, height: number): { x: number; y: number } {
+  const radius = lerp(WATERMARK_TARGET_MIN, WATERMARK_TARGET_MAX, rand01(seed.angle, 12)) * Math.min(width, height);
+  return { x: Math.cos(seed.angle) * radius, y: Math.sin(seed.angle) * radius };
+}
+
+/** État final du champ : filigrane discret derrière le logo. */
+export const WATERMARK_OPACITY = 0.08;
+export const WATERMARK_SCALE = 0.55;
+
+/** Évolution du logo central pendant la convergence (or lumineux). */
+export function logoState(p: number): { opacity: number; brightness: number; scale: number } {
+  const e = easeInOutCubic(p);
+  return {
+    opacity: lerp(0.85, 1, e),
+    brightness: lerp(1, 1.6, e),
+    scale: lerp(1, 1.04, e),
+  };
+}

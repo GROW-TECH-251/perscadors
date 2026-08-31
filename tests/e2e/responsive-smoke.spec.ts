@@ -103,3 +103,70 @@ test.describe('OV-2 — Champ organique', () => {
     expect(withIntro).toBeGreaterThanOrEqual(withoutIntro);
   });
 });
+
+// OV-3 — Convergence & transition : le scroll est la timeline.
+test.describe('OV-3 — Convergence & transition', () => {
+  test('scroll -> filigrane + logo lumineux -> hero révélé', async ({ page }) => {
+    await page.goto('/?intro=1');
+    await expect(page.locator('#pescador-intro')).toBeVisible();
+
+    await page.evaluate(() => {
+      const section = document.getElementById('pescador-intro');
+      window.scrollTo(0, section!.offsetTop + section!.offsetHeight - window.innerHeight);
+    });
+    await page.waitForTimeout(600);
+
+    const vignetteOpacity = await page
+      .locator('[data-vignette]')
+      .first()
+      .evaluate((el) => parseFloat(el.style.opacity || '1'));
+    expect(vignetteOpacity).toBeLessThanOrEqual(0.12);
+
+    const brightness = await page.locator('[data-intro-logo]').evaluate((el) => {
+      const match = (el as HTMLElement).style.filter.match(/brightness\(([\d.]+)\)/);
+      return match ? parseFloat(match[1]) : 1;
+    });
+    expect(brightness).toBeGreaterThan(1.3);
+
+    await page.evaluate(() => window.scrollBy(0, Math.round(window.innerHeight * 0.7)));
+    await page.waitForTimeout(400);
+    const heroVisible = await page.evaluate(() => {
+      const section = document.getElementById('pescador-intro');
+      let node: Element | null = section ? section.nextElementSibling : null;
+      while (node && ['SCRIPT', 'NOSCRIPT', 'LINK', 'STYLE', 'TEMPLATE'].includes(node.tagName)) {
+        node = node.nextElementSibling;
+      }
+      if (!node) return false;
+      const rect = node.getBoundingClientRect();
+      return rect.top < window.innerHeight * 0.7 && rect.bottom > 0;
+    });
+    expect(heroVisible).toBe(true);
+  });
+
+  test('Échap -> saut direct, hero visible, session marquée', async ({ page }) => {
+    await page.goto('/?intro=1');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => sessionStorage.getItem('pescador-intro-seen'))).toBe('1');
+    const gone = await page.evaluate(() => {
+      const section = document.getElementById('pescador-intro');
+      if (!section) return true;
+      return section.style.display === 'none' || section.getBoundingClientRect().bottom <= 1;
+    });
+    expect(gone).toBe(true);
+  });
+
+  test('fling : scroll instantané -> états finis cohérents (aucun NaN)', async ({ page }) => {
+    await page.goto('/?intro=1');
+    await page.evaluate(() => {
+      const section = document.getElementById('pescador-intro');
+      window.scrollTo(0, section!.offsetTop + section!.offsetHeight);
+    });
+    await page.waitForTimeout(400);
+    const broken = await page.locator('[data-vignette]').first().evaluate((el) => {
+      const style = el.style;
+      return style.transform.includes('NaN') || Number.isNaN(parseFloat(style.opacity || '0'));
+    });
+    expect(broken).toBe(false);
+  });
+});
