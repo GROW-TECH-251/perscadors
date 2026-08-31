@@ -141,13 +141,33 @@ export function buildWhatsAppOrderMessage(
   });
 }
 
+// ============================================
+// PERF-05 — Fenêtre défensive + cache de session admin.
+// Avant : table orders ENTIÈRE, re-téléchargée par chaque écran admin
+// (dashboard, commandes, analytics, clients). Après : les 500 commandes les
+// plus récentes (>> 1 an de volume pour cette boutique) servies depuis un
+// cache TTL de 30 s, invalidé par chaque mutation ET par le realtime —
+// jamais de données périmées après une action admin.
 let adminOrdersInFlight: Promise<AdminOrder[]> | null = null;
+const ADMIN_ORDERS_TTL_MS = 30_000;
+const ADMIN_ORDERS_WINDOW = 500;
+let adminOrdersCache: { value: AdminOrder[]; expiresAt: number } | null = null;
+
+export function invalidateAdminOrdersCache(): void {
+  adminOrdersCache = null;
+}
 
 export function fetchAdminOrders(): Promise<AdminOrder[]> {
   // Dashboard, analytics et synthèse clients peuvent demander les mêmes commandes
-  // pendant le même rendu. Une seule requête part alors vers Supabase.
+  // pendant le même rendu : une seule requête part vers Supabase (dédup in-flight).
+  if (adminOrdersCache && adminOrdersCache.expiresAt > Date.now()) {
+    return Promise.resolve(adminOrdersCache.value);
+  }
   if (!adminOrdersInFlight) {
-    const request = fetchAdminOrdersUncached();
+    const request = fetchAdminOrdersUncached().then((orders) => {
+      adminOrdersCache = { value: orders, expiresAt: Date.now() + ADMIN_ORDERS_TTL_MS };
+      return orders;
+    });
     adminOrdersInFlight = request;
     request.finally(() => {
       if (adminOrdersInFlight === request) adminOrdersInFlight = null;
@@ -170,7 +190,8 @@ async function fetchAdminOrdersUncached(): Promise<AdminOrder[]> {
   const { data, error } = await supabase
     .from('orders')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(ADMIN_ORDERS_WINDOW);
 
   if (error) {
     logSupabaseWarning('orderService', error);
@@ -195,6 +216,7 @@ export function getPendingSyncOrders(orders: AdminOrder[] = readLocalOrders()): 
  * Une même clé d'idempotence est conservée à chaque retry.
  */
 export async function syncPendingOrders(): Promise<PendingOrdersSyncResult> {
+  invalidateAdminOrdersCache();
   const pendingOrders = getPendingSyncOrders();
 
   if (pendingOrders.length === 0) {
@@ -298,12 +320,42 @@ export async function fetchOrdersByStatus(status: OrderStatus): Promise<AdminOrd
 }
 
 export async function fetchOrdersByPhone(phone: string): Promise<AdminOrder[]> {
-  const allOrders = await fetchAdminOrders();
+  // PERF-05 — Avant : chargeait TOUTES les commandes puis filtrait côté client
+  // pour un seul numéro. Après : requête ciblée (les écritures normalisent
+  // déjà client_phone via normalizeCustomerPhone -> correspondance exacte),
+  // limitée aux 200 plus récentes. Les commandes locales en attente de sync
+  // restent fusionnées, comme dans fetchAdminOrders.
   const normalizedPhone = normalizeCustomerPhone(phone);
-  return allOrders.filter((order) => normalizeCustomerPhone(order.client_phone) === normalizedPhone);
+  if (!supabase) {
+    return readLocalOrders().filter((order) => (
+      order.sync_status === 'pending_sync' &&
+      normalizeCustomerPhone(order.client_phone) === normalizedPhone
+    ));
+  }
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('client_phone', normalizedPhone)
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  if (error) {
+    logSupabaseWarning('orderService', error);
+    return [];
+  }
+
+  const serverOrders = (data || []) as AdminOrder[];
+  const pendingForPhone = readLocalOrders().filter((order) => (
+    order.sync_status === 'pending_sync' &&
+    normalizeCustomerPhone(order.client_phone) === normalizedPhone &&
+    !serverOrders.some((serverOrder) => isSameOrder(order, serverOrder))
+  ));
+  return [...pendingForPhone, ...serverOrders];
 }
 
 export async function createOrderFromCart(orderData: PublicCheckoutPayload, turnstileToken?: string): Promise<OrderCreationResult> {
+  invalidateAdminOrdersCache();
   const normalizedOrderData = { ...orderData, client_phone: normalizeCustomerPhone(orderData.client_phone) };
   const idempotencyKey = orderData.idempotency_key || generateIdempotencyKey();
   const history: OrderHistoryEntry[] = [
@@ -395,6 +447,7 @@ export async function updateOrderStatus(
   newStatus: OrderStatus,
   note?: string
 ): Promise<ApiResponse<AdminOrder>> {
+  invalidateAdminOrdersCache();
   const currentOrder = await fetchOrderById(Number(id));
   if (!currentOrder) {
     return { data: null, error: 'Commande non trouvée' };
@@ -447,6 +500,7 @@ export async function updateOrder(
   id: number | string,
   orderData: Partial<AdminOrder>
 ): Promise<ApiResponse<AdminOrder>> {
+  invalidateAdminOrdersCache();
   const currentOrder = await fetchOrderById(Number(id));
   const updatedOrder = { ...currentOrder, ...orderData, updated_at: new Date().toISOString() } as AdminOrder;
 
@@ -483,6 +537,7 @@ export async function updateOrder(
 }
 
 export async function deleteOrder(id: number | string): Promise<ApiResponse<boolean>> {
+  invalidateAdminOrdersCache();
   if (typeof window !== 'undefined') {
     try {
       const savedOrders = JSON.parse(window.localStorage.getItem('__PERSCADORS_ORDERS_CACHE__') || '[]') as AdminOrder[];

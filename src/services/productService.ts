@@ -10,7 +10,36 @@ import type { AdminProduct, ProductFormData, ApiResponse } from '@/admin/types';
 const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
 
+// ============================================
+// PERF-05 — Requêtes bornées + cache de session admin.
+// Avant : table products entière, re-téléchargée à chaque navigation entre
+// les écrans admin (dashboard, produits, stock). Après : fenêtre défensive
+// + cache TTL court, invalidé par chaque mutation et par le realtime.
+const ADMIN_PRODUCTS_TTL_MS = 30_000;
+const ADMIN_PRODUCTS_MAX = 1000; // défensif : ~10x le catalogue réel actuel
+let adminProductsCache: { value: AdminProduct[]; expiresAt: number } | null = null;
+let adminProductsInFlight: Promise<AdminProduct[]> | null = null;
+
+export function invalidateAdminProductsCache(): void {
+  adminProductsCache = null;
+}
+
 export async function fetchAdminProducts(): Promise<AdminProduct[]> {
+  if (adminProductsCache && adminProductsCache.expiresAt > Date.now()) {
+    return adminProductsCache.value;
+  }
+  if (!adminProductsInFlight) {
+    adminProductsInFlight = fetchAdminProductsUncached().then((products) => {
+      adminProductsCache = { value: products, expiresAt: Date.now() + ADMIN_PRODUCTS_TTL_MS };
+      return products;
+    }).finally(() => {
+      adminProductsInFlight = null;
+    });
+  }
+  return adminProductsInFlight;
+}
+
+async function fetchAdminProductsUncached(): Promise<AdminProduct[]> {
   // L’administration doit refléter exclusivement la base partagée.
   if (!isSupabaseConfigured || !supabase) {
     console.warn('Lecture produits indisponible : Supabase non configuré.');
@@ -20,7 +49,8 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
   const { data, error } = await supabase
     .from('products')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(ADMIN_PRODUCTS_MAX);
 
   if (error) {
     logSupabaseWarning('productService', error.message || 'erreur inconnue');
@@ -47,6 +77,7 @@ export async function fetchProductById(id: number | string): Promise<AdminProduc
 }
 
 export async function createProduct(formData: ProductFormData): Promise<ApiResponse<AdminProduct>> {
+  invalidateAdminProductsCache();
   if (!supabase) {
     return { data: null, error: USER_ERROR_MSG };
   }
@@ -77,6 +108,7 @@ export async function updateProduct(
   id: number | string,
   formData: Partial<ProductFormData>
 ): Promise<ApiResponse<AdminProduct>> {
+  invalidateAdminProductsCache();
   if (!supabase) {
     return { data: null, error: USER_ERROR_MSG };
   }
@@ -99,6 +131,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: number | string): Promise<ApiResponse<boolean>> {
+  invalidateAdminProductsCache();
   if (!supabase) {
     return { data: false, error: USER_ERROR_MSG };
   }
