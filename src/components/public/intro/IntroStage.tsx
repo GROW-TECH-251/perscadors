@@ -295,7 +295,7 @@ export function IntroStage() {
         // initiale (les lointaines ferment l'orbite en premier).
         const local = easeInOutCubic(localProgress(p, convergenceDelay(seed)));
 
-        const place = computePlacement(seed, width, height);
+        const place = computePlacement(seed, width, height, t);
         const target = convergeTarget(seed, width, height);
         const drift = driftOffset(seed, t, cfg.driftFactor * (1 - local));
         const pointer = parallaxFactor(seed.depth) * cfg.parallaxPx * (1 - p);

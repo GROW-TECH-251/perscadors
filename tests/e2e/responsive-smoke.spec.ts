@@ -263,5 +263,29 @@ test.describe('OV-3c — Session cross-onglet + composition', () => {
     expect(sizes.length).toBeGreaterThanOrEqual(4);
     expect(new Set(sizes).size).toBeGreaterThanOrEqual(3);
     expect(Math.max(...sizes) / Math.min(...sizes)).toBeGreaterThanOrEqual(1.4);
+
+    // Équilibre du champ (régression photo user : tout d'un même côté) :
+    // le centroïde des positions — ramenées au CENTRE de chaque vignette
+    // (le translate3d part du coin haut-gauche) — reste près du logo.
+    const centres = await page.locator('[data-vignette]').evaluateAll((nodes) =>
+      nodes
+        .filter((node) => getComputedStyle(node).display !== 'none')
+        .map((node) => {
+          const match = (node as HTMLElement).style.transform.match(
+            /translate3d\((-?[\d.]+)px, (-?[\d.]+)px/
+          );
+          if (!match) return null;
+          const box = node.getBoundingClientRect();
+          return { x: Number(match[1]) + box.width / 2, y: Number(match[2]) + box.height / 2 };
+        })
+        .filter((centre): centre is { x: number; y: number } => centre !== null)
+    );
+    expect(centres.length).toBeGreaterThanOrEqual(4);
+    const meanX = centres.reduce((sum, c) => sum + c.x, 0) / centres.length;
+    const meanY = centres.reduce((sum, c) => sum + c.y, 0) / centres.length;
+    const maxX = Math.max(...centres.map((c) => Math.abs(c.x)));
+    const maxY = Math.max(...centres.map((c) => Math.abs(c.y)));
+    expect(Math.abs(meanX)).toBeLessThanOrEqual(maxX * 0.25);
+    expect(Math.abs(meanY)).toBeLessThanOrEqual(maxY * 0.25);
   });
 });

@@ -42,16 +42,29 @@ export interface IntroShell {
   driftAmpMax: number;
   driftPeriodMin: number;
   driftPeriodMax: number;
+  /** révolution orbitale (s/tour) : les proches orbitent plus vite */
+  orbitPeriodMin: number;
+  orbitPeriodMax: number;
 }
 
 export const INTRO_SHELLS: Record<0 | 1 | 2, IntroShell> = {
-  // lointaine : externe, petite, floue (desktop), lente
-  0: { radiusMin: 0.44, radiusMax: 0.62, scaleMin: 0.62, scaleMax: 0.82, driftAmpMin: 3, driftAmpMax: 8, driftPeriodMin: 9, driftPeriodMax: 13 },
+  // lointaine : externe, petite, floue (desktop), lente — révolution lente
+  0: { radiusMin: 0.44, radiusMax: 0.62, scaleMin: 0.62, scaleMax: 0.82, driftAmpMin: 3, driftAmpMax: 8, driftPeriodMin: 9, driftPeriodMax: 13, orbitPeriodMin: 150, orbitPeriodMax: 190 },
   // médiane
-  1: { radiusMin: 0.32, radiusMax: 0.48, scaleMin: 0.88, scaleMax: 1.08, driftAmpMin: 5, driftAmpMax: 12, driftPeriodMin: 8, driftPeriodMax: 11 },
-  // proche : interne, grande, vive — mord la zone du logo (derrière lui)
-  2: { radiusMin: 0.2, radiusMax: 0.34, scaleMin: 1.08, scaleMax: 1.3, driftAmpMin: 8, driftAmpMax: 16, driftPeriodMin: 7, driftPeriodMax: 10 },
+  1: { radiusMin: 0.32, radiusMax: 0.48, scaleMin: 0.88, scaleMax: 1.08, driftAmpMin: 5, driftAmpMax: 12, driftPeriodMin: 8, driftPeriodMax: 11, orbitPeriodMin: 105, orbitPeriodMax: 135 },
+  // proche : interne, grande, vive — mord la zone du logo, orbite le plus vite
+  2: { radiusMin: 0.2, radiusMax: 0.34, scaleMin: 1.08, scaleMax: 1.3, driftAmpMin: 8, driftAmpMax: 16, driftPeriodMin: 7, driftPeriodMax: 10, orbitPeriodMin: 80, orbitPeriodMax: 105 },
 };
+
+// Stratification des coques PAR INDEX (constat utilisateur : avec la coque
+// tirée par hash, 2-3 grandes pouvaient atterrir dans le même quadrant et
+// tout le champ visuel basculait d'un côté). Le pattern place chaque coque
+// sur des angles opposés de la spirale dorée : médianes aux indices
+// 0/2/4/6 (0°/275°/190°/105°), lointaines 1/5 (137°/327°), proches 3/7
+// (52°/242°) — le champ est équilibré autour du logo PAR CONSTRUCTION,
+// pour n'importe quel hash des amplitudes. Le premier quintet (mobile)
+// reste lui aussi équilibré (1 loin / 3 médianes / 1 proche).
+const SHELL_PATTERN: Array<0 | 1 | 2> = [1, 0, 1, 2, 1, 0, 1, 2];
 
 // -------------------------------------------
 // Config par contexte (résolue avec window, jamais pendant le rendu)
@@ -118,6 +131,7 @@ export interface OrbitSeed {
   phaseX: number;
   phaseY: number;
   entranceDelayMs: number;
+  orbitPeriodMs: number;
 }
 
 const ENTRANCE_BASE_MS = 300;
@@ -126,10 +140,10 @@ const ENTRANCE_DEPTH_STAGGER_MS = 220;
 export function buildOrbitSeed(key: string | number, index: number): OrbitSeed {
   const angle = index * GOLDEN_ANGLE + (rand01(key, 1) - 0.5) * 2 * ANGLE_JITTER_MAX;
 
-  // Profondeur pondérée (30 % lointaines / 45 % médianes / 25 % proches),
-  // puis TOUT le caractère visuel dérive de la coque : cohérence spatiale.
-  const depthRoll = rand01(key, 4);
-  const depth: 0 | 1 | 2 = depthRoll < 0.3 ? 0 : depthRoll < 0.75 ? 1 : 2;
+  // Profondeur STRATIFIÉE par index (voir SHELL_PATTERN) : l'équilibre
+  // angulaire du champ est garanti par construction, et TOUT le caractère
+  // visuel (rayon/échelle/dérive/révolution) dérive de la coque.
+  const depth: 0 | 1 | 2 = SHELL_PATTERN[((index % SHELL_PATTERN.length) + SHELL_PATTERN.length) % SHELL_PATTERN.length];
   const shell = INTRO_SHELLS[depth];
 
   const radiusRatio = lerp(shell.radiusMin, shell.radiusMax, rand01(key, 2));
@@ -155,6 +169,11 @@ export function buildOrbitSeed(key: string | number, index: number): OrbitSeed {
     // récit d'entrée).
     entranceDelayMs:
       ENTRANCE_BASE_MS + depth * ENTRANCE_DEPTH_STAGGER_MS + rand01(key, 11) * 120,
+    // Révolution : la vignette DÉCRIT son orbite autour du logo (gravitation
+    // réelle, pas une oscillation sur place). Période hashée dans la bande
+    // de sa coque — proches plus vives que lointaines.
+    orbitPeriodMs:
+      lerp(shell.orbitPeriodMin, shell.orbitPeriodMax, rand01(key, 13)) * 1000,
   };
 }
 
@@ -184,12 +203,21 @@ export function entranceProgress(seed: OrbitSeed, tMs: number): number {
 // s'élargit (×1.06 / 0.82) pour occuper l'écran large ; en portrait il
 // se resserre horizontalement (×0.86) pour préserver la lisibilité.
 // -------------------------------------------
-export function computePlacement(seed: OrbitSeed, width: number, height: number): { x: number; y: number } {
+export function computePlacement(
+  seed: OrbitSeed,
+  width: number,
+  height: number,
+  tMs = 0
+): { x: number; y: number } {
   const landscape = width >= height;
   const ax = landscape ? 1.06 : 0.86;
   const ay = landscape ? 0.82 : 1;
   const radius = seed.radiusRatio * Math.min(width, height);
-  return { x: Math.cos(seed.angle) * radius * ax, y: Math.sin(seed.angle) * radius * ay };
+  // Gravitation : la phase avance uniformément (t / période) — module
+  // constant, seule la position sur l'orbite change. t=0 (défaut) = phase
+  // initiale (mode statique reduced-motion).
+  const angle = seed.angle + (tMs / seed.orbitPeriodMs) * Math.PI * 2;
+  return { x: Math.cos(angle) * radius * ax, y: Math.sin(angle) * radius * ay };
 }
 
 // -------------------------------------------

@@ -136,6 +136,75 @@ describe('Unit — OV-2/OV-3c introMotion : champ organique en coques', () => {
     expect(Math.abs(portrait.x)).toBeLessThanOrEqual(seeds[0].radiusRatio * 390 * 0.86 + 1);
   });
 
+  it('OV-3c-2 ÉQUILIBRE : le champ ne bascule jamais d’un côté (régression photo user)', () => {
+    // Constat utilisateur (photo) : avec la coque tirée par HASH, 2-3
+    // grandes vignettes atterrissaient dans le même quadrant -> tout le
+    // champ visuel s'empilait d'un côté. La stratification SHELL_PATTERN
+    // place chaque coque à des angles opposés : le centroïde des 8
+    // placements reste proche du centre POUR TOUT HASH (mesuré 2-11 % du
+    // rayon max ; l'ancien code donnait ~20 %+ vers un seul quadrant).
+    const circDist = (a: number, b: number) => Math.abs(((a - b) % Math.PI + Math.PI) % Math.PI);
+    for (const prefix of ['a', 'pop', 'zz', 'k9']) {
+      const seeds8 = Array.from({ length: 8 }, (_, i) => buildOrbitSeed(`${prefix}${i}`, i));
+      expect(seeds8.filter((s) => s.depth === 0)).toHaveLength(2);
+      expect(seeds8.filter((s) => s.depth === 1)).toHaveLength(4);
+      expect(seeds8.filter((s) => s.depth === 2)).toHaveLength(2);
+      let sx = 0;
+      let sy = 0;
+      let maxR = 0;
+      for (const seed of seeds8) {
+        const { x, y } = computePlacement(seed, 1280, 720);
+        sx += x;
+        sy += y;
+        maxR = Math.max(maxR, seed.radiusRatio);
+      }
+      const deviation = Math.hypot(sx / 8, sy / 8) / (maxR * 720);
+      expect(deviation).toBeLessThan(0.15);
+      // Chaque coque couvre le cercle : coques 2-échantillons en angles
+      // quasi opposés, médianes en 4 façades.
+      const farAngles = seeds8.filter((s) => s.depth === 0).map((s) => s.angle);
+      const nearAngles = seeds8.filter((s) => s.depth === 2).map((s) => s.angle);
+      expect(circDist(farAngles[0], farAngles[1])).toBeGreaterThan(2.3);
+      expect(circDist(nearAngles[0], nearAngles[1])).toBeGreaterThan(2.3);
+      const midAngles = seeds8
+        .filter((s) => s.depth === 1)
+        .map((s) => s.angle)
+        .map((a) => ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2))
+        .sort((a, b) => a - b);
+      let maxGap = 0;
+      for (let i = 0; i < 4; i += 1) {
+        const next = i === 3 ? midAngles[0] + Math.PI * 2 : midAngles[i + 1];
+        maxGap = Math.max(maxGap, next - midAngles[i]);
+      }
+      expect(maxGap).toBeLessThan(3.0);
+    }
+  });
+
+  it('OV-3c-2 GRAVITATION : chaque vignette DÉCRIT son orbite autour du logo', () => {
+    const seed = buildOrbitSeed('g1', 3);
+    const a = computePlacement(seed, 1280, 720, 0);
+    const b = computePlacement(seed, 1280, 720, 5_000);
+    // Module constant : l'orbite déplace la vignette SUR son cercle,
+    // elle ne déforme pas le champ.
+    const normR = (pt: { x: number; y: number }) => Math.hypot(pt.x / 1.06, pt.y / 0.82);
+    expect(Math.abs(normR(a) - normR(b))).toBeLessThan(0.5);
+    // 5 s -> déplacement net et visible (> 20 px).
+    expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeGreaterThan(20);
+    // t=0 = phase initiale : le mode statique (reduced-motion) est figé.
+    expect(computePlacement(seed, 1280, 720, 0)).toEqual(a);
+    // Vitesses par couche : les proches balaient plus d'angle que les
+    // lointaines à durée égale (bandes 150-190 / 105-135 / 80-105 s).
+    const population = Array.from({ length: 24 }, (_, i) => buildOrbitSeed(`orb${i}`, i));
+    const sweep = (depth: 0 | 1 | 2) =>
+      Math.min(...population.filter((sd) => sd.depth === depth).map((sd) => sd.orbitPeriodMs));
+    expect(sweep(2)).toBeLessThan(sweep(1));
+    expect(sweep(1)).toBeLessThan(sweep(0));
+    for (const sd of population) {
+      expect(sd.orbitPeriodMs).toBeGreaterThanOrEqual(80_000);
+      expect(sd.orbitPeriodMs).toBeLessThanOrEqual(190_000);
+    }
+  });
+
   it('OV-3c GRAVITATION : les vignettes proches frôlent la zone du logo', () => {
     const near = seeds.filter((s) => s.depth === 2);
     for (const seed of near) {
