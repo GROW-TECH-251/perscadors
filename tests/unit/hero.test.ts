@@ -41,6 +41,19 @@ describe('Unit — Hero (hauteur & vidéo responsive)', () => {
     expect(hero).toContain('blur-lg lg:blur-xl');
   });
 
+  it('OV-4 : la vidéo ne se charge qu à l apparition réelle du hero (IO, une seule variante)', async () => {
+    const hero = await readFile('src/components/public/home/Hero.tsx', 'utf-8');
+    // Le HTML servi ne doit contenir aucun src vidéo : la balise ne monte
+    // qu'au client, à l'intersection (zéro octet pendant l'intro, fini le
+    // double téléchargement mobile 1080p+720p).
+    expect(hero).toContain('{heroVisible && (');
+    expect(hero).toContain("new IntersectionObserver");
+    expect(hero).toContain("rootMargin: '200px'");
+    // Le poster, lui, reste rendu immédiatement (PERF-01 intact).
+    expect(hero).toContain('priority');
+    expect(hero).toContain('preload="auto"');
+  });
+
   it('IMP-04 : plus jamais d écran vide — onError bascule sur le poster net', async () => {
     const hero = await readFile('src/components/public/home/Hero.tsx', 'utf-8');
     expect(hero).not.toContain("setMediaUrl('')");
