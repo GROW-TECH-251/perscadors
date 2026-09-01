@@ -71,7 +71,7 @@ export function buildWhatsAppUrl(message: string, phoneDigits?: string): string 
 
 // ============================================
 // PERF-04 — Robustesse d'encodage des messages WhatsApp.
-// Les caracteres � observés provenaient de messages longs coupés entre deux
+// Les caracteres [U+FFFD] observés provenaient de messages longs coupés entre deux
 // « surrogate halves » d'un emoji (toute troncature naive d'un texte contenant
 // 👋/📸/🙌 produit un demi-caractère invalide). Deux gardes :
 // 1) normalisation NFC (forme composée : moins d'unites de code, rendu stable) ;

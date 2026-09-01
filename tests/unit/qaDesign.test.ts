@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { readFile } from 'fs/promises';
-import { execSync } from 'node:child_process';
 import { access } from 'node:fs/promises';
 
 // Garde-fou IMP-11 — Design QA + accessibilité + garde SEO (audit transverse) :
@@ -15,13 +14,24 @@ describe('Unit — IMP-11 Design QA + a11y + garde SEO', () => {
   it('le CSS mort .fade-in-scroll a été supprimé et n’est référencé nulle part', async () => {
     const css = await readFile('src/app/globals.css', 'utf-8');
     expect(css).not.toContain('.fade-in-scroll');
-    let references = '';
-    try {
-      references = execSync('grep -rn "fade-in-scroll" src/ || true', { encoding: 'utf-8' });
-    } catch {
-      references = '';
+    // Scan récursif en Node PUR (portable — l'ancien grep était
+    // silencieusement inert sous Windows).
+    const { readdir } = await import('node:fs/promises');
+    const walk = async (dir: string): Promise<string[]> => {
+      const entries = await readdir(dir, { withFileTypes: true });
+      const nested = await Promise.all(
+        entries.map((entry) => {
+          const path = `${dir}/${entry.name}`;
+          return entry.isDirectory() ? walk(path) : Promise.resolve([path]);
+        }),
+      );
+      return nested.flat();
+    };
+    const offenders: string[] = [];
+    for (const path of await walk('src')) {
+      if ((await readFile(path, 'utf-8')).includes('fade-in-scroll')) offenders.push(path);
     }
-    expect(references.trim()).toBe('');
+    expect(offenders).toEqual([]);
   });
 
   it('prefers-reduced-motion global : couvre *, animations, transitions et scroll', async () => {

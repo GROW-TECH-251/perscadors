@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { readFile } from 'fs/promises';
-import { execSync } from 'node:child_process';
 import {
   buildWhatsAppUrl,
   normalizeWhatsAppMessage,
@@ -94,13 +93,28 @@ describe('Unit — PERF-04 WhatsApp encodage + photo', () => {
     expect(sql).toContain('-- update public.shop_settings');
   });
 
-  it('garde permanent : aucun caractère U+FFFD dans les sources du projet', () => {
-    let hits = '';
-    try {
-      hits = execSync('grep -rl $\'\\uFFFD\' src/ || true', { encoding: 'utf-8', shell: '/bin/bash' });
-    } catch {
-      hits = '';
+  it('garde permanent : aucun caractère U+FFFD dans les sources du projet', async () => {
+    // Scan récursif en Node PUR (portable — l'ancien grep /bin/bash était
+    // silencieusement INERT sous Windows : le catch avalait l'ENOENT).
+    // Binaires exclus : un fichier non-texte décodé en UTF-8 produit
+    // mécaniquement des U+FFFD (faux positifs, p.ex. favicon.ico).
+    const { readdir } = await import('node:fs/promises');
+    const walk = async (dir: string): Promise<string[]> => {
+      const entries = await readdir(dir, { withFileTypes: true });
+      const nested = await Promise.all(
+        entries.map((entry) => {
+          const path = `${dir}/${entry.name}`;
+          return entry.isDirectory() ? walk(path) : Promise.resolve([path]);
+        }),
+      );
+      return nested.flat();
+    };
+    const textFiles = (await walk('src')).filter((path) => /\.(ts|tsx|css|mjs|json)$/.test(path));
+    expect(textFiles.length).toBeGreaterThan(50); // le scan a bien parcouru l'arbre
+    const offenders: string[] = [];
+    for (const path of textFiles) {
+      if ((await readFile(path, 'utf-8')).includes('\uFFFD')) offenders.push(path);
     }
-    expect(hits.trim()).toBe('');
+    expect(offenders).toEqual([]);
   });
 });

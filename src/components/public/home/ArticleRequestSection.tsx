@@ -374,7 +374,7 @@ export const ArticleRequestSection: React.FC = () => {
     ];
 
     // PERF-04 : passage par buildWhatsAppUrl = normalisation NFC + coupe
-    // sûre (fin des � dus aux troncatures d'URL longues).
+    // sûre (fin des [U+FFFD] dus aux troncatures d'URL longues).
     const url = buildWhatsAppUrl(fullLines.join('\n'), clientPhone);
     window.open(url, '_blank', 'noopener,noreferrer');
     setIsUploading(false);

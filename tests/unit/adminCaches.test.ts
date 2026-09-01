@@ -96,13 +96,28 @@ describe('Unit — PERF-05 Admin : bornes + caches', () => {
   });
 
   it('les caches ne fuient pas vers la vitrine publique : importeurs admin uniquement', async () => {
-    const { execSync } = await import('node:child_process');
-    const out = execSync(
-      "grep -rl \"from '@/services/categoryService'\\|from '@/services/outfitService'\" src/ | sort",
-      { encoding: 'utf-8', shell: '/bin/bash' }
-    );
-    for (const line of out.trim().split('\n').filter(Boolean)) {
-      expect(line.startsWith('src/app/admin/')).toBe(true);
+    // Scan récursif en Node PUR (portable Windows/Linux/CI — l'ancien
+    // grep shell:'/bin/bash' échouait sous Windows : spawnSync ENOENT).
+    // Seuls les fichiers sous src/app/admin/ peuvent importer les
+    // services cachés de l'admin.
+    const { readdir } = await import('node:fs/promises');
+    const walk = async (dir: string): Promise<string[]> => {
+      const entries = await readdir(dir, { withFileTypes: true });
+      const nested = await Promise.all(
+        entries.map((entry) => {
+          const path = `${dir}/${entry.name}`;
+          return entry.isDirectory() ? walk(path) : Promise.resolve([path]);
+        }),
+      );
+      return nested.flat();
+    };
+    const files = (await walk('src')).filter((path) => /\.(ts|tsx)$/.test(path));
+    expect(files.length).toBeGreaterThan(50); // le scan a bien parcouru l'arbre
+    for (const path of files) {
+      const content = await readFile(path, 'utf-8');
+      if (/from '@\/services\/(categoryService|outfitService)'/.test(content)) {
+        expect(path.startsWith('src/app/admin/')).toBe(true);
+      }
     }
   });
 });
