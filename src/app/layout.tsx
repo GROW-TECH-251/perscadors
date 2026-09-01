@@ -68,17 +68,20 @@ export default function RootLayout({
     <html lang="fr" data-scroll-behavior="smooth" suppressHydrationWarning className={`${barlow.variable} ${bebasNeue.variable} h-full antialiased scroll-smooth`}>
       <head>
         <link rel="canonical" href="https://perscadors.vercel.app" />
-      </head>
-      <body className="min-h-full flex flex-col bg-brand-bg text-brand-text font-barlow selection:bg-brand-gold/30 selection:text-brand-text">
         {/* OV-1 — Gates pré-paint de l'intro HP Collection : évaluées AVANT le
             premier rendu pour poser data-pescador-intro (CSS globals masque la
             section -> 0 flash, 0 CLS). Session vue / reduced-motion / Save-Data
-            / ?intro=0 -> off ; ?intro=1 -> force la séquence. */}
+            / ?intro=0 -> off ; ?intro=1 -> force la séquence.
+            OV-4-LCP — Dans <head> : le preload conditionnel du logo (candidat
+            LCP) est découvert AVANT les feuilles de style, au premier octet ;
+            zéro octet si intro désactivée (gate). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var d=document.documentElement,q=new URLSearchParams(location.search).get('intro'),c=navigator.connection&&navigator.connection.saveData;d.setAttribute('data-pescador-intro',q==='0'||c?'off':'on');}catch(t){}})();`,
+            __html: `(function(){try{var d=document.documentElement,q=new URLSearchParams(location.search).get('intro'),c=navigator.connection&&navigator.connection.saveData;d.setAttribute('data-pescador-intro',q==='0'||c?'off':'on');if(q!=='0'&&!c){var l=document.createElement('link');l.rel='preload';l.as='image';l.href='/assets/brand/hp-logo.webp';l.setAttribute('fetchpriority','high');document.head.appendChild(l);}}catch(t){}})();`,
           }}
         />
+      </head>
+      <body className="min-h-full flex flex-col bg-brand-bg text-brand-text font-barlow selection:bg-brand-gold/30 selection:text-brand-text">
         <CatalogProvider>
           <CartProvider>
             <PublicSettingsProvider>

@@ -471,7 +471,7 @@ export function IntroStage() {
             width={640}
             height={642}
             fetchPriority="high"
-            loading="lazy"
+            loading="eager"
             decoding="async"
             className="h-auto w-[min(62vw,300px)] will-change-transform"
             style={{ opacity: 0.85 }}

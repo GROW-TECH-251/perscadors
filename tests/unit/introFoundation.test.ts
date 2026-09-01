@@ -9,10 +9,32 @@ import { readFile, stat } from 'fs/promises';
 //   120 vh mobile / 150 vh desktop.
 // - Gates pré-paint : script inline layout (session / reduced-motion /
 //   Save-Data / ?intro=0|1) + règle CSS zero-JS pour reduced-motion.
-// - Stage : logo dimensions fixées (0 CLS), lazy + fetchPriority (jamais
-//   téléchargé si intro désactivée), AUCUN auto-advance (règle OV-3e),
+// - Stage : logo dimensions fixées (0 CLS), eager + fetchPriority (OV-4-LCP ;
+//   zéro téléchargement si intro désactivée via la gate pré-paint), AUCUN
+//   auto-advance (règle OV-3e),
 //   Échap = saut direct, marquage session au scroll-past.
 // - Zéro librairie d'animation ; HTML serveur de la home inchangé ailleurs.
+// OV-4-LCP — Le logo de l'intro est LE candidat LCP de la home mobile :
+// il doit être découvert au premier octet (preload conditionnel posé par le
+// gate inline quand l'intro est active) et chargé eager (jamais lazy).
+describe('OV-4-LCP — découverte immédiate du logo intro', () => {
+  it('le gate inline précharge le logo (haute priorité) seulement si intro active', async () => {
+    const layout = await readFile('src/app/layout.tsx', 'utf-8');
+    expect(layout).toContain("l.rel='preload'");
+    expect(layout).toContain("l.as='image'");
+    expect(layout).toContain("l.href='/assets/brand/hp-logo.webp'");
+    expect(layout).toContain("l.setAttribute('fetchpriority','high')");
+    // Conditionnel : le preload n'est posé que si la gate laisse l'intro ON.
+    expect(layout).toContain("if(q!=='0'&&!c)");
+  });
+
+  it('le logo intro est eager (candidat LCP above-fold, jamais lazy)', async () => {
+    const stage = await readFile('src/components/public/intro/IntroStage.tsx', 'utf-8');
+    const m = stage.match(/data-intro-logo[\s\S]{0,400}?loading="([a-z]+)"/);
+    expect(m?.[1]).toBe('eager');
+  });
+});
+
 describe('Unit — OV-1 Intro : fondation sûre', () => {
   it('IntroSection : composant serveur, section sticky in-flow, hauteurs responsive', async () => {
     const s = await readFile('src/components/public/intro/IntroSection.tsx', 'utf-8');
@@ -73,12 +95,15 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     expect(s).toContain('IntersectionObserver');
   });
 
-  it('logo : dimensions fixées (0 CLS), lazy + fetchPriority, décoratif, identifié', async () => {
+  it('logo : dimensions fixées (0 CLS), eager + fetchPriority (OV-4-LCP), décoratif, identifié', async () => {
     const s = await readFile('src/components/public/intro/IntroStage.tsx', 'utf-8');
     expect(s).toContain('src="/assets/brand/hp-logo.webp"');
     expect(s).toContain('width={640}');
     expect(s).toContain('height={642}');
-    expect(s).toContain('loading="lazy"');
+    // OV-4-LCP (01/09, décision user) : candidat LCP above-fold -> eager.
+    // La gate pré-paint reste la garantie « zéro téléchargement si intro
+    // désactivée » (display:none + preload conditionnel) — pas le lazy.
+    expect(s).toContain('loading="eager"');
     expect(s).toContain('fetchPriority="high"');
     expect(s).toContain('aria-hidden="true"');
     expect(s).toContain('data-intro-logo');
