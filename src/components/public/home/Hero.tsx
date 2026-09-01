@@ -49,6 +49,40 @@ export const Hero: React.FC = () => {
   // (transition opacity sur token motion, neutralisée en reduced-motion).
   const [videoReady, setVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  // OV-4 — La vidéo ne se charge QUE lorsque le hero est réellement
+  // visible (IntersectionObserver) : l'intro sticky h-screen le recouvre
+  // dans le flux, donc intersection = fausse pendant toute l'intro ->
+  // ZÉRO octet vidéo tant que l'utilisateur n'a pas convergé. Fini aussi
+  // le double téléchargement mobile (1080p du HTML serveur + 720p client) :
+  // le HTML servi ne contient plus d'attribut src vidéo, la variante (matchMedia)
+  // est posée au client au moment du montage — une seule est téléchargée.
+  const sectionRef = useRef<HTMLElement>(null);
+  const [heroVisible, setHeroVisible] = useState(false);
+
+  useEffect(() => {
+    if (heroVisible) return;
+    const node = sectionRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      // Anciens navigateurs sans IO : bascule asynchrone (même motif
+      // que le rAF videoReady — jamais de setState synchrone en effet).
+      const raf = requestAnimationFrame(() => setHeroVisible(true));
+      return () => cancelAnimationFrame(raf);
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          io.disconnect();
+          setHeroVisible(true);
+        }
+      },
+      // Marge de préchargement : la vidéo démarre juste AVANT l'entrée
+      // à l'écran pour que le fondu poster->vidéo reste imperceptible.
+      { rootMargin: '200px' },
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, [heroVisible]);
 
   useEffect(() => {
     let isMounted = true;
@@ -97,10 +131,11 @@ export const Hero: React.FC = () => {
     };
   }, [realtimeVersion]);
 
-  // PERF-01 — Application impératif de la variante : l'hydratation React ne
-  // patche PAS un attribut src divergent (le HTML servi contient la variante
-  // serveur 1080p) ; sans load() explicite, le mobile continuerait à décoder
-  // le 1080p. Au montage et à chaque changement, on aligne src puis on recharge.
+  // PERF-01/OV-4 — Alignement impératif src + load() : le HTML servi ne
+  // contient plus de src vidéo (poster seul), la balise vidéo monte au client à
+  // l'apparition du hero avec sa variante matchMedia ; cet effet garde les
+  // changements de média temps réel (admin) — React met l'attribut à jour
+  // mais n'appelle pas load(), sans lequel l'ancien flux continuerait.
   useEffect(() => {
     const element = videoRef.current;
     if (!element || !mediaUrl) return;
@@ -133,7 +168,11 @@ export const Hero: React.FC = () => {
   });
 
   return (
-    <section className="perscadors-hero relative w-full flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]">
+    <section
+      ref={sectionRef}
+      id="pescador-hero"
+      className="perscadors-hero relative w-full flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]"
+    >
       {mediaUrl && mediaType === 'video' && !videoFailed ? (
         <>
           {/* IMP-04 — Couche poster (une seule vidéo décodée, fin du double
@@ -150,6 +189,7 @@ export const Hero: React.FC = () => {
             aria-hidden="true"
             className="absolute inset-0 scale-125 object-cover opacity-70 blur-lg lg:blur-xl"
           />
+          {heroVisible && (
           <video
             ref={videoRef}
             src={mediaUrl}
@@ -165,6 +205,7 @@ export const Hero: React.FC = () => {
           >
             Your browser does not support the video tag.
           </video>
+          )}
         </>
       ) : mediaUrl && mediaType === 'image' ? (
         <Image

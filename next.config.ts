@@ -70,6 +70,10 @@ const nextConfig: NextConfig = {
   skipProxyUrlNormalize: true,
   images: {
     formats: ['image/avif', 'image/webp'],
+    // OV-4 — Qualités effectivement utilisées dans le code (40 poster hero,
+    // 60 fallback hero, 85 lightbox, 75 défaut) : sans déclaration,
+    // next/image ignore la qualité demandée + warning à chaque rendu.
+    qualities: [40, 60, 75, 85],
     // Les ressources distantes sont toujours chargées via TLS.
     remotePatterns: remoteHostnames.map((hostname) => ({
       protocol: 'https' as const,

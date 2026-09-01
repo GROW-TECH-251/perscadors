@@ -84,7 +84,13 @@ function ArticleSubmissionModal({
             <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-[#3a3a3a]">Photo</label>
             <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-brand-gold/30 bg-[#EFE8DE]">
               {imagePreview ? (
-                <Image src={imagePreview} alt="Aperçu article" fill className="object-cover" />
+                <Image
+                  src={imagePreview}
+                  alt="Aperçu article"
+                  fill
+                  sizes="(max-width: 767px) 100vw, 180px"
+                  className="object-cover"
+                />
               ) : (
                 <div className="flex h-full items-center justify-center text-center text-xs text-[#4d4d4d]">Aucune photo</div>
               )}

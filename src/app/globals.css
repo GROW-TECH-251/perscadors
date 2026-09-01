@@ -369,3 +369,54 @@ button:not(:disabled):active { transform: scale(0.98); }
     display: none !important;
   }
 }
+
+/* ============================================
+   OV-1 — Intro HP Collection : gates pré-paint.
+   Le script inline du layout pose data-pescador-intro avant le premier
+   rendu ; ces règles masquent la section sans flash ni shift. La variante
+   prefers-reduced-motion couvre aussi le cas « JS désactivé » (zéro-JS).
+   ============================================ */
+/* ============================================
+   DERNIÈRE IMPLÉMENTATION — Mode narratif (home).
+   La navigation ne fait pas partie de l'ouverture du
+   site : tant que la séquence intro n'est pas
+   consommée (section présente, non marquée done),
+   la navbar est HORS FLUX et invisible, la bulle
+   WhatsApp masquée — AVANT toute hydratation
+   (premier paint = layout final : zéro flash,
+   zéro CLS). :has() cible la home uniquement (la
+   section #pescador-intro n'existe que là) ; les
+   navigateurs sans :has() gardent le comportement
+   classique (dégradation gracieuse). Au relâchement
+   (data-intro-done), le runtime Navbar prend le
+   relais via la position réelle du hero.
+   ============================================ */
+body:has(#pescador-intro:not([data-intro-done])) .pescador-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+
+body:has(#pescador-intro:not([data-intro-done])) .pescador-whatsapp-float {
+  opacity: 0;
+  pointer-events: none;
+}
+
+html[data-pescador-intro='off'] .pescador-intro {
+  display: none;
+}
+/* prefers-reduced-motion : l'intro reste visible mais STATIQUE (voir
+   IntroStage — positions finales immédiates, aucune boucle rAF, aucun
+   auto-advance). La règle display:none a été retirée : la signature de
+   marque s'offre à tous, sans mouvements pour ceux qui les refusent. */
+
+/* OV-3c — Indicateur de scroll / skip de l'intro : chevron à la dérive
+   verticale douce (keyframe existante scroll-cue-float), neutralisé par la
+   règle globale prefers-reduced-motion. Fonction UX : « l'expérience
+   continue vers le bas » — s'efface dès le premier scroll (IntroStage). */
+.intro-cue-chevron {
+  animation: scroll-cue-float 2.4s var(--ease-out-luxe) infinite;
+}
