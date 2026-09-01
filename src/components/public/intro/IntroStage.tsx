@@ -84,12 +84,18 @@ export function IntroStage() {
   );
   // Refs miroirs : la boucle rAF lit l'état SANS se réexécuter à chaque
   // remplacement (aucun teardown/redémarrage de boucle lors des swaps).
+  // OV-3f-fix2 — les miroirs sont synchronisés dans un EFFET après chaque
+  // render, JAMAIS pendant le render (règle React « Cannot access refs
+  // during render » — erreurs signalées par l'éditeur aux anciennes lignes
+  // 88/90/92). La valeur initiale du useRef couvre la première frame.
   const seedsRef = useRef(seeds);
-  seedsRef.current = seeds;
   const slotsRef = useRef(slots);
-  slotsRef.current = slots;
   const outfitsRef = useRef(outfits ?? []);
-  outfitsRef.current = outfits ?? [];
+  useEffect(() => {
+    seedsRef.current = seeds;
+    slotsRef.current = slots;
+    outfitsRef.current = outfits ?? [];
+  });
   const poolRef = useRef(0); // pointeur round-robin dans la galerie
 
   const markSeen = useCallback(() => {
@@ -284,9 +290,14 @@ export function IntroStage() {
       parallax.x += (parallax.tx - parallax.x) * 0.08;
       parallax.y += (parallax.ty - parallax.y) * 0.08;
 
-      for (let i = 0; i < seeds.length; i += 1) {
+      // OV-3f-fix — seeds lus À CHAQUE FRAME via la ref : la closure de
+      // l'effet daterait du montage (deps = [markSeen, slots.length]) et
+      // les looks accueillis en rotation hériteraient des caractéristiques
+      // (rayon/échelle/dérive/respiration) des anciens.
+      const liveSeeds = seedsRef.current;
+      for (let i = 0; i < liveSeeds.length; i += 1) {
         const node = nodesRef.current[i];
-        const seed = seeds[i];
+        const seed = liveSeeds[i];
         if (!node) continue;
 
         const entrance = entranceProgress(seed, t);
