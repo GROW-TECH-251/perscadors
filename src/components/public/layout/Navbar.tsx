@@ -49,6 +49,43 @@ export const Navbar: React.FC = () => {
     };
   }, [realtimeVersion]);
 
+  // DERNIÈRE IMPLÉMENTATION — Mode narratif (home uniquement) : la
+  // navigation ne fait pas partie de l'ouverture du site. Tant que le
+  // hero est à l'écran (bottom > 0 — ce qui couvre AUSSI toute la phase
+  // intro, où le hero est encore sous le viewport), la navbar est hors
+  // flux et invisible ; elle revient en overlay FIXE dès que le hero est
+  // entièrement dépassé — sans jamais réintégrer le flux, donc sans
+  // déplacement de contenu ni CLS — et se retire si l'utilisateur
+  // remonte dans le hero. Déterministe : une seule mesure réelle (rect
+  // du hero), évaluée au rAF ; aucun timer, aucune hauteur codée en
+  // dur. Les pages sans séquence narrative (pas de #pescador-intro ou
+  // pas de #pescador-hero) gardent la navbar sticky standard.
+  const [heroOverlay, setHeroOverlay] = useState(false);
+  const [narrativeHidden, setNarrativeHidden] = useState(false);
+
+  useEffect(() => {
+    const hero = document.getElementById('pescador-hero');
+    const intro = document.getElementById('pescador-intro');
+    if (!hero || !intro) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      setHeroOverlay(true);
+      setNarrativeHidden(hero.getBoundingClientRect().bottom > 0);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    // Première évaluation asynchrone (rAF) — l'état pré-hydratation est
+    // couvert par la règle CSS pré-paint (globals.css, :has).
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
   useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
   useSiteAssetsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
@@ -97,11 +134,16 @@ export const Navbar: React.FC = () => {
 
   return (
     <nav
-      className={`sticky top-0 left-0 w-full z-50 border-b transition-all duration-(--motion-smooth) ease-out-luxe ${
+      className={`pescador-navbar top-0 left-0 w-full z-50 border-b transition-all duration-(--motion-smooth) ease-out-luxe ${
+        heroOverlay ? 'fixed' : 'sticky'
+      } ${heroOverlay && narrativeHidden ? '-translate-y-full pointer-events-none' : 'translate-y-0'} ${
         isScrolled
           ? 'py-3 bg-brand-bg/90 backdrop-blur-lg border-brand-gold/30 shadow-lg'
           : 'py-5 bg-brand-bg/80 backdrop-blur-sm border-brand-gold/20 shadow-md'
       }`}
+      // Mode narratif caché : retiré de l'ordre de tabulation (le focus ne
+      // doit pas atteindre une navigation invisible).
+      inert={heroOverlay && narrativeHidden ? true : undefined}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         <Link href="/" className="relative w-36 h-16 sm:w-28 sm:h-12 flex-shrink-0">
@@ -115,7 +157,7 @@ export const Navbar: React.FC = () => {
           />
         </Link>
 
-        <div className="hidden md:flex items-center space-x-8">
+        <div className="hidden lg:flex items-center space-x-8">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
@@ -136,7 +178,7 @@ export const Navbar: React.FC = () => {
           <form
             onSubmit={handleSearchSubmit}
             className={`flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/95 transition-all duration-(--motion-fast) ease-out-luxe ${
-              isSearchOpen ? 'absolute right-12 top-4 w-[calc(100%-40px)] max-w-[240px] sm:relative sm:right-0 sm:top-0 sm:w-64 opacity-100 z-50 shadow-lg backdrop-blur-sm' : 'w-0 opacity-0 pointer-events-none md:opacity-100 md:w-48 md:pointer-events-auto'
+              isSearchOpen ? 'absolute right-12 top-4 w-[calc(100%-40px)] max-w-[240px] sm:relative sm:right-0 sm:top-0 sm:w-64 opacity-100 z-50 shadow-lg backdrop-blur-sm' : 'w-0 opacity-0 pointer-events-none lg:opacity-100 lg:w-48 lg:pointer-events-auto'
             }`}
           >
             <input
@@ -153,7 +195,7 @@ export const Navbar: React.FC = () => {
 
           <button
             onClick={() => setIsSearchOpen(!isSearchOpen)}
-            className="p-1 text-brand-text hover:text-brand-gold transition-colors md:hidden"
+            className="p-1 text-brand-text hover:text-brand-gold transition-colors lg:hidden"
             aria-label="Ouvrir la barre de recherche"
             title="Ouvrir la barre de recherche"
           >
@@ -176,7 +218,7 @@ export const Navbar: React.FC = () => {
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-1 text-brand-text hover:text-brand-gold transition-colors md:hidden"
+            className="p-1 text-brand-text hover:text-brand-gold transition-colors lg:hidden"
             aria-expanded={isMobileMenuOpen}
             aria-label="Menu principal de navigation"
             title="Menu principal de navigation"
@@ -187,7 +229,7 @@ export const Navbar: React.FC = () => {
       </div>
 
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-brand-bg-alt/95 backdrop-blur-md border-t border-brand-gold/10 px-4 py-6 space-y-4 shadow-xl animate-nav-panel">
+        <div className="lg:hidden bg-brand-bg-alt/95 backdrop-blur-md border-t border-brand-gold/10 px-4 py-6 space-y-4 shadow-xl animate-nav-panel">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
