@@ -105,8 +105,13 @@ export function IntroStage() {
     // l'intro est la première scène du site, rejouée à chaque chargement de
     // document (refresh, nouvel onglet) ; une soft-navigation vers la home
     // ne la rejoue pas (le re-check au montage lit ce drapeau).
-    (window as unknown as { __PESCADOR_INTRO_DONE__?: number }).__PESCADOR_INTRO_DONE__ = 1;
+        (window as unknown as { __PESCADOR_INTRO_DONE__?: number }).__PESCADOR_INTRO_DONE__ = 1;
+    // DERNIÈRE IMPLÉMENTATION — libère le mode narratif CSS (navbar/
+    // WhatsApp) : la séquence est consommée ; le runtime Navbar
+    // décide désormais seul (position réelle du hero).
+    document.getElementById('pescador-intro')?.setAttribute('data-intro-done', '1');
   }, []);
+
 
   // Dismissal par l'utilisateur : collapse + saut au bloc suivant.
   const skip = useCallback(
@@ -149,6 +154,10 @@ export function IntroStage() {
     // supplémentaire. (Early-return simple : pas de setState synchrone
     // dans l'effet — règle react-hooks/set-state-in-effect.)
     if (document.documentElement.getAttribute('data-pescador-intro') === 'off') {
+      // Pas de séquence : on libère immédiatement le mode narratif CSS
+      // (le runtime Navbar masquera lui-même la navbar pendant le hero,
+      // première scène de cette visite).
+      document.getElementById('pescador-intro')?.setAttribute('data-intro-done', '1');
       return;
     }
 
@@ -159,7 +168,9 @@ export function IntroStage() {
     // mutation DOM directe post-mount.
     if ((window as unknown as { __PESCADOR_INTRO_DONE__?: number }).__PESCADOR_INTRO_DONE__ === 1) {
       document.getElementById('pescador-intro')?.style.setProperty('display', 'none');
+      document.getElementById('pescador-intro')?.setAttribute('data-intro-done', '1');
       return;
+
     }
 
     // OV-3e — RÈGLE : l'expérience n'avance JAMAIS seule. Aucun timer, aucun

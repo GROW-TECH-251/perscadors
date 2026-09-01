@@ -169,8 +169,11 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
   it('OV-2 fix : plus aucun setState synchrone dans un effet (erreur VS Code)', async () => {
     const s = await readFile('src/components/public/intro/IntroStage.tsx', 'utf-8');
     expect(s).not.toContain('eslint-disable-next-line react-hooks/set-state-in-effect');
-    // Gate pré-paint = simple early-return (zéro travail, zéro cascading render).
-    expect(s).toMatch(/data-pescador-intro'\) === 'off'\) \{\s*[\r\n]+\s*return;/);
+    // Gate pré-paint = simple early-return (zéro setState, zéro cascading
+    // render) — dernière implémentation : elle libère aussi le mode
+    // narratif par pure mutation DOM (data-intro-done), sans setState.
+    expect(s).toMatch(/data-pescador-intro'\) === 'off'\) \{[\s\S]{0,400}?return;/);
+    expect(s).not.toMatch(/=== 'off'[\s\S]{0,400}?setHidden/);
     // Le saut « Passer » ignore les siblings non visuels (script JSON-LD...).
     expect(s).toContain("['SCRIPT', 'NOSCRIPT', 'LINK', 'STYLE', 'TEMPLATE']");
   });

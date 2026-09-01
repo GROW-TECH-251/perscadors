@@ -170,6 +170,7 @@ export const Hero: React.FC = () => {
   return (
     <section
       ref={sectionRef}
+      id="pescador-hero"
       className="perscadors-hero relative w-full flex items-center justify-center overflow-hidden bg-black text-[#EDEAE3]"
     >
       {mediaUrl && mediaType === 'video' && !videoFailed ? (

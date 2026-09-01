@@ -376,6 +376,35 @@ button:not(:disabled):active { transform: scale(0.98); }
    rendu ; ces règles masquent la section sans flash ni shift. La variante
    prefers-reduced-motion couvre aussi le cas « JS désactivé » (zéro-JS).
    ============================================ */
+/* ============================================
+   DERNIÈRE IMPLÉMENTATION — Mode narratif (home).
+   La navigation ne fait pas partie de l'ouverture du
+   site : tant que la séquence intro n'est pas
+   consommée (section présente, non marquée done),
+   la navbar est HORS FLUX et invisible, la bulle
+   WhatsApp masquée — AVANT toute hydratation
+   (premier paint = layout final : zéro flash,
+   zéro CLS). :has() cible la home uniquement (la
+   section #pescador-intro n'existe que là) ; les
+   navigateurs sans :has() gardent le comportement
+   classique (dégradation gracieuse). Au relâchement
+   (data-intro-done), le runtime Navbar prend le
+   relais via la position réelle du hero.
+   ============================================ */
+body:has(#pescador-intro:not([data-intro-done])) .pescador-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+
+body:has(#pescador-intro:not([data-intro-done])) .pescador-whatsapp-float {
+  opacity: 0;
+  pointer-events: none;
+}
+
 html[data-pescador-intro='off'] .pescador-intro {
   display: none;
 }

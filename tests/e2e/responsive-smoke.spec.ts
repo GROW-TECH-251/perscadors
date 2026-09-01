@@ -259,6 +259,15 @@ test.describe('OV-3d — Replay par document + composition', () => {
     await page.goto('/');
     await page.getByRole('button', { name: /passer l'introduction/i }).click();
     await expect(page.locator('#pescador-intro')).toBeHidden();
+    // DERNIÈRE IMPLÉMENTATION — la navbar ne fait pas partie de la
+    // scène hero : on dépasse le hero pour que la navigation revienne
+    // (overlay fixe) avant de cliquer ses liens.
+    await page.evaluate(() => {
+      const hero = document.getElementById('pescador-hero')!;
+      const top = hero.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: top + hero.offsetHeight + 40, behavior: 'instant' as ScrollBehavior });
+    });
+    await page.waitForTimeout(500);
     // Le lien HP Looks vit dans la nav (desktop) ou le burger (mobile) ;
     // plusieurs ancres /looks existent dans le DOM (footer) : on cible la
     // première VISIBLE.

@@ -26,7 +26,7 @@ export const WhatsAppFloat: React.FC = () => {
       href={`https://wa.me/${settings.whatsapp_phone}?text=${encodeURIComponent(settings.floating_whatsapp_text)}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 z-40 bg-[#25D366] hover:bg-[#20ba5a] text-white p-4 rounded-full shadow-2xl transition-all duration-(--motion-fast) ease-out-expo hover:scale-110 flex items-center gap-2 group cursor-pointer border border-white/20"
+      className="pescador-whatsapp-float fixed bottom-6 right-6 z-40 bg-[#25D366] hover:bg-[#20ba5a] text-white p-4 rounded-full shadow-2xl transition-all duration-(--motion-fast) ease-out-expo hover:scale-110 flex items-center gap-2 group cursor-pointer border border-white/20"
       aria-label="Deal avec Vioutou"
     >
       {/* Tooltip */}
