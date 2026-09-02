@@ -157,8 +157,12 @@ export default function NewProductPage() {
     }
   };
 
+  const submittingRef = useRef(false);
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    // Audit latence 09/2026 — garde absolue anti double-soumission.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
 
     try {
@@ -174,6 +178,7 @@ export default function NewProductPage() {
       console.error('Erreur création produit:', error);
       setToast({ message: 'Impossible de créer ce produit pour le moment.', variant: 'error' });
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };

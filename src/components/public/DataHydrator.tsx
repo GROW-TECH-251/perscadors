@@ -7,7 +7,6 @@
 // requête REST catalogue/settings au chargement, aucune logique métier
 // modifiée, realtime inchangé. Rendu : null (aucun DOM).
 
-import { useEffect } from 'react';
 import { hydrateCatalogSnapshot } from '@/context/CatalogContext';
 import { seedPublicShopSettingsCache } from '@/services/settingsService';
 import { seedSiteAssetsCache } from '@/services/mediaService';
@@ -22,11 +21,14 @@ interface DataHydratorProps {
 }
 
 export function DataHydrator({ snapshot, settings, siteAssets }: DataHydratorProps) {
-  useEffect(() => {
-    if (snapshot) hydrateCatalogSnapshot(snapshot);
-    if (settings) seedPublicShopSettingsCache(settings);
-    if (siteAssets) seedSiteAssetsCache(siteAssets);
-  }, [snapshot, settings, siteAssets]);
+  // PERF-02 v2 (audit latence 09/2026) : l'injection se fait PENDANT le render
+  // (plus dans un effet) : les caches/stores sont prêts AVANT les effets de
+  // montage des providers, quel que soit l'ordre d'hydratation ou de streaming
+  // (la version par effet perdait la course : re-fetch complet de 4 tables).
+  // Idempotent (garde d'identité + TTL) : sûr en StrictMode.
+  if (snapshot) hydrateCatalogSnapshot(snapshot);
+  if (settings) seedPublicShopSettingsCache(settings);
+  if (siteAssets) seedSiteAssetsCache(siteAssets);
 
   return null;
 }

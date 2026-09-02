@@ -67,7 +67,7 @@ describe('Unit — PERF-02 Hydratation serveur -> contextes clients', () => {
     const page = await readFile(path, 'utf-8');
     expect(page).toContain('const getSnapshot = cache(fetchServerCatalogSnapshot);');
     expect(page).toContain('await getSnapshot();');
-    expect(page).toContain('<DataHydrator snapshot={snapshot} siteAssets={siteAssets} />');
+    expect(page).toContain('<DataHydrator snapshot={snapshot} settings={settings} siteAssets={siteAssets} />');
     expect(page).toContain(marker);
     // Plus AUCUN fetch direct non dédupliqué dans ces pages.
     expect(page).not.toContain('await fetchServerCatalogSnapshot()');

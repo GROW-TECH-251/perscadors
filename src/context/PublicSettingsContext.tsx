@@ -34,6 +34,10 @@ export function PublicSettingsProvider({ children }: { children: React.ReactNode
     let isMounted = true;
 
     async function load() {
+      // Audit latence : même fenêtre de grâce que le catalogue — le DataHydrator
+      // du segment page amorce le cache TTL au render ; 60 ms évitent une
+      // requête REST quand il arrive juste après le shell.
+      await new Promise((resolve) => setTimeout(resolve, 60));
       const data = await fetchPublicShopSettings();
       if (data && isMounted) setSettings(data);
     }
