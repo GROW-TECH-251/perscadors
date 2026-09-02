@@ -243,13 +243,21 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
     ? buildCategoriesFromProducts(normalizedProducts)
     : mergeCategoriesWithProducts(normalizedProducts, (categoriesResponse.data || []) as AdminCategory[]);
 
-  // Pôle 5 / Module HPB : Résolution dynamique des outfits Supabase avec fusion statique
-  const normalizedOutfits = normalizeOutfitRows(outfitsResponse.data as AdminOutfit[] | null, normalizedProducts);
+  // Pôle 5 / Module HPB : Résolution dynamique des outfits Supabase avec fusion statique.
+  // Régression 01/09 (« HP Looks disparus de l'intro ») : une réponse outfits VIDE
+  // ou en ERREUR (RLS anon retirée, lignes masquées, table vidée) ne doit jamais
+  // vider la galerie : les produits réussissant, l'ancien code remplaçait
+  // silencieusement les 32 looks statiques par [] -> intro sans vignettes et
+  // carousel HP Looks vide, logo intact. Même garantie que products (erreur ->
+  // fallback) : la vitrine garde TOUJOURS ses looks de référence.
+  const rawOutfits = outfitsResponse.error ? null : outfitsResponse.data;
+  const normalizedOutfits = normalizeOutfitRows(rawOutfits as AdminOutfit[] | null, normalizedProducts);
+  const outfits = normalizedOutfits.length > 0 ? normalizedOutfits : fallbackOutfits;
 
   return {
     products: normalizedProducts,
     categories: normalizedCategories,
-    outfits: normalizedOutfits,
+    outfits,
     source: 'supabase'
   };
 }
@@ -283,12 +291,21 @@ export async function fetchServerCatalogSnapshot(): Promise<PublicCatalogSnapsho
   const normalizedCategories = categoriesResponse.error
     ? buildCategoriesFromProducts(normalizedProducts)
     : mergeCategoriesWithProducts(normalizedProducts, (categoriesResponse.data || []) as AdminCategory[]);
-  const normalizedOutfits = normalizeOutfitRows(outfitsResponse.data as AdminOutfit[] | null, normalizedProducts);
+  // Pôle 5 / Module HPB : Résolution dynamique des outfits Supabase avec fusion statique.
+  // Régression 01/09 (« HP Looks disparus de l'intro ») : une réponse outfits VIDE
+  // ou en ERREUR (RLS anon retirée, lignes masquées, table vidée) ne doit jamais
+  // vider la galerie : les produits réussissant, l'ancien code remplaçait
+  // silencieusement les 32 looks statiques par [] -> intro sans vignettes et
+  // carousel HP Looks vide, logo intact. Même garantie que products (erreur ->
+  // fallback) : la vitrine garde TOUJOURS ses looks de référence.
+  const rawOutfits = outfitsResponse.error ? null : outfitsResponse.data;
+  const normalizedOutfits = normalizeOutfitRows(rawOutfits as AdminOutfit[] | null, normalizedProducts);
+  const outfits = normalizedOutfits.length > 0 ? normalizedOutfits : fallbackOutfits;
 
   return {
     products: normalizedProducts,
     categories: normalizedCategories,
-    outfits: normalizedOutfits,
+    outfits,
     source: 'supabase'
   };
 }

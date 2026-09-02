@@ -21,6 +21,16 @@ describe('Unit — PERF-02 Hydratation serveur -> contextes clients', () => {
     expect(ctx).toContain('useCatalogRealtime(');
   });
 
+  it('résilience galerie : outfits Supabase vide/en erreur ne vide JAMAIS les HP Looks', async () => {
+    // Régression 01/09 : intro sans vignettes + carousel vide alors que le
+    // logo vivait — une réponse outfits []/erreur remplaçait silencieusement
+    // les 32 looks statiques. Les DEUX chemins (client + serveur) doivent
+    // conserver le fallback.
+    const svc = await readFile('src/services/publicCatalogService.ts', 'utf-8');
+    expect(svc.match(/normalizedOutfits\.length > 0 \? normalizedOutfits : fallbackOutfits/g)?.length).toBe(2);
+    expect(svc).toContain('outfitsResponse.error ? null : outfitsResponse.data');
+  });
+
   it('settingsService : lecture serveur dédiée + amorçage du cache TTL partagé', async () => {
     const svc = await readFile('src/services/settingsService.ts', 'utf-8');
     expect(svc).toContain('export async function fetchServerPublicShopSettings(');
