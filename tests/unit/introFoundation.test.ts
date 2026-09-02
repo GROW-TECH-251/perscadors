@@ -111,6 +111,16 @@ describe('Unit — OV-1 Intro : fondation sûre', () => {
     expect(s).toContain('aria-label="Passer l\'introduction"');
   });
 
+  it('slots ré-ensemencés quand le catalogue remplace les ids (régression prod : fallback -> Supabase vidait le champ)', async () => {
+    const s = await readFile('src/components/public/intro/IntroStage.tsx', 'utf-8');
+    // Le seed ne doit PAS être « une seule fois » (garde booléenne) : le
+    // snapshot Supabase arrive APRÈS le fallback statique avec d'autres ids.
+    expect(s).not.toContain('const seededRef = useRef(false)');
+    expect(s).toContain("const seededKeyRef = useRef('')");
+    expect(s).toContain("picked.map((outfit) => outfit.id).join('|')");
+    expect(s).toContain('seededKeyRef.current === seededKey');
+  });
+
   it('layout : script inline des gates AVANT le rendu (data-conn, param)', async () => {
     const s = await readFile('src/app/layout.tsx', 'utf-8');
 // OV-3d : le gate ne lit NI n'écrit aucun stockage — seuls Save-Data et

@@ -139,11 +139,19 @@ export function IntroStage() {
     [markSeen]
   );
 
-  // Initialisation des slots dès que le catalogue est hydraté (une fois).
-  const seededRef = useRef(false);
+  // Initialisation des slots dès que le catalogue est hydraté, puis
+  // RE-ensemencement si le catalogue REMPLACE les ids (régression prod
+  // 01/09 : slots seedés sur les ids du FALLBACK STATIQUE, puis snapshot
+  // Supabase (~2-3 s) avec d'autres ids -> outfitById.get miss partout ->
+  // champ vidé d'un coup, logo intact. Clé = ids joints : idempotent
+  // tant que le catalogue ne change pas (aucun remontage parasite,
+  // realtime inclus).
+  const seededKeyRef = useRef('');
   useEffect(() => {
-    if (seededRef.current || picked.length === 0) return;
-    seededRef.current = true;
+    if (picked.length === 0) return;
+    const seededKey = picked.map((outfit) => outfit.id).join('|');
+    if (seededKeyRef.current === seededKey) return;
+    seededKeyRef.current = seededKey;
     setSlots(picked.map((outfit) => ({ id: outfit.id, phase: 'idle' as const, since: 0, nextId: null })));
   }, [picked]);
 
