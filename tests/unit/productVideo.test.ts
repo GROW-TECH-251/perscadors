@@ -4,7 +4,7 @@ import { readFile } from 'fs/promises';
 // Garde-fou IMP-08 — Vidéo produit :
 // - migration SQL idempotente (2 colonnes, RLS inchangée) ;
 // - chaîne de données complète : AdminProduct -> normalizeAdminProduct -> Product.video ;
-// - galerie : vidéo en dernier média, tuile ▶, swipe modulo, pas d'autoplay in-page ;
+// - galerie : vidéo = média PRINCIPAL initial, tuile ▶, retour photo par clic, swipe modulo, pas d'autoplay in-page ;
 // - lightbox : slide vidéo sans zoom, autoplay coupé sous prefers-reduced-motion ;
 // - JSON-LD : VideoObject uniquement si vidéo présente ;
 // - admin : upload validé (type/30 Mo) + suppression Cloudinary sur les 2 formulaires ;
@@ -33,11 +33,15 @@ describe('Unit — IMP-08 Vidéo produit', () => {
     expect(svc).not.toContain('images: [baseImage],');
   });
 
-  it('la fiche produit : vidéo en dernier média, tuile ▶, pas d’autoplay in-page, swipe modulo', async () => {
+  it('la fiche produit : vidéo média PRINCIPAL initial, tuile ▶, retour photo par clic, pas d’autoplay in-page, swipe modulo', async () => {
     const page = await readFile('src/app/produit/[id]/product-detail-client.tsx', 'utf-8');
     expect(page).toContain('const hasVideo = Boolean(product.video);');
     expect(page).toContain('const videoIndex = product.images.length;');
     expect(page).toContain('const mediaCount = product.images.length + (hasVideo ? 1 : 0);');
+    // Restauration catalogue — la vidéo est le premier média affiché quand elle existe.
+    expect(page).toContain('const [videoActive, setVideoActive] = useState(hasVideo);');
+    // Cliquer une miniature photo désactive la vidéo (la photo devient le média principal).
+    expect(page).toContain('onClick={() => { setVideoActive(false); setSelectedImage(image); }}');
     expect(page).toContain('% mediaCount');
     expect(page).toContain('setVideoActive(true)');
     expect(page).toContain('Lire la vidéo de');

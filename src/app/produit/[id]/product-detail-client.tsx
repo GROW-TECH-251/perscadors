@@ -36,11 +36,13 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
   const galleryDrag = useRef({ startX: 0, active: false });
   const gallerySwiped = useRef(false);
   const selectedIndex = Math.max(product.images.indexOf(selectedImage), 0);
-  // IMP-08 — Vidéo produit : dernier média de la galerie (optionnel).
+  // IMP-08 — Vidéo produit : média PRINCIPAL initial quand elle existe (galerie premium).
+  // Les photos restent des médias secondaires cliquables ; la tuile ▶ ramène à la vidéo.
   const hasVideo = Boolean(product.video);
   const videoIndex = product.images.length;
   const mediaCount = product.images.length + (hasVideo ? 1 : 0);
-  const [videoActive, setVideoActive] = useState(false);
+  // Sans vidéo : photo principale, aucun lecteur vide (comportement inchangé).
+  const [videoActive, setVideoActive] = useState(hasVideo);
 
   const handleGalleryPointerDown = (event: React.PointerEvent) => {
     galleryDrag.current = { startX: event.clientX, active: true };
@@ -228,7 +230,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
               return (
                 <button
                   key={image}
-                  onClick={() => setSelectedImage(image)}
+                  onClick={() => { setVideoActive(false); setSelectedImage(image); }}
                   aria-label={`Sélectionner l'angle ${index + 1} pour ${product.name}`}
                   title={`Angle ${index + 1}`}
                   className={`relative w-20 sm:w-24 aspect-[3/4] flex-shrink-0 overflow-hidden rounded-2xl border-2 cursor-pointer transition-all duration-(--motion-fast) ease-out-luxe active:scale-95 ${
