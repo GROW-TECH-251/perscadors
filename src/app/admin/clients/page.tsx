@@ -385,7 +385,7 @@ export default function AdminCustomersPage() {
                       if (isVIP) {
                         handleMagicFollowup(customer);
                       } else {
-                        openWhatsApp(customer.phone, `Bonjour ${customer.name}, merci pour votre confiance chez HP Collection ! Découvrez nos nouvelles arrivées cette semaine. 🛍️`);
+                        openWhatsApp(customer.phone, `Bonjour ${customer.name}, merci pour votre confiance chez HP Collection ! Découvrez nos nouvelles arrivées cette semaine. 🛒`);
                       }
                     }}
                     className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bebas text-base uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer shadow-md ${
@@ -404,7 +404,7 @@ export default function AdminCustomersPage() {
                       size="sm"
                       className="w-full justify-center text-xs"
                       onClick={() => {
-                        const message = `Bonjour ${customer.name}, merci pour votre confiance chez HP Collection ! Découvrez nos nouvelles arrivées cette semaine. 🛍️`;
+                        const message = `Bonjour ${customer.name}, merci pour votre confiance chez HP Collection ! Découvrez nos nouvelles arrivées cette semaine. 🛒`;
                         copyToClipboard(message);
                       }}
                     >
@@ -545,14 +545,14 @@ export default function AdminCustomersPage() {
               <div className="flex gap-2 flex-wrap">
                 <AdminButton
                   variant="secondary"
-                  onClick={() => copyToClipboard(`Bonjour ${selectedCustomer.name}, merci pour votre confiance chez HP Collection ! Nous avons pensé à vous pour nos nouvelles arrivées. 🛍️`)}
+                  onClick={() => copyToClipboard(`Bonjour ${selectedCustomer.name}, merci pour votre confiance chez HP Collection ! Nous avons pensé à vous pour nos nouvelles arrivées. 🛒`)}
                 >
                   <Copy size={14} />
                   Copier message
                 </AdminButton>
                 <AdminButton
                   variant="success"
-                  onClick={() => openWhatsApp(selectedCustomer.phone, `Bonjour ${selectedCustomer.name}, merci pour votre confiance chez HP Collection ! Nous avons pensé à vous pour nos nouvelles arrivées. 🛍️`)}
+                  onClick={() => openWhatsApp(selectedCustomer.phone, `Bonjour ${selectedCustomer.name}, merci pour votre confiance chez HP Collection ! Nous avons pensé à vous pour nos nouvelles arrivées. 🛒`)}
                 >
                   <MessageCircle size={14} />
                   WhatsApp
