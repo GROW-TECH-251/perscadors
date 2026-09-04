@@ -9,7 +9,8 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminEmptyState, AdminSearch, AdminBadge, AdminToast } from '@/admin/components';
-import { Package, RefreshCw, Plus } from 'lucide-react';
+import Image from 'next/image';
+import { Package, RefreshCw, Plus, Image as ImageIcon} from 'lucide-react';
 import { fetchAdminProducts, updateProduct } from '@/services/productService';
 import type { AdminProduct } from '@/admin/types';
 
@@ -199,11 +200,38 @@ export default function AdminStockPage() {
           {filteredProducts.map((product, index) => (
             <AdminCard key={`product-${product.id}-${index}`} className="space-y-4">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0 flex-1">
                   <h3 className="font-bebas text-lg tracking-wider text-brand-text uppercase">{product.name}</h3>
                   <p className="text-xs text-brand-text-muted mt-1">{product.category}</p>
                 </div>
-                <AdminBadge variant={getBadgeVariant(product)}>{getBadgeLabel(product)}</AdminBadge>
+                <div className="flex shrink-0 items-start gap-2">
+                  {/* Finalisation 09/2026 — miniature d'identification : la photo
+                      principale existante (image_url -> images[0]), jamais une
+                      nouvelle source ; fallback discret si aucun média. */}
+                  {(() => {
+                    const thumbUrl = product.image_url || product.images?.[0] || '';
+                    return thumbUrl ? (
+                      <span className="relative block h-14 w-11 overflow-hidden rounded-lg border border-brand-gold/25 bg-brand-bg-alt" title="Aperçu produit">
+                        <Image
+                          src={thumbUrl}
+                          alt=""
+                          fill
+                          sizes="96px"
+                          className="object-cover"
+                        />
+                      </span>
+                    ) : (
+                      <span
+                        className="flex h-14 w-11 flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border border-brand-gold/15 bg-brand-bg-alt text-brand-text-muted"
+                        title="Aperçu produit indisponible"
+                      >
+                        <ImageIcon size={14} />
+                        <span className="text-[8px] uppercase tracking-wide text-center leading-tight px-0.5">N/A</span>
+                      </span>
+                    );
+                  })()}
+                  <AdminBadge variant={getBadgeVariant(product)}>{getBadgeLabel(product)}</AdminBadge>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
