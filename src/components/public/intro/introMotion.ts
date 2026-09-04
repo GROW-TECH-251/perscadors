@@ -47,6 +47,11 @@ export interface IntroShell {
   breathMax: number;
 }
 
+// Marge de clamp (finalisation 09/2026) : la parallaxe desktop vaut 10 px
+// pire cas (voir INTRO_CFG plus bas) — conservée en constante pour que le
+// clamp reste une fonction pure, sans dépendance à la config runtime.
+const PARALLAX_MARGIN_PX = 10;
+
 export const INTRO_SHELLS: Record<0 | 1 | 2, IntroShell> = {
   // OV-3f — occupation PLEINE de l'écran : lointaine poussée vers les bords
   // (0,55-0,88 × min(w,h), ellipse ×1,18 en x -> léger bleed hors cadre),
@@ -206,6 +211,57 @@ export function entranceProgress(seed: OrbitSeed, tMs: number): number {
 // s'élargit (×1.06 / 0.82) pour occuper l'écran large ; en portrait il
 // se resserre horizontalement (×0.86) pour préserver la lisibilité.
 // -------------------------------------------
+// -------------------------------------------
+// Finalisation 09/2026 — SAFE ZONE du logo : les vignettes gravitent AUTOUR
+// du monogramme, jamais à travers. Le rect est dérivé de la MÊME règle que le
+// CSS du logo (w-[min(62vw,300px)], proportions natives 640×642) + le texte
+// « HP Collection » sous le logo : aucune seconde source de vérité.
+// -------------------------------------------
+export interface LogoSafeBox {
+  halfWidth: number;
+  halfHeight: number;
+  /** extension basse : gap + texte « HP Collection » sous le monogramme */
+  bottomExtra: number;
+}
+
+export function logoSafeBox(width: number, height: number): LogoSafeBox {
+  const logoW = Math.min(0.62 * width, 300);
+  const logoH = logoW * (642 / 640);
+  const landscape = width >= height;
+  const pad = logoW * (landscape ? 0.16 : 0.14);
+  return { halfWidth: logoW / 2 + pad, halfHeight: logoH / 2 + pad, bottomExtra: 52 };
+}
+
+/** Repousse un point hors du rect protégé (poussée au bord le plus proche,
+ *  axe dominant) — déterministe, O(1), sans boucle. Les points déjà dehors
+ *  sont renvoyés tels quels : la composition organique est préservée. */
+export function clampOutsideLogoSafeZone(
+  x: number,
+  y: number,
+  box: LogoSafeBox,
+  margin = 0
+): { x: number; y: number } {
+  // La dérive Lissajous + la parallaxe bougent la vignette APRÈS le
+  // placement : sans marge, une vignette clampée au bord exact remonte
+  // progressivement sur le logo (mesuré : jusqu'à ~28 px desktop). Le
+  // clamp pousse donc à bord + marge = amplitude max de la coque +
+  // parallaxe, pour que place + dérive + parallaxe reste hors du logo.
+  // La zone est DILATÉE par la marge : un point collé au bord (même 0,5 px
+  // à l'extérieur) finit par re-traverser avec la dérive — il doit être
+  // repoussé au bord dilaté. Les vignettes naturellement plus loin que la
+  // marge ne bougent pas (composition organique préservée).
+  const top = -box.halfHeight - margin;
+  const bottom = box.halfHeight + box.bottomExtra + margin;
+  const left = -box.halfWidth - margin;
+  const right = box.halfWidth + margin;
+  const inside = x > left && x < right && y > top && y < bottom;
+  if (!inside) return { x, y };
+  const dx = x >= 0 ? right - x : left - x;
+  const dy = y >= 0 ? bottom - y : top - y;
+  if (dx < dy) return { x: x >= 0 ? right : left, y };
+  return { x, y: y >= 0 ? bottom : top };
+}
+
 export function computePlacement(seed: OrbitSeed, width: number, height: number): { x: number; y: number } {
   // OV-3f : ellipse ÉLARGIE — le champ occupe tout l'écran (léger bleed
   // horizontal en paysage, vertical contenu), au lieu d'un périmètre
@@ -218,7 +274,13 @@ export function computePlacement(seed: OrbitSeed, width: number, height: number)
   // vient de la dérive Lissajous + la respiration d'échelle (voir
   // driftOffset / breathScale). Coordonnées RELATIVES AU CENTRE du champ —
   // l'ancrage du nœud DOM doit être left-1/2 top-1/2 (garde unitaire).
-  return { x: Math.cos(seed.angle) * radius * ax, y: Math.sin(seed.angle) * radius * ay };
+  const raw = { x: Math.cos(seed.angle) * radius * ax, y: Math.sin(seed.angle) * radius * ay };
+  // Safe zone : AUTOUR du logo, jamais dessus (finalisation 09/2026).
+  // Marge = amplitude de dérive max de la coque + parallaxe pire cas
+  // (facteur 1 en desktop) : la dérive ne peut pas re-traverser le bord.
+  const shell = INTRO_SHELLS[seed.depth];
+  const margin = shell.driftAmpMax + PARALLAX_MARGIN_PX;
+  return clampOutsideLogoSafeZone(raw.x, raw.y, logoSafeBox(width, height), margin);
 }
 
 // -------------------------------------------
@@ -344,9 +406,21 @@ export function localProgress(p: number, delay: number): number {
 export const WATERMARK_TARGET_MIN = 0.05;
 export const WATERMARK_TARGET_MAX = 0.15;
 
-export function convergeTarget(seed: OrbitSeed, width: number, height: number): { x: number; y: number } {
+export function convergeTarget(
+  seed: OrbitSeed,
+  width: number,
+  height: number,
+  logoOffset: { x: number; y: number } = { x: 0, y: 0 }
+): { x: number; y: number } {
+  // Finalisation 09/2026 — la cible est LE LOGO RÉEL : le halo se resserre
+  // autour du centre mesuré du monogramme (logoOffset, mesuré au resize dans
+  // IntroStage), avec un biais vers sa zone BASSE/INTERNE (§ narration : les
+  // looks pénètrent le logo, pas une zone noire indépendante sous lui).
+  const box = logoSafeBox(width, height);
+  const cx = logoOffset.x;
+  const cy = logoOffset.y + box.halfHeight * 0.35;
   const radius = lerp(WATERMARK_TARGET_MIN, WATERMARK_TARGET_MAX, rand01(seed.angle, 12)) * Math.min(width, height);
-  return { x: Math.cos(seed.angle) * radius, y: Math.sin(seed.angle) * radius };
+  return { x: cx + Math.cos(seed.angle) * radius, y: cy + Math.sin(seed.angle) * radius };
 }
 
 /** État final du champ : filigrane discret derrière le logo. */

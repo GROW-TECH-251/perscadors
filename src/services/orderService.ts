@@ -126,8 +126,15 @@ export function buildWhatsAppOrderMessage(
   payload: PublicCheckoutPayload,
   template: string = getDefaultShopSettings().checkout_order_template
 ): string {
+  // Finalisation 09/2026 — photo publique de chaque article dans le message :
+  // wa.me ne joint pas de média (texte seul), l'URL de l'image principale
+  // permet au commerçant de VOIR l'article en un clic, desktop et mobile.
   const itemsList = payload.items
-    .map((item) => `• ${item.name} — ${item.quantity} × ${(item.price * item.quantity).toLocaleString()} FCFA\n  ${item.size}, ${item.color}`)
+    .map((item) => {
+      const base = `• ${item.name} — ${item.quantity} × ${(item.price * item.quantity).toLocaleString()} FCFA\n  ${item.size}, ${item.color}`;
+      const photo = (item as { image?: string | null }).image?.trim();
+      return photo ? `${base}\n  Photo : ${photo}` : base;
+    })
     .join('\n');
 
   return formatWhatsAppMessage(template, {

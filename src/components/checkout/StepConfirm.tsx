@@ -9,6 +9,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, MessageCircle, ShieldCheck, Truck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import { buildWhatsAppUrl } from '@/services/whatsappService';
 import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import {
   buildWhatsAppOrderMessage,
@@ -20,7 +21,10 @@ import {
 } from '@/services/orderService';
 import type { CheckoutFormData } from '@/types';
 
-const WHATSAPP_DIGITS = process.env.NEXT_PUBLIC_WHATSAPP_PHONE_DIGITS?.trim() || '22967280018';
+// Finalisation 09/2026 — le numéro vient des Réglages (source unique via
+// buildWhatsAppUrl) et le message passe par la normalisation NFC + coupe
+// sûre (fin des demi-emojis [U+FFFD] sur les messages longs).
+// const WHATSAPP_DIGITS retiré : voir buildWhatsAppUrl(whatsappService).
 
 interface StepConfirmProps {
   formData: CheckoutFormData;
@@ -111,8 +115,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
       orderPayload,
       shopSettings?.checkout_order_template || getDefaultShopSettings().checkout_order_template
     );
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${WHATSAPP_DIGITS}?text=${encodedMessage}`;
+    const whatsappUrl = buildWhatsAppUrl(message, shopSettings?.whatsapp_phone);
 
     if (targetWindow) {
       try {
