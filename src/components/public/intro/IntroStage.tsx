@@ -229,6 +229,34 @@ export function IntroStage() {
     let sizes = nodesRef.current.map((node) =>
       node ? { w: node.offsetWidth, h: node.offsetHeight } : { w: 0, h: 0 }
     );
+    // Finalisation 09/2026 — FIX décalage du champ : sizes était mesuré au
+    // démarrage de l'effet, AVANT l'hydratation des slots (taille 0 pour tous
+    // les noeuds créés ensuite) -> chaque vignette était décalée de +w/2, +h/2
+    // (le champ glissait vers la droite/bas : images SOUS le logo, zones
+    // déséquilibrées). Mesure paresseuse par identité : lue UNE fois par
+    // nouveau noeud (rotation), jamais par frame -> zéro thrashing.
+    const sizeNodes: Array<HTMLDivElement | null> = [];
+    const ensureSize = (i: number, node: HTMLDivElement) => {
+      if (sizeNodes[i] !== node) {
+        sizeNodes[i] = node;
+        sizes[i] = { w: node.offsetWidth, h: node.offsetHeight };
+      }
+    };
+    // Finalisation 09/2026 — centre RÉEL du logo (relatif au centre du champ) :
+    // la convergence vise le monogramme, pas le centre géométrique du viewport.
+    // Mesuré avec les positions (au resize uniquement — jamais dans la boucle).
+    let logoOffset = { x: 0, y: 0 };
+    const measureLogoOffset = () => {
+      const logo = logoRef.current;
+      if (!logo) return;
+      const fieldRect = field.getBoundingClientRect();
+      const logoRect = logo.getBoundingClientRect();
+      logoOffset = {
+        x: logoRect.left + logoRect.width / 2 - (fieldRect.left + fieldRect.width / 2),
+        y: logoRect.top + logoRect.height / 2 - (fieldRect.top + fieldRect.height / 2),
+      };
+    };
+    measureLogoOffset();
 
     const parallax = { tx: 0, ty: 0, x: 0, y: 0 };
     let lastCueFade = 1;
@@ -242,6 +270,7 @@ export function IntroStage() {
         const node = nodesRef.current[i];
         const seed = seedsRef.current[i];
         if (!node) continue;
+        ensureSize(i, node);
         const place = computePlacement(seed, width, height);
         node.style.transform = `translate3d(${(place.x - (sizes[i]?.w ?? 0) / 2).toFixed(1)}px, ${(place.y - (sizes[i]?.h ?? 0) / 2).toFixed(1)}px, 0)`;
         node.style.opacity = '1';
@@ -258,6 +287,7 @@ export function IntroStage() {
       sizes = nodesRef.current.map((node) =>
         node ? { w: node.offsetWidth, h: node.offsetHeight } : { w: 0, h: 0 }
       );
+      measureLogoOffset();
     };
     const onPointer = (event: PointerEvent) => {
       parallax.tx = (event.clientX / window.innerWidth - 0.5) * 2;
@@ -345,8 +375,9 @@ export function IntroStage() {
         // initiale (les lointaines ferment l'orbite en premier).
         const local = easeInOutCubic(localProgress(p, convergenceDelay(seed)));
 
+        ensureSize(i, node);
         const place = computePlacement(seed, width, height);
-        const target = convergeTarget(seed, width, height);
+        const target = convergeTarget(seed, width, height, logoOffset);
         const drift = driftOffset(seed, t, cfg.driftFactor * (1 - local));
         const pointer = parallaxFactor(seed.depth) * cfg.parallaxPx * (1 - p);
 

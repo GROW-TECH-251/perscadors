@@ -189,8 +189,13 @@ export default function EditProductPage() {
     }
   };
 
+  const submittingRef = useRef(false);
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    // Audit latence 09/2026 — garde absolue anti double-soumission (fichier
+    // manquant du commit a607666 : seul « nouveau » l'avait reçue).
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
 
     try {
@@ -206,6 +211,7 @@ export default function EditProductPage() {
       console.error('Erreur mise à jour produit:', error);
       setToast({ message: 'Impossible de mettre à jour ce produit pour le moment.', variant: 'error' });
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };

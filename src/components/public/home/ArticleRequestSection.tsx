@@ -224,7 +224,7 @@ function ArticleSubmissionModal({
             </div>
 
             <p className="text-[11px] leading-relaxed text-[#555555]">
-              Le message sera envoyé via WhatsApp au numéro {settings.whatsapp_phone || '22967280018'}. {imagePreview ? 'Sur mobile, la photo sera jointe directement au message ; ailleurs, elle sera mise en ligne et son lien ajouté automatiquement.' : 'Ajoutez une photo pour une demande plus précise.'}
+              Le message sera envoyé via WhatsApp au numéro {settings.whatsapp_phone || '22967280018'}. {imagePreview ? 'Sur mobile, la photo est jointe directement et le message est aussi copié (collez-le si WhatsApp n’ajoute que la photo) ; ailleurs, la photo est mise en ligne et son lien ajouté automatiquement.' : 'Ajoutez une photo pour une demande plus précise.'}
             </p>
           </div>
         </div>
@@ -350,6 +350,15 @@ export const ArticleRequestSection: React.FC = () => {
     // feuille système avec la photo + le message — l'utilisateur choisit
     // WhatsApp et la photo est JOINTE. Annulation = formulaire conservé.
     if (selectedFile) {
+      // Finalisation 09/2026 — WhatsApp Android ignore parfois le TEXTE quand
+      // un fichier est joint (comportement plateforme, non bug du site) : on
+      // copie le message au presse-papier en secours — l'utilisateur le colle
+      // si la caption n'a pas suivi la photo.
+      try {
+        await navigator.clipboard?.writeText(lines.join('\n'));
+      } catch {
+        // presse-papier indisponible : le texte reste dans le partage natif.
+      }
       const nativeShare = await shareFileWithText(selectedFile, lines.join('\n'));
       if (nativeShare.shared) {
         setIsUploading(false);

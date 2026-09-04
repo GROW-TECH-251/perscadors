@@ -12,6 +12,7 @@ import {
   buildOrbitSeed,
   clamp01,
   computePlacement,
+  logoSafeBox,
   convergenceDelay,
   convergeTarget,
   driftOffset,
@@ -130,14 +131,49 @@ describe('Unit — OV-2/OV-3c introMotion : champ organique en coques', () => {
       maxX = Math.max(maxX, Math.abs(x));
       maxY = Math.max(maxY, Math.abs(y));
       // Bornes anisotropes OV-3f : x ≤ r·1,18·min, y ≤ r·0,74·min (paysage
-      // étalé pleine largeur, bleed horizontal léger).
-      expect(Math.abs(x)).toBeLessThanOrEqual(seed.radiusRatio * 720 * 1.18 + 1);
-      expect(Math.abs(y)).toBeLessThanOrEqual(seed.radiusRatio * 720 * 0.74 + 1);
+      // étalé pleine largeur, bleed horizontal léger) — ÉLARGIES par la safe
+      // zone logo (finalisation 09/2026) : un point repoussé au bord du rect
+      // protégé peut dépasser l'ellipse d'origine, jamais les deux bords.
+      const box = logoSafeBox(1280, 720);
+      // + marge de dérive (ampMax coque + parallaxe) : le clamp dilate le bord.
+      const marge = INTRO_SHELLS[seed.depth].driftAmpMax + 10;
+      expect(Math.abs(x)).toBeLessThanOrEqual(Math.max(seed.radiusRatio * 720 * 1.18, box.halfWidth + marge) + 1);
+      expect(Math.abs(y)).toBeLessThanOrEqual(Math.max(seed.radiusRatio * 720 * 0.74, box.halfHeight + box.bottomExtra + marge) + 1);
     }
     expect(maxX).toBeGreaterThan(maxY); // champ étalé horizontalement
-    // Portrait : axe x comprimé (×0.86) — lisibilité préservée sur mobile.
+    // Portrait : axe x comprimé (×0.88) — lisibilité préservée sur mobile.
     const portrait = computePlacement(seeds[0], 390, 844);
-    expect(Math.abs(portrait.x)).toBeLessThanOrEqual(seeds[0].radiusRatio * 390 * 0.88 + 1);
+    const boxM = logoSafeBox(390, 844);
+    expect(Math.abs(portrait.x)).toBeLessThanOrEqual(Math.max(seeds[0].radiusRatio * 390 * 0.88, boxM.halfWidth + INTRO_SHELLS[seeds[0].depth].driftAmpMax + 10) + 1);
+  });
+
+  it('finalisation 09/2026 — SAFE ZONE : aucun centre de vignette dans le rect du logo (desktop + mobile)', () => {
+    for (const viewport of [[1280, 720], [1440, 900], [390, 844], [375, 812]]) {
+      const [w, h] = viewport;
+      const box = logoSafeBox(w, h);
+      for (const prefix of ['a', 'zz', 'k9', 'final']) {
+        const seedsN = Array.from({ length: 9 }, (_, i) => buildOrbitSeed(`${prefix}${i}`, i));
+        for (const seed of seedsN) {
+          const { x, y } = computePlacement(seed, w, h);
+          const inside = x > -box.halfWidth && x < box.halfWidth && y > -box.halfHeight && y < box.halfHeight + box.bottomExtra;
+          expect(inside).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('finalisation 09/2026 — MOBILE : les 4 côtés autour du logo sont exploités (pas de concentration bas-gauche)', () => {
+    const seedsM = Array.from({ length: 6 }, (_, i) => buildOrbitSeed(`m${i}`, i));
+    let left = 0, right = 0, top = 0, bottom = 0;
+    for (const seed of seedsM) {
+      const { x, y } = computePlacement(seed, 390, 844);
+      if (x < 0) left += 1; else right += 1;
+      if (y < 0) top += 1; else bottom += 1;
+    }
+    expect(left).toBeGreaterThan(0);
+    expect(right).toBeGreaterThan(0);
+    expect(top).toBeGreaterThan(0);
+    expect(bottom).toBeGreaterThan(0);
   });
 
   it('OV-3c-2 ÉQUILIBRE : le champ ne bascule jamais d’un côté (régression photo user)', () => {
@@ -344,15 +380,24 @@ describe('Unit — OV-3 introMotion : convergence & transition', () => {
     }
   });
 
-  it('convergeTarget : halo resserré DERRIÈRE le logo, le long du rayon d’origine', () => {
+  it('convergeTarget : halo resserré DERRIÈRE le LOGO RÉEL, le long du rayon d’origine', () => {
+    // Finalisation 09/2026 — le halo entoure le CENTRE MESURÉ du monogramme
+    // (logoOffset), biaisé vers sa zone basse/interne : plus jamais le centre
+    // géométrique du viewport (zone noire sous le logo).
+    const logoOffset = { x: 4, y: -24 };
+    const box = logoSafeBox(1200, 800);
+    const cy = logoOffset.y + box.halfHeight * 0.35;
     for (const seed of seeds) {
-      const { x, y } = convergeTarget(seed, 1200, 800);
-      const dist = Math.hypot(x, y);
+      const { x, y } = convergeTarget(seed, 1200, 800, logoOffset);
+      const dist = Math.hypot(x - logoOffset.x, y - cy);
       expect(dist).toBeGreaterThanOrEqual(WATERMARK_TARGET_MIN * 800 - 1);
       expect(dist).toBeLessThanOrEqual(WATERMARK_TARGET_MAX * 800 + 1);
-      expect(Math.sign(x)).toBe(Math.sign(Math.cos(seed.angle)));
-      expect(Math.sign(y)).toBe(Math.sign(Math.sin(seed.angle)));
+      expect(Math.sign(x - logoOffset.x)).toBe(Math.sign(Math.cos(seed.angle)));
+      expect(Math.sign(y - cy)).toBe(Math.sign(Math.sin(seed.angle)));
     }
+    // La cible reste dans la zone visuelle du logo (± demi-hauteur + halo).
+    expect(cy).toBeGreaterThan(0);
+    expect(cy).toBeLessThan(box.halfHeight + box.bottomExtra);
   });
 
   it('filigrane : constantes d’état final cohérentes', () => {
@@ -376,6 +421,29 @@ describe('Unit — OV-3 introMotion : convergence & transition', () => {
       expect(state.brightness).toBeGreaterThanOrEqual(previousBrightness);
       expect(state.opacity).toBeGreaterThanOrEqual(0.85);
       previousBrightness = state.brightness;
+    }
+  });
+});
+
+// Finalisation 09/2026 — garantie ABSOLUE : même à la dérive Lissajous max
+// (+ parallaxe pire cas), le centre d'une vignette clampée ne re-traverse
+// jamais la safe zone (mesuré en sonde : jusqu'à 28 px de re-entrée).
+describe('Safe zone : marge de dérive (finalisation)', () => {
+  it('place + dérive max + parallaxe reste hors de la zone logo (9 slots, 2 viewports)', () => {
+    for (const [width, height] of [[1280, 720], [390, 844]] as const) {
+      const box = logoSafeBox(width, height);
+      for (let i = 0; i < 9; i += 1) {
+        const seed = buildOrbitSeed(`drift-guard-${i}`, i);
+        const place = computePlacement(seed, width, height);
+        // Pire cas : balayer t pour capter le max de chaque sinus de dérive.
+        for (let t = 0; t <= 12000; t += 250) {
+          const d = driftOffset(seed, t, 1); // facteur 1 = desktop (pire)
+          const cx = place.x + d.x + 10; // + parallaxe pire cas
+          const cy = place.y + d.y + 10;
+          const inside = cx > -box.halfWidth && cx < box.halfWidth && cy > -box.halfHeight && cy < box.halfHeight + box.bottomExtra;
+          expect(inside, `slot ${i} ${width}x${height} t=${t} (${cx.toFixed(0)},${cy.toFixed(0)})`).toBe(false);
+        }
+      }
     }
   });
 });
