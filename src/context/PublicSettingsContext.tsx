@@ -1,7 +1,11 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
+import {
+  fetchPublicShopSettings,
+  getDefaultShopSettings,
+  readSeededPublicShopSettings,
+} from '@/services/settingsService';
 import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import { useSiteAssetsRealtime } from '@/hooks/useSiteAssetsRealtime';
 import type { ShopSettings } from '@/admin/types';
@@ -23,7 +27,12 @@ interface PublicSettingsContextValue {
 const PublicSettingsContext = createContext<PublicSettingsContextValue | null>(null);
 
 export function PublicSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
+  // Consolidation 09/2026 — fix hydratation : s'initialiser avec la valeur
+  // semée par le DataHydrator du layout (render préalable) quand elle existe,
+  // pour que le premier render client == HTML serveur (#418).
+  const [settings, setSettings] = useState<ShopSettings>(
+    () => readSeededPublicShopSettings() ?? getDefaultShopSettings()
+  );
   const [version, setVersion] = useState(0);
 
   const refresh = useCallback(() => {

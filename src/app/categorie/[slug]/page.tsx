@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import CategoryPage from './category-client';
 import { cache } from 'react';
 import { fetchServerCatalogSnapshot } from '@/services/publicCatalogService';
-import { DataHydrator } from '@/components/public/DataHydrator';
 import { fetchServerSiteAssets } from '@/services/mediaService';
 import { fetchServerPublicShopSettings } from '@/services/settingsService';
 
@@ -27,7 +26,6 @@ export default async function Page() {
   const [snapshot, settings, siteAssets] = await Promise.all([getSnapshot(), getSettings(), getSiteAssets()]);
   return (
     <Suspense fallback={null}>
-      <DataHydrator snapshot={snapshot} settings={settings} siteAssets={siteAssets} />
       <CategoryPage />
     </Suspense>
   );

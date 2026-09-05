@@ -54,11 +54,15 @@ describe('Unit — PERF-03 Hiérarchie médias', () => {
     'src/app/categorie/[slug]/page.tsx',
   ];
 
-  it.each(PAGES)('%s : site_assets lus côté serveur (cache) et passés à l’hydrator', async (path) => {
+  it.each(PAGES)('%s : site_assets lus côté serveur (cache) ; hydrateur = layout racine', async (path) => {
     const page = await readFile(path, 'utf-8');
     expect(page).toContain('fetchServerSiteAssets');
     expect(page).toMatch(/cache\(fetchServerSiteAssets\)/);
-    expect(page).toContain('siteAssets={siteAssets}');
+    // Consolidation 09/2026 : les siteAssets passent par le DataHydrator du
+    // LAYOUT (avant les providers) — plus de duplication par page.
+    const layout = await readFile('src/app/layout.tsx', 'utf-8');
+    expect(layout).toMatch(/cache\(fetchServerSiteAssets\)/);
+    expect(layout).toContain('siteAssets={siteAssets}');
   });
 
   it('hiérarchie images conservée : priority réservé au hero, lazy par défaut ailleurs', async () => {

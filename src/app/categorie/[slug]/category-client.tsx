@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
 import { useCatalog } from '@/context/CatalogContext';
 import { Product, Size } from '@/types';
-import { SlidersHorizontal, ArrowLeft } from 'lucide-react';
+import { SlidersHorizontal, ArrowLeft, Camera } from 'lucide-react';
 import { normalizeProductAttribute, normalizeSize } from '@/utils/normalizeProductAttribute';
 
 export default function CategoryPage() {
@@ -182,15 +182,47 @@ export default function CategoryPage() {
 
           <div className="lg:col-span-3">
             {filteredProducts.length === 0 ? (
-              <div className="py-24 text-center space-y-4 bg-brand-bg-alt rounded-2xl border border-brand-gold/10">
+              <div className="py-16 sm:py-24 text-center space-y-4 bg-brand-bg-alt rounded-2xl border border-brand-gold/10 px-4">
                 <span className="text-4xl block">🔍</span>
-                <p className="font-bebas text-2xl text-brand-text-muted uppercase">Aucun article ne correspond à votre sélection.</p>
-                <button
-                  onClick={resetFilters}
-                  className="px-6 py-2 bg-brand-gold hover:bg-brand-gold-light text-brand-bg rounded font-bebas text-lg uppercase tracking-wider transition-colors"
-                >
-                  Voir toute la collection
-                </button>
+                {searchQuery ? (
+                  <>
+                    {/* Consolidation 09/2026 — no-results : RECHERCHE -> issue
+                        concrète vers le parcours « Ajouter une photo » EXISTANT
+                        (aucun formulaire dupliqué, §18-19). */}
+                    <p className="font-bebas text-2xl sm:text-3xl text-brand-text uppercase">
+                      Aucun article ne correspond à « {searchQuery} »
+                    </p>
+                    <p className="text-sm text-brand-text-muted max-w-md mx-auto leading-relaxed">
+                      Envoyez-nous une photo de l'article que vous cherchez : l'équipe Pescador
+                      vous trouve ça en 24h, gratuitement.
+                    </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                      <Link
+                        href={`/?intro=0&demande=${encodeURIComponent(searchQuery)}#article-request`}
+                        className="inline-flex items-center justify-center gap-2.5 min-h-[52px] px-8 py-4 bg-brand-gold hover:bg-brand-gold-light active:bg-[#9F7F1F] text-brand-bg font-bebas text-xl tracking-[3px] uppercase rounded-xl shadow-2xl transition-colors"
+                      >
+                        <Camera size={20} aria-hidden="true" />
+                        Ajouter une photo
+                      </Link>
+                      <button
+                        onClick={resetFilters}
+                        className="min-h-[52px] px-6 py-4 border border-brand-gold/40 hover:bg-brand-gold/10 text-brand-text rounded-xl font-bebas text-lg uppercase tracking-wider transition-colors"
+                      >
+                        Voir toute la collection
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bebas text-2xl text-brand-text-muted uppercase">Aucun article ne correspond à votre sélection.</p>
+                    <button
+                      onClick={resetFilters}
+                      className="px-6 py-2 bg-brand-gold hover:bg-brand-gold-light text-brand-bg rounded font-bebas text-lg uppercase tracking-wider transition-colors"
+                    >
+                      Voir toute la collection
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8">

@@ -305,6 +305,23 @@ export const ArticleRequestSection: React.FC = () => {
     resetArticleForm();
   };
 
+  // Consolidation 09/2026 — No-results -> parcours existant : en arrivant
+  // depuis une recherche sans résultat (?demande=...), la modale s'ouvre
+  // directement avec la recherche en référence. Zéro formulaire dupliqué ;
+  // le paramètre est consommé (replaceState) pour ne pas rouvrir à chaque
+  // visite de la home.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const demande = params.get('demande');
+    if (demande && demande.trim()) {
+      setArticleForm((prev) => (prev.reference ? prev : { ...prev, reference: demande.trim().slice(0, 120) }));
+      setShowArticleForm(true);
+      params.delete('demande');
+      const search = params.toString();
+      window.history.replaceState(null, '', window.location.pathname + (search ? `?${search}` : '') + window.location.hash);
+    }
+  }, []);
+
   // Le body est fixé à sa position courante : contrairement à overflow:hidden,
   // cette technique bloque aussi le défilement tactile sur iOS Safari.
   useEffect(() => {

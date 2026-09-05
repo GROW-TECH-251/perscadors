@@ -284,6 +284,15 @@ export function invalidatePublicShopSettingsCache(): void {
   publicSettingsCache = null;
 }
 
+// Consolidation 09/2026 — lecture SYNCHRONE (aucune requête, aucun await) du
+// cache amorcé par le DataHydrator : sert d'état initial au provider pour
+// que l'hydratation React corresponde à l'HTML serveur.
+export function readSeededPublicShopSettings(): ShopSettings | null {
+  return publicSettingsCache && publicSettingsCache.expiresAt > Date.now()
+    ? publicSettingsCache.value
+    : null;
+}
+
 export async function fetchPublicShopSettings(): Promise<ShopSettings | null> {
   if (publicSettingsCache && publicSettingsCache.expiresAt > Date.now()) {
     return publicSettingsCache.value;
