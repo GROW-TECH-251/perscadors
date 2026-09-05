@@ -40,11 +40,16 @@ describe('Unit — Audit latence : optimisations mesurées', () => {
     expect(ctx).toContain('queueMicrotask');
   });
 
-  it('P5 : toutes les pages publiques passent settings au DataHydrator (zéro re-fetch settings)', async () => {
+  it('P5 : le LAYOUT racine passe settings au DataHydrator, avant les providers (zéro re-fetch)', async () => {
+    // Consolidation 09/2026 : l'hydrateur est remonté au layout (fix #418) ;
+    // les pages continuent de lire les réglages via cache() pour leur SSR.
+    const layout = await readFile('src/app/layout.tsx', 'utf-8');
+    expect(layout).toContain('fetchServerPublicShopSettings');
+    expect(layout).toContain('settings={settings}');
+    expect(layout.indexOf('<CatalogProvider>')).toBeGreaterThan(layout.indexOf('<DataHydrator'));
     for (const file of ['src/app/page.tsx', 'src/app/looks/page.tsx', 'src/app/categorie/[slug]/page.tsx', 'src/app/produit/[id]/page.tsx']) {
       const page = await readFile(file, 'utf-8');
       expect(page).toContain('fetchServerPublicShopSettings');
-      expect(page).toContain('settings={settings}');
     }
   });
 

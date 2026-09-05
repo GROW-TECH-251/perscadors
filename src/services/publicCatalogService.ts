@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { AdminCategory, AdminProduct, AdminOutfit } from '@/admin/types';
 import { products as fallbackProducts } from '@/data/products';
+import { normalizeProductAttribute } from '@/utils/normalizeProductAttribute';
 import { outfits as fallbackOutfits } from '@/data/outfits';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { CatalogCategory, Outfit, Product, Size } from '@/types';
@@ -319,7 +320,10 @@ export function findCatalogProductsByCategory(products: Product[], categorySlug:
 }
 
 export function searchCatalogProducts(products: Product[], query: string): Product[] {
-  const normalizedQuery = query.trim().toLowerCase();
+  // Consolidation 09/2026 — la navbar utilise la MÊME normalisation que la
+  // page catégorie (accents pliés NFD, casse fr-FR, espaces repliés) :
+  // « signées » et « signees » trouvent désormais les mêmes articles.
+  const normalizedQuery = normalizeProductAttribute(query);
 
   if (!normalizedQuery) {
     return products;
@@ -327,9 +331,9 @@ export function searchCatalogProducts(products: Product[], query: string): Produ
 
   return products.filter((product) => {
     return (
-      product.name.toLowerCase().includes(normalizedQuery) ||
-      product.category.toLowerCase().includes(normalizedQuery) ||
-      product.description.toLowerCase().includes(normalizedQuery)
+      normalizeProductAttribute(product.name).includes(normalizedQuery) ||
+      normalizeProductAttribute(product.category).includes(normalizedQuery) ||
+      normalizeProductAttribute(product.description).includes(normalizedQuery)
     );
   });
 }

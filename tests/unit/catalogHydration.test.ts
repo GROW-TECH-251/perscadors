@@ -53,8 +53,10 @@ describe('Unit — PERF-02 Hydratation serveur -> contextes clients', () => {
     expect(page).toContain('export default async function HomePage()');
     expect(page).toContain('const getServerSnapshot = cache(fetchServerCatalogSnapshot);');
     expect(page).toContain('const getServerSettings = cache(fetchServerPublicShopSettings);');
-    // PERF-03 : siteAssets s'ajoute à l'hydratation home (dernière requête REST éliminée).
-    expect(page).toContain('<DataHydrator snapshot={snapshot} settings={settings} siteAssets={siteAssets} />');
+    // Consolidation 09/2026 : l'hydrateur est remonté au LAYOUT racine (fix
+    // hydratation #418) — il rend AVANT les providers, voir hydrationLayout.test.ts.
+    const layout = await readFile('src/app/layout.tsx', 'utf-8');
+    expect(layout).toContain('<DataHydrator snapshot={snapshot} settings={settings} siteAssets={siteAssets} />');
   });
 
   const PAGES = [
@@ -67,7 +69,12 @@ describe('Unit — PERF-02 Hydratation serveur -> contextes clients', () => {
     const page = await readFile(path, 'utf-8');
     expect(page).toContain('const getSnapshot = cache(fetchServerCatalogSnapshot);');
     expect(page).toContain('await getSnapshot();');
-    expect(page).toContain('<DataHydrator snapshot={snapshot} settings={settings} siteAssets={siteAssets} />');
+    // Consolidation 09/2026 : <DataHydrator> vit désormais au layout racine,
+    // FRÈRE PRÉCÉDANT les providers (fix #418) — les pages ne le rendent plus.
+    expect(page).not.toContain('<DataHydrator');
+    const layout = await readFile('src/app/layout.tsx', 'utf-8');
+    expect(layout.indexOf('<DataHydrator')).toBeGreaterThan(-1);
+    expect(layout.indexOf('<CatalogProvider>')).toBeGreaterThan(layout.indexOf('<DataHydrator'));
     expect(page).toContain(marker);
     // Plus AUCUN fetch direct non dédupliqué dans ces pages.
     expect(page).not.toContain('await fetchServerCatalogSnapshot()');
