@@ -325,13 +325,22 @@ export function searchCatalogProducts(products: Product[], query: string): Produ
     return products;
   }
 
-  return products.filter((product) => {
-    return (
-      product.name.toLowerCase().includes(normalizedQuery) ||
-      product.category.toLowerCase().includes(normalizedQuery) ||
-      product.description.toLowerCase().includes(normalizedQuery)
-    );
-  });
+  return products
+    .map((product, index) => {
+      const name = product.name.toLowerCase();
+      const category = product.category.toLowerCase();
+      const description = product.description.toLowerCase();
+      const score = name === normalizedQuery ? 0 :
+        name.startsWith(normalizedQuery) ? 1 :
+          name.includes(normalizedQuery) ? 2 :
+            category.includes(normalizedQuery) ? 3 :
+              description.includes(normalizedQuery) ? 4 : 5;
+
+      return { product, index, score };
+    })
+    .filter(({ score }) => score < 5)
+    .sort((left, right) => left.score - right.score || left.index - right.index)
+    .map(({ product }) => product);
 }
 
 export function getCatalogProductImage(product: Product): string {

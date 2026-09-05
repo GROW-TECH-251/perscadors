@@ -9,6 +9,7 @@ import { useCatalog } from '@/context/CatalogContext';
 import { Product, Size } from '@/types';
 import { SlidersHorizontal, ArrowLeft } from 'lucide-react';
 import { normalizeProductAttribute, normalizeSize } from '@/utils/normalizeProductAttribute';
+import { ArticleRequestSection } from '@/components/public/home/ArticleRequestSection';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -184,13 +185,16 @@ export default function CategoryPage() {
             {filteredProducts.length === 0 ? (
               <div className="py-24 text-center space-y-4 bg-brand-bg-alt rounded-2xl border border-brand-gold/10">
                 <span className="text-4xl block">🔍</span>
-                <p className="font-bebas text-2xl text-brand-text-muted uppercase">Aucun article ne correspond à votre sélection.</p>
+                <p className="font-bebas text-2xl text-brand-text-muted uppercase">
+                  {searchQuery ? `Aucun article ne correspond à "${searchQuery}".` : 'Aucun article ne correspond à votre sélection.'}
+                </p>
                 <button
                   onClick={resetFilters}
                   className="px-6 py-2 bg-brand-gold hover:bg-brand-gold-light text-brand-bg rounded font-bebas text-lg uppercase tracking-wider transition-colors"
                 >
                   Voir toute la collection
                 </button>
+                <ArticleRequestSection />
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8">
@@ -249,6 +253,7 @@ export default function CategoryPage() {
             )}
           </div>
         </div>
+        {filteredProducts.length > 0 && <ArticleRequestSection />}
 
         {isFilterDrawerOpen && (
           <div className="fixed inset-0 z-50 flex lg:hidden">

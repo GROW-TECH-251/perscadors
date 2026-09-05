@@ -28,6 +28,7 @@ export default function EditProductPage() {
   const [uploading, setUploading] = useState(false);
   // IMP-08 — Vidéo produit : états d’upload/suppression.
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
   const [videoUploading, setVideoUploading] = useState(false);
   const [pendingVideoDeletion, setPendingVideoDeletion] = useState(false);
   const [deletingVideo, setDeletingVideo] = useState(false);
@@ -191,6 +192,8 @@ export default function EditProductPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
 
     try {
@@ -206,6 +209,7 @@ export default function EditProductPage() {
       console.error('Erreur mise à jour produit:', error);
       setToast({ message: 'Impossible de mettre à jour ce produit pour le moment.', variant: 'error' });
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PublicLayout } from '@/components/public/layout/PublicLayout';
@@ -13,13 +13,16 @@ import { Product, Size } from '@/types';
 import {Play,  ArrowLeft, MessageSquareCode, ShoppingBag, Check, Maximize2 } from 'lucide-react';
 import { ProductLightbox } from '@/components/public/ProductLightbox';
 import { safeJsonLd } from '@/utils/safeJsonLd';
+import { ArticleRequestSection } from '@/components/public/home/ArticleRequestSection';
 
 interface ProductDetailContentProps {
   product: Product;
   suggestions: Product[];
+  otherResults: Product[];
+  searchQuery: string;
 }
 
-function ProductDetailContent({ product, suggestions }: ProductDetailContentProps) {
+function ProductDetailContent({ product, suggestions, otherResults, searchQuery }: ProductDetailContentProps) {
   const { addToCart } = useCart();
   const { settings } = usePublicSettings();
   const [selectedImage, setSelectedImage] = useState<string>(product.images[0] ?? '');
@@ -412,6 +415,30 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
         />
       )}
 
+      {searchQuery && otherResults.length > 0 && (
+        <section className="border-t border-brand-gold/15 pt-20 mb-20">
+          <div className="mb-12 text-center sm:text-left">
+            <h2 className="font-bebas text-4xl sm:text-5xl tracking-wider text-brand-gold uppercase mb-3">
+              Autres résultats pour &quot;{searchQuery}&quot;
+            </h2>
+            <div className="w-20 h-1 bg-brand-gold mx-auto sm:mx-0" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {otherResults.map((result) => (
+              <Link key={result.id} href={`/produit/${result.id}?search=${encodeURIComponent(searchQuery)}`} className="group bg-brand-bg-alt border border-brand-gold/10 rounded-3xl overflow-hidden shadow-xl flex flex-col justify-between hover:shadow-2xl transition-all duration-(--motion-raise) ease-out-luxe hover:scale-[1.02]">
+                <div className="relative w-full aspect-[3/4] overflow-hidden bg-brand-bg">
+                  <Image src={result.images[0]} alt={result.name} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw" className="object-cover transition-transform duration-(--motion-reveal) ease-out-luxe group-hover:scale-[1.08]" />
+                </div>
+                <div className="p-6 flex flex-col gap-2 bg-brand-bg-alt/90">
+                  <h3 className="font-bebas text-xl text-brand-text tracking-wider uppercase line-clamp-1 group-hover:text-brand-gold transition-colors">{result.name}</h3>
+                  <span className="font-bebas text-2xl tracking-wider text-brand-gold">{result.price.toLocaleString()} FCFA</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Suggestions Section - Harmonized Premium Collection Cards */}
       <section className="border-t border-brand-gold/15 pt-20">
         <div className="mb-12 text-center sm:text-left">
@@ -464,19 +491,28 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
           ))}
         </div>
       </section>
+      <ArticleRequestSection />
     </div>
   );
 }
 
 export default function ProductPage() {
   const params = useParams();
-  const { products, findProductById } = useCatalog();
+  const searchParams = useSearchParams();
+  const { products, findProductById, searchProducts } = useCatalog();
   const id = params.id as string;
+  const searchQuery = searchParams.get('search')?.trim() || '';
 
   const product = useMemo(() => findProductById(id), [findProductById, id]);
   const suggestions = useMemo(
     () => products.filter((currentProduct) => currentProduct.id !== product?.id && (currentProduct.category === product?.category || currentProduct.isPopular)).slice(0, 4),
     [product, products]
+  );
+  const otherResults = useMemo(
+    () => searchQuery
+      ? searchProducts(searchQuery).filter((currentProduct) => currentProduct.id !== product?.id).slice(0, 4)
+      : [],
+    [product, searchProducts, searchQuery]
   );
 
   if (!product) {
@@ -505,6 +541,8 @@ export default function ProductPage() {
         key={`${product.id}-${product.images[0]}-${product.price}`}
         product={product}
         suggestions={suggestions}
+        otherResults={otherResults}
+        searchQuery={searchQuery}
       />
     </PublicLayout>
   );

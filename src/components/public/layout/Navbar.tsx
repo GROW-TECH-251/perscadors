@@ -24,6 +24,10 @@ export const Navbar: React.FC = () => {
   const [realtimeVersion, setRealtimeVersion] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
+  const searchSuggestions = useMemo(
+    () => searchQuery.trim().length >= 2 ? searchProducts(searchQuery).slice(0, 3) : [],
+    [searchProducts, searchQuery]
+  );
 
   useEffect(() => {
     const mountedTimer = setTimeout(async () => {
@@ -119,7 +123,7 @@ export const Navbar: React.FC = () => {
     });
 
     if (matchedProduct) {
-      router.push(`/produit/${matchedProduct.id}`);
+      router.push(`/produit/${matchedProduct.id}?search=${encodeURIComponent(searchQuery.trim())}`);
     } else if (matchedCategory) {
       router.push(`/categorie/${matchedCategory.slug}`);
     } else {
@@ -175,23 +179,42 @@ export const Navbar: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-5">
-          <form
-            onSubmit={handleSearchSubmit}
-            className={`flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/95 transition-all duration-(--motion-fast) ease-out-luxe ${
+          <div className="relative">
+            <form
+              onSubmit={handleSearchSubmit}
+              className={`flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/95 transition-all duration-(--motion-fast) ease-out-luxe ${
               isSearchOpen ? 'absolute right-12 top-4 w-[calc(100%-40px)] max-w-[240px] sm:relative sm:right-0 sm:top-0 sm:w-64 opacity-100 z-50 shadow-lg backdrop-blur-sm' : 'w-0 opacity-0 pointer-events-none lg:opacity-100 lg:w-48 lg:pointer-events-auto'
-            }`}
-          >
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="bg-transparent border-none text-brand-text text-sm focus:outline-none w-full"
-            />
-            <button type="submit" className="text-brand-gold hover:text-brand-gold-light cursor-pointer" aria-label="Valider la recherche" title="Valider la recherche">
-              <Search size={18} />
-            </button>
-          </form>
+              }`}
+            >
+              <input
+                type="text"
+                placeholder="Rechercher..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="bg-transparent border-none text-brand-text text-sm focus:outline-none w-full"
+                aria-autocomplete="list"
+                aria-controls="navbar-search-suggestions"
+              />
+              <button type="submit" className="text-brand-gold hover:text-brand-gold-light cursor-pointer" aria-label="Valider la recherche" title="Valider la recherche">
+                <Search size={18} />
+              </button>
+            </form>
+            {searchSuggestions.length > 0 && (
+              <div id="navbar-search-suggestions" role="listbox" className="absolute top-full right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-brand-gold/20 bg-brand-bg-alt/95 p-1 shadow-xl backdrop-blur-md">
+                {searchSuggestions.map((suggestion) => (
+                  <Link
+                    key={suggestion.id}
+                    href={`/produit/${suggestion.id}?search=${encodeURIComponent(searchQuery.trim())}`}
+                    role="option"
+                    onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }}
+                    className="block truncate px-3 py-2 text-sm text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold"
+                  >
+                    {suggestion.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
 
           <button
             onClick={() => setIsSearchOpen(!isSearchOpen)}
