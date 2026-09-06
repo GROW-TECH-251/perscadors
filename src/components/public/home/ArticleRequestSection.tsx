@@ -314,6 +314,7 @@ export const ArticleRequestSection: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const demande = params.get('demande');
     if (demande && demande.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- lecture unique de l'URL au montage : ouverture intentionnelle de la modale (no-results -> photo), aucun rendu en cascade ensuite
       setArticleForm((prev) => (prev.reference ? prev : { ...prev, reference: demande.trim().slice(0, 120) }));
       setShowArticleForm(true);
       params.delete('demande');

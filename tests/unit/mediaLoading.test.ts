@@ -54,12 +54,11 @@ describe('Unit — PERF-03 Hiérarchie médias', () => {
     'src/app/categorie/[slug]/page.tsx',
   ];
 
-  it.each(PAGES)('%s : site_assets lus côté serveur (cache) ; hydrateur = layout racine', async (path) => {
+  it.each(PAGES)('%s : site_assets portés par le LAYOUT racine (plus de fetch par page)', async (path) => {
+    // Consolidation 09/2026 (fix #418 + lint) : les pages ne dupliquent plus
+    // la lecture des siteAssets — source unique = DataHydrator du LAYOUT.
     const page = await readFile(path, 'utf-8');
-    expect(page).toContain('fetchServerSiteAssets');
-    expect(page).toMatch(/cache\(fetchServerSiteAssets\)/);
-    // Consolidation 09/2026 : les siteAssets passent par le DataHydrator du
-    // LAYOUT (avant les providers) — plus de duplication par page.
+    expect(page).not.toContain('fetchServerSiteAssets');
     const layout = await readFile('src/app/layout.tsx', 'utf-8');
     expect(layout).toMatch(/cache\(fetchServerSiteAssets\)/);
     expect(layout).toContain('siteAssets={siteAssets}');

@@ -10,7 +10,7 @@ describe('Unit — No-results -> Ajouter une photo', () => {
     expect(source).toContain('Ajouter une photo');
     expect(source).toContain("href={`/?intro=0&demande=${encodeURIComponent(searchQuery)}#article-request`}");
     expect(source).toContain("Aucun article ne correspond à « {searchQuery} »");
-    expect(source).toContain("l'équipe Pescador");
+    expect(source).toContain("l’équipe Pescador");
     // CTA tactile : min-h-[52px] (≥44px recommandé) et composant <Link> (ancre réelle).
     expect(source).toContain('min-h-[52px]');
     expect(source).toContain('<Link');

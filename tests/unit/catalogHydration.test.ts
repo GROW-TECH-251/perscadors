@@ -48,13 +48,13 @@ describe('Unit — PERF-02 Hydratation serveur -> contextes clients', () => {
     expect(h).toContain('return null');
   });
 
-  it('home : page async, double hydratation (catalogue + réglages), cache()', async () => {
+  it('home : page async ; hydratation intégralement portée par le LAYOUT racine', async () => {
     const page = await readFile('src/app/page.tsx', 'utf-8');
     expect(page).toContain('export default async function HomePage()');
-    expect(page).toContain('const getServerSnapshot = cache(fetchServerCatalogSnapshot);');
-    expect(page).toContain('const getServerSettings = cache(fetchServerPublicShopSettings);');
-    // Consolidation 09/2026 : l'hydrateur est remonté au LAYOUT racine (fix
-    // hydratation #418) — il rend AVANT les providers, voir hydrationLayout.test.ts.
+    // Consolidation 09/2026 (fix #418 + lint) : la home ne fetch plus rien
+    // directement — le LAYOUT racine hydrate tout (voir hydrationLayout.test.ts).
+    expect(page).not.toContain('fetchServerCatalogSnapshot');
+    expect(page).not.toContain('fetchServerPublicShopSettings');
     const layout = await readFile('src/app/layout.tsx', 'utf-8');
     expect(layout).toContain('<DataHydrator snapshot={snapshot} settings={settings} siteAssets={siteAssets} />');
   });

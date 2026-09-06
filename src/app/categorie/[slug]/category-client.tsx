@@ -193,7 +193,7 @@ export default function CategoryPage() {
                       Aucun article ne correspond à « {searchQuery} »
                     </p>
                     <p className="text-sm text-brand-text-muted max-w-md mx-auto leading-relaxed">
-                      Envoyez-nous une photo de l'article que vous cherchez : l'équipe Pescador
+                      Envoyez-nous une photo de l’article que vous cherchez : l’équipe Pescador
                       vous trouve ça en 24h, gratuitement.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">

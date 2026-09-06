@@ -47,9 +47,10 @@ describe('Unit — Audit latence : optimisations mesurées', () => {
     expect(layout).toContain('fetchServerPublicShopSettings');
     expect(layout).toContain('settings={settings}');
     expect(layout.indexOf('<CatalogProvider>')).toBeGreaterThan(layout.indexOf('<DataHydrator'));
+    // Les pages ne dupliquent plus la lecture des réglages (source unique).
     for (const file of ['src/app/page.tsx', 'src/app/looks/page.tsx', 'src/app/categorie/[slug]/page.tsx', 'src/app/produit/[id]/page.tsx']) {
       const page = await readFile(file, 'utf-8');
-      expect(page).toContain('fetchServerPublicShopSettings');
+      expect(page).not.toContain('fetchServerPublicShopSettings');
     }
   });
 
