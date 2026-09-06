@@ -139,7 +139,9 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
               {outfit.name}
             </h3>
             <p className="text-sm text-brand-text-muted mt-2">
-              Cet outfit est composé de pièces streetwear HP Collection exclusives sélectionnées par Vioutou — clique sur une pièce pour la découvrir :
+              {outfit.products.length > 0
+                ? 'Cet outfit est composé de pièces streetwear HP Collection exclusives sélectionnées par Vioutou — clique sur une pièce pour la découvrir :'
+                : 'Look en cours d’assemblage.'}
             </p>
 
             <div className="mt-6 space-y-4 max-h-48 md:max-h-none overflow-y-auto pr-1">
@@ -160,6 +162,14 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
                         className="object-cover"
                       />
                     </div>
+              {outfit.products.length === 0 && (
+                <div className="mt-6 rounded-xl border border-brand-gold/20 bg-brand-bg-alt p-5">
+                  <p className="text-sm text-brand-text-muted leading-relaxed">
+                    Les pièces de ce look ne sont pas encore reliées au catalogue. Demandez-le directement à Vioutou — réponse en 24h.
+                  </p>
+                </div>
+              )}
+
                     <div>
                       <h4 className="font-bebas text-lg leading-tight group-hover:text-brand-gold transition-colors duration-(--motion-micro) ease-out-expo">
                         {product.name}
@@ -178,14 +188,18 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
           </div>
 
           <div className="space-y-4 pt-4 border-t border-brand-gold/10">
-            <div className="flex justify-between items-center text-lg">
+            {outfit.products.length > 0 && (
+              <div className="flex justify-between items-center text-lg">
               <span className="font-bebas text-brand-text-muted">Total du Look</span>
               <span className="text-2xl font-bold text-brand-gold">
                 {outfit.price.toLocaleString()} FCFA
               </span>
             </div>
+              )}
 
-            <button
+
+            {outfit.products.length > 0 && (
+              <button
               type="button"
               onClick={handleAdd}
               disabled={added}
@@ -207,6 +221,8 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
                 </>
               )}
             </button>
+              )}
+
 
             <button
               type="button"

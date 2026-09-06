@@ -121,6 +121,8 @@ export default function HPLooksPage() {
                       {outfit.name}
                     </h3>
 
+                    {outfit.products.length > 0 ? (
+                    <>
                     <p className="text-xs text-brand-text-muted mb-4 uppercase tracking-widest font-semibold border-b border-brand-gold/10 pb-2">
                       Pièces de cet outfit :
                     </p>
@@ -154,15 +156,27 @@ export default function HPLooksPage() {
                         </Link>
                       ))}
                     </div>
+                    </>
+                    ) : (
+                      <div className="rounded-xl border border-brand-gold/20 bg-brand-bg p-4">
+                        <p className="font-bebas text-lg text-brand-gold uppercase tracking-wider">Look en cours d’assemblage</p>
+                        <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
+                          Les pièces de ce look ne sont pas encore reliées au catalogue — demande-le directement à Vioutou ci-dessous.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4 pt-4 border-t border-brand-gold/10">
+                    {outfit.products.length > 0 && (
                     <div className="flex justify-between items-center text-md font-semibold">
                       <span className="font-bebas text-brand-text-muted">Total du Look</span>
                       <span className="text-xl font-bold text-brand-gold">
                         {outfit.price.toLocaleString()} FCFA
                       </span>
                     </div>
+                    )}
+
 
                     <button
                       onClick={() => {
