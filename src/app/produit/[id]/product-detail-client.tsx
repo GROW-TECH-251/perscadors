@@ -43,6 +43,10 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
   const mediaCount = product.images.length + (hasVideo ? 1 : 0);
   // Sans vidéo : photo principale, aucun lecteur vide (comportement inchangé).
   const [videoActive, setVideoActive] = useState(hasVideo);
+  // E2 — Vidéo injoignable (URL morte, média Cloudinary supprimé) : on repasse
+  // gracieusement à la photo principale et on retire la tuile ▶ pour ne pas
+  // proposer indéfiniment un lecteur cassé.
+  const [videoFailed, setVideoFailed] = useState(false);
 
   const handleGalleryPointerDown = (event: React.PointerEvent) => {
     galleryDrag.current = { startX: event.clientX, active: true };
@@ -199,6 +203,10 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
                 playsInline
                 preload="metadata"
                 aria-label={`Vidéo du produit ${product.name}`}
+                onError={() => {
+                  setVideoActive(false);
+                  setVideoFailed(true);
+                }}
                 className="relative z-10 h-full w-full bg-black object-contain transition-opacity duration-(--motion-smooth) ease-out-luxe"
               />
             ) : selectedImage && (
@@ -249,7 +257,7 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
                 </button>
               );
             })}
-            {hasVideo && (
+            {hasVideo && !videoFailed && (
               <button
                 onClick={() => setVideoActive(true)}
                 aria-label={`Lire la vidéo de ${product.name}`}
