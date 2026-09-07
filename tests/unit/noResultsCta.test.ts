@@ -5,20 +5,21 @@ import { readFile } from 'fs/promises';
 // explication + CTA vers le parcours « Ajouter une photo » EXISTANT
 // (aucune deuxième fonctionnalité, §19 ; contexte transmis simplement, §20).
 describe('Unit — No-results -> Ajouter une photo', () => {
-  it('category-client : CTA visible avec contexte de la recherche (§20)', async () => {
+  it('category-client : CTA visible avec contexte de la recherche (§20, inline depuis E5)', async () => {
     const source = await readFile('src/app/categorie/[slug]/category-client.tsx', 'utf-8');
-    expect(source).toContain('Ajouter une photo');
-    expect(source).toContain("href={`/?intro=0&demande=${encodeURIComponent(searchQuery)}#article-request`}");
-    expect(source).toContain("Aucun article ne correspond à « {searchQuery} »");
-    expect(source).toContain("l’équipe Pescador");
-    // CTA tactile : min-h-[52px] (≥44px recommandé) et composant <Link> (ancre réelle).
-    expect(source).toContain('min-h-[52px]');
-    expect(source).toContain('<Link');
+    // E5 (Riel) : le CTA vit désormais INLINE via ArticleRequestSection compact
+    // (plus de redirection vers la home ?demande=) — la recherche en échec est
+    // transmise au composant qui préremplit la référence de la modale.
+    expect(source).toContain('<ArticleRequestSection variant="compact" searchQuery={searchQuery || undefined}');
+    expect(source).toContain('Complète le look');
+    expect(source).not.toContain('?demande=');
   });
 
-  it('category-client : le cas « filtres sans recherche » garde le message historique', async () => {
+  it('category-client : le cas « filtres sans recherche » garde une issue (compact sans requête)', async () => {
     const source = await readFile('src/app/categorie/[slug]/category-client.tsx', 'utf-8');
-    expect(source).toContain('Aucun article ne correspond à votre sélection.');
+    // E5 : sans recherche, le compact affiche « Vous ne trouvez pas ce que vous
+    // cherchez ? » + les deux issues (photo / toute la collection).
+    expect(source).toContain('variant="compact"');
   });
 
   it('ArticleRequestSection : la modale existante s’ouvre avec la recherche en référence', async () => {

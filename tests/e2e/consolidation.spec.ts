@@ -61,12 +61,13 @@ test.describe('Consolidation — recherche & no-results', () => {
     await expect(page.getByText('Aucun article ne correspond à', { exact: false })).toBeVisible({ timeout: 15000 });
   });
 
-  test('E2E 3 — CTA « Ajouter une photo » -> parcours existant avec contexte', async ({ page }) => {
+  test('E2E 3 — CTA « Ajouter une photo » -> modale inline avec contexte (E5)', async ({ page }) => {
     await page.goto('/categorie/basket-pour-homme?search=nike-air-max');
-    const cta = page.getByRole('link', { name: /Ajouter une photo/i });
+    // E5 (Riel) : le CTA est désormais un BOUTON inline (plus de redirection
+    // vers la home ?demande=) — la modale s'ouvre sur place.
+    const cta = page.getByRole('button', { name: /Ajouter une photo/i }).first();
     await expect(cta).toBeVisible({ timeout: 15000 });
     await cta.click();
-    await page.waitForURL(/demande=nike-air-max/, { timeout: 15000 });
     // La modale existante s'ouvre (parcours unique, pas de nouvelle page).
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15000 });
     // La recherche initiale est transmise en RÉFÉRENCE (valeur du champ, §20).
@@ -83,10 +84,10 @@ test.describe('Consolidation — recherche & no-results', () => {
       .toBe(true);
   });
 
-  test('E2E 4 — mobile : parcours complet no-results -> photo', async ({ page }) => {
+  test('E2E 4 — mobile : parcours complet no-results -> photo (inline E5)', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/categorie/basket-pour-homme?search=model-x-inexistant');
-    const cta = page.getByRole('link', { name: /Ajouter une photo/i });
+    const cta = page.getByRole('button', { name: /Ajouter une photo/i }).first();
     await expect(cta).toBeVisible({ timeout: 15000 });
     const box = await cta.boundingBox();
     expect(box && box.height).toBeGreaterThanOrEqual(44); // tactile

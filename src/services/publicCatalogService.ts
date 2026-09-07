@@ -350,13 +350,27 @@ export function searchCatalogProducts(products: Product[], query: string): Produ
     return products;
   }
 
-  return products.filter((product) => {
-    return (
-      normalizeProductAttribute(product.name).includes(normalizedQuery) ||
-      normalizeProductAttribute(product.category).includes(normalizedQuery) ||
-      normalizeProductAttribute(product.description).includes(normalizedQuery)
-    );
-  });
+  // E5 (Riel, adapté) — Pertinence : égalité exacte < commence par < contient
+  // (nom) < catégorie < description ; hors-match exclus (score 5). L'ordre
+  // initial (index) départage les égalités : tri stable, pas de surprise.
+  // Scoring fusionné avec la normalisation consolidée (accents pliés, casse
+  // fr-FR, emojis ignorés) : « Basket 🔥 » reste trouvable par « basket ».
+  return products
+    .map((product, index) => {
+      const name = normalizeProductAttribute(product.name);
+      const category = normalizeProductAttribute(product.category);
+      const description = normalizeProductAttribute(product.description);
+      const score = name === normalizedQuery ? 0 :
+        name.startsWith(normalizedQuery) ? 1 :
+          name.includes(normalizedQuery) ? 2 :
+            category.includes(normalizedQuery) ? 3 :
+              description.includes(normalizedQuery) ? 4 : 5;
+
+      return { product, index, score };
+    })
+    .filter(({ score }) => score < 5)
+    .sort((left, right) => left.score - right.score || left.index - right.index)
+    .map(({ product }) => product);
 }
 
 export function getCatalogProductImage(product: Product): string {
