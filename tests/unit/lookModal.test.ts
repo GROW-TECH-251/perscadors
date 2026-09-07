@@ -114,3 +114,24 @@ describe('Unit — E1 Page /looks : carte inline sans pièces', () => {
     expect(recreer).toBeGreaterThan(-1);
   });
 });
+
+describe('Unit — E1-bis LookModal : inspectable à toute hauteur (figé/resp)', () => {
+  it('le panneau scrolle à TOUTES les tailles (plus de md:overflow-visible)', async () => {
+    const src = await readFile('src/components/public/LookModal.tsx', 'utf-8');
+    expect(src).not.toContain('md:overflow-visible');
+    expect(src).toContain('max-h-[90vh] overflow-y-auto');
+  });
+
+  it('un seul contexte de scroll : la liste de pièces ne scrolle plus en interne', async () => {
+    const src = await readFile('src/components/public/LookModal.tsx', 'utf-8');
+    expect(src).not.toContain('max-h-48');
+    expect(src).not.toContain('md:max-h-none');
+  });
+
+  it("le bloc état-vide est HORS du map (visible pour un look sans pièces)", async () => {
+    const src = await readFile('src/components/public/LookModal.tsx', 'utf-8');
+    const mapZone = src.slice(src.indexOf('outfit.products.map'), src.indexOf('</Link>'));
+    expect(mapZone).not.toContain('length === 0');
+    expect(src).toContain('Les pièces de ce look ne sont pas encore reliées au catalogue');
+  });
+});

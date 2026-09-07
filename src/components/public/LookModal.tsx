@@ -102,7 +102,7 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
         role="dialog"
         aria-modal="true"
         aria-label={`Inspecter le look ${outfit.name}`}
-        className="look-modal-in relative w-full max-w-3xl bg-brand-bg text-brand-text rounded-2xl overflow-hidden border border-brand-gold/30 shadow-2xl flex flex-col md:flex-row z-10 max-h-[90vh] overflow-y-auto md:overflow-visible"
+        className="look-modal-in relative w-full max-w-3xl bg-brand-bg text-brand-text rounded-2xl overflow-hidden border border-brand-gold/30 shadow-2xl flex flex-col md:flex-row z-10 max-h-[90vh] overflow-y-auto"
       >
         <button
           ref={closeRef}
@@ -144,7 +144,7 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
                 : 'Look en cours d’assemblage.'}
             </p>
 
-            <div className="mt-6 space-y-4 max-h-48 md:max-h-none overflow-y-auto pr-1">
+            <div className="mt-6 space-y-4">
               {outfit.products.map((product) => (
                 <Link
                   key={product.id}
@@ -162,13 +162,6 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
                         className="object-cover"
                       />
                     </div>
-              {outfit.products.length === 0 && (
-                <div className="mt-6 rounded-xl border border-brand-gold/20 bg-brand-bg-alt p-5">
-                  <p className="text-sm text-brand-text-muted leading-relaxed">
-                    Les pièces de ce look ne sont pas encore reliées au catalogue. Demandez-le directement à Vioutou — réponse en 24h.
-                  </p>
-                </div>
-              )}
 
                     <div>
                       <h4 className="font-bebas text-lg leading-tight group-hover:text-brand-gold transition-colors duration-(--motion-micro) ease-out-expo">
@@ -185,6 +178,14 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
                 </Link>
               ))}
             </div>
+
+            {outfit.products.length === 0 && (
+              <div className="mt-6 rounded-xl border border-brand-gold/20 bg-brand-bg-alt p-5">
+                <p className="text-sm text-brand-text-muted leading-relaxed">
+                  Les pièces de ce look ne sont pas encore reliées au catalogue. Demandez-le directement à Vioutou — réponse en 24h.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 pt-4 border-t border-brand-gold/10">
