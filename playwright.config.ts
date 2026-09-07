@@ -33,5 +33,10 @@ export default defineConfig({
     url: 'http://localhost:3000',
     timeout: 300_000,
     reuseExistingServer: !process.env.CI,
+    // E7-suivi : sous Windows, le piping du stdout de « next build » produit
+    // des dizaines de « destination stream closed early » (bruit cosmétique,
+    // aucun impact). On ignore le stdout du serveur ; les vraies erreurs
+    // restent visibles côté stderr.
+    stdout: 'ignore',
   },
 });
