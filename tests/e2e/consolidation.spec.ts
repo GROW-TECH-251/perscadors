@@ -25,6 +25,36 @@ test.describe('Consolidation — recherche & no-results', () => {
     await page.waitForURL(/\/produit\//, { timeout: 15000 });
     expect(page.url()).toContain('/produit/');
   });
+  test('E2E 8 — E4 Search UX : requête persistante navbar + écho URL + garde emojis', async ({ page }) => {
+    // Écho : arrivée directe avec ?search= -> le champ navbar affiche la requête.
+    await page.goto('/categorie/basket-pour-homme?search=zzzzqqqq');
+    const champ = page.locator('input[placeholder="Rechercher..."]');
+    const loupe = page.locator('button[aria-label="Ouvrir la barre de recherche"]');
+    if (!(await champ.isVisible())) {
+      await loupe.click();
+      await champ.waitFor({ state: 'visible', timeout: 5000 });
+    }
+    await expect(champ).toHaveValue('zzzzqqqq');
+    // Écho catégorie : la bannière rappelle la recherche en cours.
+    await expect(page.getByText(/Résultats de recherche pour/i).first()).toBeVisible();
+
+    // Garde emojis : une requête 100% emoji ne déclenche AUCUNE navigation.
+    await champ.fill('🔥');
+    await champ.press('Enter');
+    await page.waitForTimeout(700);
+    expect(page.url()).toContain('/categorie/basket-pour-homme');
+    expect(page.url()).not.toContain('search=%F0%9F%94%A5');
+
+    // Écho = URL : en quittant le contexte de recherche, le champ se vide.
+    // (Mobile : les liens vivent dans le menu burger — l'ouvrir au besoin.)
+    const lienLooks = page.getByRole('link', { name: 'HP Looks' }).first();
+    if (!(await lienLooks.isVisible())) {
+      await page.click('button[aria-label="Menu principal de navigation"]', { timeout: 10000 });
+    }
+    await lienLooks.click({ timeout: 10000 });
+    await page.waitForURL(/\/looks/, { timeout: 15000 });
+    await expect(champ).toHaveValue('');
+  });
 
   test('E2E 2 — recherche inexistante -> état no-results visible', async ({ page }) => {
     await page.goto('/categorie/basket-pour-homme?search=zzzzqqqq');

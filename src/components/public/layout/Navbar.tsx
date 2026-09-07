@@ -5,6 +5,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { normalizeProductAttribute } from '@/utils/normalizeProductAttribute';
 import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { fetchActiveAssetBySection } from '@/services/mediaService';
@@ -86,6 +87,17 @@ export const Navbar: React.FC = () => {
     };
   }, []);
 
+  // E4 — Écho URL du champ de recherche : la requête affichée est celle de la
+  // page courante (?search=). Hors contexte de recherche, le champ est vide.
+  // L'URL reste l'unique vérité : aucun état fantôme après navigation. (Lu via
+  // window.location plutôt que useSearchParams pour ne pas exiger de boundary
+  // Suspense au prerender des pages statiques.)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronisation d'un état externe (URL) au changement de route : c'est le cas d'usage légitime d'un effet, un seul setState par navigation, aucun rendu en cascade.
+    setSearchQuery(params.get('search') ?? '');
+  }, [pathname]);
+
   useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
   useSiteAssetsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
@@ -109,7 +121,14 @@ export const Navbar: React.FC = () => {
       return;
     }
 
-    const normalizedQuery = searchQuery.toLowerCase().trim();
+    // E4 — Une requête vide après normalisation (emojis seuls, espaces) ne
+    // doit lancer AUCUNE navigation : sans garde, « 🔥 » normalisé en vide
+    // ramènerait TOUS les produits et emmènerait au premier d'entre eux.
+    if (!normalizeProductAttribute(searchQuery)) {
+      return;
+    }
+
+    const normalizedQuery = normalizeProductAttribute(searchQuery);
     const matchedProduct = searchProducts(normalizedQuery)[0];
     const matchedCategory = categories.find((category) => {
       return (
@@ -129,7 +148,8 @@ export const Navbar: React.FC = () => {
 
     setIsSearchOpen(false);
     setIsMobileMenuOpen(false);
-    setSearchQuery('');
+    // E4 — la saisie n'est plus effacée : elle persiste dans le champ (et
+    // l'effet d'écho la resynchronise avec ?search= à chaque navigation).
   };
 
   return (

@@ -67,16 +67,19 @@ const item = {
 } as unknown as CartItem;
 
 describe('Unit — E3 chaîne multi-emoji', () => {
-  it('recherche : requête 100% emoji ne crashe pas et ne renvoie rien de faux', () => {
-    expect(searchCatalogProducts(FIXTURES, '👟🔥🙌')).toEqual([]);
-    expect(searchCatalogProducts(FIXTURES, '🔥')).toEqual([]);
+  it('recherche : requête 100% emoji = requête vide (retourne tout, garde navbar)', () => {
+    // E4 (décision) : les emojis sont ignorés par la normalisation — une
+    // requête 100% emoji devient vide, ce qui ne filtre plus rien. La garde
+    // anti-navigation vit dans la navbar (voir searchEcho.test.ts).
+    expect(searchCatalogProducts(FIXTURES, '👟🔥🙌')).toHaveLength(2);
+    expect(searchCatalogProducts(FIXTURES, '🔥')).toHaveLength(2);
   });
 
-  it('recherche : texte + emoji = 0 résultat (limite documentée, traitement E4)', () => {
-    // La normalisation conserve les emojis : « basket 🔥 » exige la sous-chaîne
-    // entière dans le nom -> 0. Comportement actuel figé ici pour éviter toute
-    // régression silencieuse ; amélioration prévue en E4 (Search UX).
-    expect(searchCatalogProducts(FIXTURES, 'basket 🔥👟')).toEqual([]);
+  it('recherche : texte + emoji = le texte trouve les articles (corrigé en E4)', () => {
+    // E4 (décision) : les emojis de la requête sont ignorés par la
+    // normalisation — « basket 🔥 » équivaut désormais à « basket ».
+    expect(searchCatalogProducts(FIXTURES, 'basket 🔥👟')).toHaveLength(2);
+    expect(searchCatalogProducts(FIXTURES, 'Basket 🔥')).toHaveLength(2);
     // contrôle sain adjacent : le texte seul trouve bien les articles.
     expect(searchCatalogProducts(FIXTURES, 'basket')).toHaveLength(2);
   });
