@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { cloudinary } from '@/lib/cloudinary';
+import { cloudinary, isAllowedMediaFolder } from '@/lib/cloudinary';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { enforceRateLimit } from '@/lib/rateLimit';
 import { recordSecurityEvent } from '@/lib/securityAudit';
@@ -7,11 +7,8 @@ import { recordSecurityEvent } from '@/lib/securityAudit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_FOLDERS = new Set([
-  'perscadors/hero',
-  'perscadors/testimonials',
-  'perscadors/ambience'
-]);
+// Dossiers autorisés : cf. isAllowedMediaFolder (lib/cloudinary) — sections
+// contenu en égalité stricte + vidéos produit « perscadors/products/<id> ».
 
 export async function POST(request: Request) {
   const rate = await enforceRateLimit(request, 'cloudinary-signature');
@@ -35,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   const safeFolder = typeof folder === 'string' ? folder.trim() : 'perscadors/hero';
-  if (!ALLOWED_FOLDERS.has(safeFolder)) {
+  if (!isAllowedMediaFolder(safeFolder)) {
     return NextResponse.json({ error: 'Destination média invalide.' }, { status: 400 });
   }
 

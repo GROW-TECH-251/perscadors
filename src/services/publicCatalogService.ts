@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AdminCategory, AdminProduct, AdminOutfit } from '@/admin/types';
 import { products as fallbackProducts } from '@/data/products';
 import { normalizeProductAttribute } from '@/utils/normalizeProductAttribute';
@@ -185,6 +185,31 @@ export function getFallbackCatalogSnapshot(): PublicCatalogSnapshot {
   };
 }
 
+// Phase finale 09/2026 (E1) — ordre public des HP Looks : position définie
+// dans l'admin (1 = premier affiché), puis créations récentes. Repli
+// résilient : si la colonne position n'existe pas encore en base (migration
+// add_outfit_position.sql non exécutée), on retombe sur l'ordre historique
+// created_at DESC — le déploiement ne dépend donc d'aucun ordre SQL/push.
+async function fetchVisibleOutfitsOrdered(db: SupabaseClient): Promise<{ data: AdminOutfit[] | null; error: string | null }> {
+  const positioned = await db
+    .from('outfits')
+    .select('*')
+    .eq('visible', true)
+    .order('position', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false });
+  if (!positioned.error) {
+    return { data: (positioned.data || []) as AdminOutfit[], error: null };
+  }
+  const legacy = await db
+    .from('outfits')
+    .select('*')
+    .eq('visible', true)
+    .order('created_at', { ascending: false });
+  return legacy.error
+    ? { data: null, error: legacy.error.message }
+    : { data: (legacy.data || []) as AdminOutfit[], error: null };
+}
+
 function normalizeOutfitRows(rows: AdminOutfit[] | null | undefined, products: Product[]): Outfit[] {
   if (!rows || rows.length === 0) return [];
 
@@ -225,11 +250,7 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
       .select('*')
       .eq('visible', true)
       .order('position', { ascending: true }),
-    supabase
-      .from('outfits')
-      .select('*')
-      .eq('visible', true)
-      .order('created_at', { ascending: false })
+    fetchVisibleOutfitsOrdered(supabase)
   ]);
 
   if (productsResponse.error) {
@@ -281,7 +302,7 @@ export async function fetchServerCatalogSnapshot(): Promise<PublicCatalogSnapsho
   const [productsResponse, categoriesResponse, outfitsResponse] = await Promise.all([
     client.from('products').select('*').eq('visible', true).order('created_at', { ascending: false }),
     client.from('categories').select('*').eq('visible', true).order('position', { ascending: true }),
-    client.from('outfits').select('*').eq('visible', true).order('created_at', { ascending: false })
+    fetchVisibleOutfitsOrdered(client)
   ]);
 
   if (productsResponse.error) {
@@ -329,13 +350,27 @@ export function searchCatalogProducts(products: Product[], query: string): Produ
     return products;
   }
 
-  return products.filter((product) => {
-    return (
-      normalizeProductAttribute(product.name).includes(normalizedQuery) ||
-      normalizeProductAttribute(product.category).includes(normalizedQuery) ||
-      normalizeProductAttribute(product.description).includes(normalizedQuery)
-    );
-  });
+  // E5 (Riel, adapté) — Pertinence : égalité exacte < commence par < contient
+  // (nom) < catégorie < description ; hors-match exclus (score 5). L'ordre
+  // initial (index) départage les égalités : tri stable, pas de surprise.
+  // Scoring fusionné avec la normalisation consolidée (accents pliés, casse
+  // fr-FR, emojis ignorés) : « Basket 🔥 » reste trouvable par « basket ».
+  return products
+    .map((product, index) => {
+      const name = normalizeProductAttribute(product.name);
+      const category = normalizeProductAttribute(product.category);
+      const description = normalizeProductAttribute(product.description);
+      const score = name === normalizedQuery ? 0 :
+        name.startsWith(normalizedQuery) ? 1 :
+          name.includes(normalizedQuery) ? 2 :
+            category.includes(normalizedQuery) ? 3 :
+              description.includes(normalizedQuery) ? 4 : 5;
+
+      return { product, index, score };
+    })
+    .filter(({ score }) => score < 5)
+    .sort((left, right) => left.score - right.score || left.index - right.index)
+    .map(({ product }) => product);
 }
 
 export function getCatalogProductImage(product: Product): string {

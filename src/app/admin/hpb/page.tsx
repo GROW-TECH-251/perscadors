@@ -35,6 +35,7 @@ export default function AdminHpbPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOutfit, setEditingOutfit] = useState<AdminOutfit | null>(null);
   const [name, setName] = useState('');
+  const [position, setPosition] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -148,11 +149,13 @@ export default function AdminHpbPage() {
     if (outfit) {
       setEditingOutfit(outfit);
       setName(outfit.name);
+      setPosition(outfit.position != null ? String(outfit.position) : '');
       setImageUrl(outfit.image_url);
       setSelectedProductIds(outfit.product_ids || []);
     } else {
       setEditingOutfit(null);
       setName('');
+      setPosition('');
       setImageUrl('');
       setSelectedProductIds([]);
     }
@@ -205,6 +208,8 @@ export default function AdminHpbPage() {
     try {
       const payload = {
         name: name.trim(),
+        // Phase finale 09/2026 (E1) — ordre d'affichage public (1 = premier, vide = fin de liste).
+        position: position.trim() === '' ? null : Number(position),
         image_url: imageUrl,
         custom_price: null, // Le trigger Supabase calcule toujours le total depuis product_ids.
         product_ids: selectedProductIds,
@@ -492,6 +497,22 @@ export default function AdminHpbPage() {
               <p className="text-sm font-medium text-brand-text">Prix calculé automatiquement</p>
               <p className="mt-1 text-xs text-brand-text-muted">Le total est recalculé depuis les produits associés. Aucun prix manuel n’est nécessaire.</p>
             </div>
+
+                  {/* E1 — ordre d'affichage public du look (1 = premier) */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#888880] mb-2">
+                      Ordre d’affichage (1 = premier)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={position}
+                      onChange={(e) => setPosition(e.target.value)}
+                      placeholder="Auto (fin de liste)"
+                      className="w-full rounded-lg border border-brand-gold/20 bg-[#0F0F0F] px-4 py-3 text-sm text-brand-text focus:outline-none focus:border-brand-gold/60"
+                    />
+                  </div>
+
           </div>
 
           <div className="space-y-2">

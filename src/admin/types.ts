@@ -299,6 +299,8 @@ export interface AdminOutfit {
   custom_price: number | null;
   product_ids: number[];
   visible: boolean;
+  /** Phase finale 09/2026 — ordre d'affichage public (1 = premier). Null = fin de liste. */
+  position?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -309,6 +311,7 @@ export interface OutfitFormData {
   custom_price?: number | null;
   product_ids: number[];
   visible: boolean;
+  position?: number | null;
 }
 
 // ============================================
