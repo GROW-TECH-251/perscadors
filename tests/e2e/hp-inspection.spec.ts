@@ -14,11 +14,29 @@ test.describe('E1 — HP inspection (page /looks)', () => {
   });
 
   test('clic sur une pièce -> la fiche produit s’ouvre (inspection réelle)', async ({ page }) => {
+    // E7-suivi : sur données réelles, une navigation client dont le rendu
+    // plante est ANNULÉE (l'URL ne change jamais). On collecte donc les
+    // erreurs de page/console pendant le test pour livrer le diagnostic avec
+    // l'échec au lieu d'un simple timeout.
+    const erreurs: string[] = [];
+    page.on('pageerror', (erreur) => erreurs.push(`pageerror: ${String(erreur).slice(0, 250)}`));
+    page.on('console', (message) => {
+      if (message.type() === 'error') erreurs.push(`console: ${message.text().slice(0, 250)}`);
+    });
     await page.goto('/looks');
     const piece = page.locator('a[href^="/produit/"]').first();
     await piece.waitFor({ state: 'visible', timeout: 20000 });
     await piece.click();
-    await page.waitForURL(/\/produit\//, { timeout: 15000 });
+    try {
+      // 'commit' : résolution dès l'engagement de navigation (plus tôt que load).
+      await page.waitForURL(/\/produit\//, { timeout: 30000, waitUntil: 'commit' });
+    } catch (erreurPreliminaire) {
+      throw new Error(
+        `Clic sur la pièce sans navigation vers /produit/. URL restée: ${page.url()} — ` +
+        `erreurs collectées: ${erreurs.slice(0, 5).join(' || ') || 'aucune'} — ` +
+        `cause: ${String(erreurPreliminaire).slice(0, 150)}`
+      );
+    }
     expect(page.url()).toContain('/produit/');
   });
 
