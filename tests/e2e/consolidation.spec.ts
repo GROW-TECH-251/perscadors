@@ -8,20 +8,21 @@ test.describe('Consolidation — recherche & no-results', () => {
   test('E2E 1 — recherche navbar trouve un produit existant', async ({ page }) => {
     await page.goto('/looks');
     // Mobile : le champ vit derrière la loupe (aria-label dédié). Le clic peut
-    // précéder l'hydratation React au tout premier chargement -> retenter.
+    // précéder l'hydratation React -> retenter SANS course de toggle : on ne
+    // re-clique QUE si le champ reste caché, et on vérifie juste après
+    // (l'ancien double-clic pouvait ouvrir PUIS refermer le champ).
     const loupe = page.locator('button[aria-label="Ouvrir la barre de recherche"]');
-    const champ = 'input[placeholder="Rechercher..."]';
+    const champ = page.locator('input[placeholder="Rechercher..."]');
     if (await loupe.isVisible()) {
-      await loupe.click();
-      try {
-        await page.waitForSelector(champ, { state: 'visible', timeout: 3000 });
-      } catch {
-        await loupe.click();
-      }
+      await expect(async () => {
+        if (!(await champ.isVisible())) {
+          await loupe.click();
+        }
+        await expect(champ).toBeVisible({ timeout: 1500 });
+      }).toPass({ timeout: 20000 });
     }
-    await page.waitForSelector(champ, { state: 'visible' });
-    await page.fill('input[placeholder="Rechercher..."]', 'basket');
-    await page.press('input[placeholder="Rechercher..."]', 'Enter');
+    await champ.fill('basket');
+    await champ.press('Enter');
     await page.waitForURL(/\/produit\//, { timeout: 15000 });
     expect(page.url()).toContain('/produit/');
   });
