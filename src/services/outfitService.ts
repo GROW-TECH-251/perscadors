@@ -88,6 +88,7 @@ export async function createOutfit(formData: OutfitFormData): Promise<ApiRespons
       custom_price: formData.custom_price ?? null,
       product_ids: formData.product_ids || [],
       visible: formData.visible ?? true,
+      position: formData.position ?? null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }])

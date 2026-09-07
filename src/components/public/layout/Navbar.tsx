@@ -5,6 +5,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { normalizeProductAttribute } from '@/utils/normalizeProductAttribute';
 import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { fetchActiveAssetBySection } from '@/services/mediaService';
@@ -24,6 +25,15 @@ export const Navbar: React.FC = () => {
   const [realtimeVersion, setRealtimeVersion] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
+  // E5 (Riel, adapté) — Suggestions en direct : les 3 meilleurs résultats
+  // (score searchCatalogProducts). Garde E4 : la requête est normalisée avant
+  // mesure — une requête 100% emoji (normalisée vide => tout le catalogue)
+  // n'affiche JAMAIS de suggestions absurdes.
+  const normalizedSuggestionQuery = normalizeProductAttribute(searchQuery);
+  const searchSuggestions = useMemo(
+    () => normalizedSuggestionQuery.length >= 2 ? searchProducts(normalizedSuggestionQuery).slice(0, 3) : [],
+    [searchProducts, normalizedSuggestionQuery]
+  );
 
   useEffect(() => {
     const mountedTimer = setTimeout(async () => {
@@ -86,6 +96,17 @@ export const Navbar: React.FC = () => {
     };
   }, []);
 
+  // E4 — Écho URL du champ de recherche : la requête affichée est celle de la
+  // page courante (?search=). Hors contexte de recherche, le champ est vide.
+  // L'URL reste l'unique vérité : aucun état fantôme après navigation. (Lu via
+  // window.location plutôt que useSearchParams pour ne pas exiger de boundary
+  // Suspense au prerender des pages statiques.)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronisation d'un état externe (URL) au changement de route : c'est le cas d'usage légitime d'un effet, un seul setState par navigation, aucun rendu en cascade.
+    setSearchQuery(params.get('search') ?? '');
+  }, [pathname]);
+
   useShopSettingsRealtime(() => { setRealtimeVersion((version) => version + 1); });
   useSiteAssetsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
@@ -109,7 +130,14 @@ export const Navbar: React.FC = () => {
       return;
     }
 
-    const normalizedQuery = searchQuery.toLowerCase().trim();
+    // E4 — Une requête vide après normalisation (emojis seuls, espaces) ne
+    // doit lancer AUCUNE navigation : sans garde, « 🔥 » normalisé en vide
+    // ramènerait TOUS les produits et emmènerait au premier d'entre eux.
+    if (!normalizeProductAttribute(searchQuery)) {
+      return;
+    }
+
+    const normalizedQuery = normalizeProductAttribute(searchQuery);
     const matchedProduct = searchProducts(normalizedQuery)[0];
     const matchedCategory = categories.find((category) => {
       return (
@@ -119,7 +147,7 @@ export const Navbar: React.FC = () => {
     });
 
     if (matchedProduct) {
-      router.push(`/produit/${matchedProduct.id}`);
+      router.push(`/produit/${matchedProduct.id}?search=${encodeURIComponent(searchQuery.trim())}`);
     } else if (matchedCategory) {
       router.push(`/categorie/${matchedCategory.slug}`);
     } else {
@@ -129,7 +157,8 @@ export const Navbar: React.FC = () => {
 
     setIsSearchOpen(false);
     setIsMobileMenuOpen(false);
-    setSearchQuery('');
+    // E4 — la saisie n'est plus effacée : elle persiste dans le champ (et
+    // l'effet d'écho la resynchronise avec ?search= à chaque navigation).
   };
 
   return (
@@ -175,23 +204,49 @@ export const Navbar: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-5">
-          <form
-            onSubmit={handleSearchSubmit}
-            className={`flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/95 transition-all duration-(--motion-fast) ease-out-luxe ${
-              isSearchOpen ? 'absolute right-12 top-4 w-[calc(100%-40px)] max-w-[240px] sm:relative sm:right-0 sm:top-0 sm:w-64 opacity-100 z-50 shadow-lg backdrop-blur-sm' : 'w-0 opacity-0 pointer-events-none lg:opacity-100 lg:w-48 lg:pointer-events-auto'
+          <div
+            className={`relative ${
+              isSearchOpen
+                ? 'absolute right-12 top-4 w-[calc(100%-40px)] max-w-[240px] opacity-100 z-50 sm:relative sm:right-0 sm:top-0 sm:w-64'
+                : 'w-0 opacity-0 pointer-events-none lg:opacity-100 lg:w-48 lg:pointer-events-auto'
             }`}
           >
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="bg-transparent border-none text-brand-text text-sm focus:outline-none w-full"
-            />
-            <button type="submit" className="text-brand-gold hover:text-brand-gold-light cursor-pointer" aria-label="Valider la recherche" title="Valider la recherche">
-              <Search size={18} />
-            </button>
-          </form>
+            {/* E5 : classes d'ouverture/fermeture sur le WRAPPER — le formulaire
+                ouvert (absolute, mobile) s'ancre au HEADER, pas au wrapper ; le
+                dropdown des suggestions s'ancre au wrapper (positionné partout). */}
+            <form
+              onSubmit={handleSearchSubmit}
+              className="flex items-center border border-brand-gold/20 rounded-full px-3 py-1 bg-brand-bg-alt/95 transition-all duration-(--motion-fast) ease-out-luxe w-full"
+            >
+              <input
+                type="text"
+                placeholder="Rechercher..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="bg-transparent border-none text-brand-text text-sm focus:outline-none w-full"
+                aria-autocomplete="list"
+                aria-controls="navbar-search-suggestions"
+              />
+              <button type="submit" className="text-brand-gold hover:text-brand-gold-light cursor-pointer" aria-label="Valider la recherche" title="Valider la recherche">
+                <Search size={18} />
+              </button>
+            </form>
+            {searchSuggestions.length > 0 && (
+              <div id="navbar-search-suggestions" role="listbox" className="absolute top-full right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-brand-gold/20 bg-brand-bg-alt/95 p-1 shadow-xl backdrop-blur-md">
+                {searchSuggestions.map((suggestion) => (
+                  <Link
+                    key={suggestion.id}
+                    href={`/produit/${suggestion.id}?search=${encodeURIComponent(searchQuery.trim())}`}
+                    role="option"
+                    onClick={() => { setIsSearchOpen(false); }}
+                    className="block truncate px-3 py-2 text-sm text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold"
+                  >
+                    {suggestion.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
 
           <button
             onClick={() => setIsSearchOpen(!isSearchOpen)}

@@ -17,7 +17,11 @@ export const OutfitCarousel: React.FC = () => {
   const { settings } = usePublicSettings();
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const dragState = useRef({ isDragging: false, startX: 0, startScrollLeft: 0 });
+  // Seuil (px) au-delà duquel un appui devient un drag : en dessous, le
+  // pointerdown/mouseup est traité comme un clic sur la carte.
+  const DRAG_CAPTURE_THRESHOLD_PX = 6;
+
+  const dragState = useRef({ isDragging: false, startX: 0, startScrollLeft: 0, hasCapture: false });
   const isAutoPausedRef = useRef(false);
 
   // Performance P0 : Ne plus dupliquer 64 images (32*2) pour infinite scroll
@@ -38,9 +42,13 @@ export const OutfitCarousel: React.FC = () => {
       isDragging: true,
       startX: event.clientX,
       startScrollLeft: container.scrollLeft,
+      hasCapture: false,
     };
 
-    container.setPointerCapture(event.pointerId);
+    // NE PAS setPointerCapture ici : la capture active dès le pointerdown
+    // détourne l'événement click vers le track (spéc. Pointer Events), ce qui
+    // empêchait le onClick des cartes d'ouvrir la LookModal au clic souris.
+    // La capture est prise dans handlePointerMove dès qu'un vrai drag démarre.
     container.style.cursor = 'grabbing';
   };
 
@@ -49,6 +57,16 @@ export const OutfitCarousel: React.FC = () => {
     if (!container || !dragState.current.isDragging) return;
 
     const deltaX = event.clientX - dragState.current.startX;
+    if (!dragState.current.hasCapture && Math.abs(deltaX) > DRAG_CAPTURE_THRESHOLD_PX) {
+      // Vrai drag en cours : on capture maintenant seulement. Un simple clic
+      // (aucun déplacement) reste donc libre d'atteindre la carte et sa modale.
+      dragState.current.hasCapture = true;
+      try {
+        container.setPointerCapture(event.pointerId);
+      } catch {
+        // pointeur déjà relâché ; le drag s'arrêtera proprement au pointerup
+      }
+    }
     container.scrollLeft = dragState.current.startScrollLeft - deltaX;
   };
 

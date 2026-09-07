@@ -78,3 +78,60 @@ describe('Unit — IMP-09 Modal Look', () => {
     expect(cart).toContain('addMultipleToCart = (productsList: Product[])');
   });
 });
+
+// Phase finale 09/2026 (E1) — HP inspection : un outfit dont les pièces ne
+// sont pas encore reliées (products: []) ne doit JAMAIS présenter une modale
+// vide/cassée : message explicite + relais WhatsApp conservé, total 0 FCFA
+// et « Recréer ce look » (panier vide) masqués.
+describe('Unit — E1 Modal Look : état vide gracieux', () => {
+  it('l’invite s’adapte (assemblage) quand aucune pièce n’est reliée', async () => {
+    const modal = await readFile('src/components/public/LookModal.tsx', 'utf-8');
+    expect(modal).toContain("outfit.products.length > 0");
+    expect(modal).toContain('Look en cours d’assemblage.');
+    expect(modal).toContain('Les pièces de ce look ne sont pas encore reliées au catalogue.');
+  });
+
+  it('total et « Recréer ce look » masqués sans pièces — WhatsApp toujours disponible', async () => {
+    const modal = await readFile('src/components/public/LookModal.tsx', 'utf-8');
+    const sansTotal = modal.includes('outfit.products.length === 0 && (');
+    expect(sansTotal).toBe(true);
+    // le bouton WhatsApp (handleWhatsApp) reste hors condition produits
+    const waIdx = modal.indexOf('onClick={handleWhatsApp}');
+    const condAvant = modal.lastIndexOf('outfit.products.length > 0 && (', waIdx);
+    const condApres = modal.indexOf(')}', condAvant);
+    expect(condAvant === -1 || condApres < waIdx).toBe(true);
+  });
+});
+
+describe('Unit — E1 Page /looks : carte inline sans pièces', () => {
+  it('l’en-tête « Pièces » et le total disparaissent, note d’assemblage affichée', async () => {
+    const page = await readFile('src/app/looks/hp-looks-client.tsx', 'utf-8');
+    expect(page).toContain('outfit.products.length > 0 ? (');
+    expect(page).toContain('Look en cours d’assemblage');
+    expect(page).toContain('ne sont pas encore reliées au catalogue');
+    // Le bouton WhatsApp « Recréer ce look » reste TOUJOURS disponible.
+    const recreer = page.indexOf('Recréer ce look');
+    expect(recreer).toBeGreaterThan(-1);
+  });
+});
+
+describe('Unit — E1-bis LookModal : inspectable à toute hauteur (figé/resp)', () => {
+  it('le panneau scrolle à TOUTES les tailles (plus de md:overflow-visible)', async () => {
+    const src = await readFile('src/components/public/LookModal.tsx', 'utf-8');
+    expect(src).not.toContain('md:overflow-visible');
+    expect(src).toContain('max-h-[90vh] overflow-y-auto');
+  });
+
+  it('un seul contexte de scroll : la liste de pièces ne scrolle plus en interne', async () => {
+    const src = await readFile('src/components/public/LookModal.tsx', 'utf-8');
+    expect(src).not.toContain('max-h-48');
+    expect(src).not.toContain('md:max-h-none');
+  });
+
+  it("le bloc état-vide est HORS du map (visible pour un look sans pièces)", async () => {
+    const src = await readFile('src/components/public/LookModal.tsx', 'utf-8');
+    const mapZone = src.slice(src.indexOf('outfit.products.map'), src.indexOf('</Link>'));
+    expect(mapZone).not.toContain('length === 0');
+    expect(src).toContain('Les pièces de ce look ne sont pas encore reliées au catalogue');
+  });
+});

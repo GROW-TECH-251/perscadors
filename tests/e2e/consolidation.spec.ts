@@ -25,18 +25,49 @@ test.describe('Consolidation — recherche & no-results', () => {
     await page.waitForURL(/\/produit\//, { timeout: 15000 });
     expect(page.url()).toContain('/produit/');
   });
+  test('E2E 8 — E4 Search UX : requête persistante navbar + écho URL + garde emojis', async ({ page }) => {
+    // Écho : arrivée directe avec ?search= -> le champ navbar affiche la requête.
+    await page.goto('/categorie/basket-pour-homme?search=zzzzqqqq');
+    const champ = page.locator('input[placeholder="Rechercher..."]');
+    const loupe = page.locator('button[aria-label="Ouvrir la barre de recherche"]');
+    if (!(await champ.isVisible())) {
+      await loupe.click();
+      await champ.waitFor({ state: 'visible', timeout: 5000 });
+    }
+    await expect(champ).toHaveValue('zzzzqqqq');
+    // Écho catégorie : la bannière rappelle la recherche en cours.
+    await expect(page.getByText(/Résultats de recherche pour/i).first()).toBeVisible();
+
+    // Garde emojis : une requête 100% emoji ne déclenche AUCUNE navigation.
+    await champ.fill('🔥');
+    await champ.press('Enter');
+    await page.waitForTimeout(700);
+    expect(page.url()).toContain('/categorie/basket-pour-homme');
+    expect(page.url()).not.toContain('search=%F0%9F%94%A5');
+
+    // Écho = URL : en quittant le contexte de recherche, le champ se vide.
+    // (Mobile : les liens vivent dans le menu burger — l'ouvrir au besoin.)
+    const lienLooks = page.getByRole('link', { name: 'HP Looks' }).first();
+    if (!(await lienLooks.isVisible())) {
+      await page.click('button[aria-label="Menu principal de navigation"]', { timeout: 10000 });
+    }
+    await lienLooks.click({ timeout: 10000 });
+    await page.waitForURL(/\/looks/, { timeout: 15000 });
+    await expect(champ).toHaveValue('');
+  });
 
   test('E2E 2 — recherche inexistante -> état no-results visible', async ({ page }) => {
     await page.goto('/categorie/basket-pour-homme?search=zzzzqqqq');
     await expect(page.getByText('Aucun article ne correspond à', { exact: false })).toBeVisible({ timeout: 15000 });
   });
 
-  test('E2E 3 — CTA « Ajouter une photo » -> parcours existant avec contexte', async ({ page }) => {
+  test('E2E 3 — CTA « Ajouter une photo » -> modale inline avec contexte (E5)', async ({ page }) => {
     await page.goto('/categorie/basket-pour-homme?search=nike-air-max');
-    const cta = page.getByRole('link', { name: /Ajouter une photo/i });
+    // E5 (Riel) : le CTA est désormais un BOUTON inline (plus de redirection
+    // vers la home ?demande=) — la modale s'ouvre sur place.
+    const cta = page.getByRole('button', { name: /Ajouter une photo/i }).first();
     await expect(cta).toBeVisible({ timeout: 15000 });
     await cta.click();
-    await page.waitForURL(/demande=nike-air-max/, { timeout: 15000 });
     // La modale existante s'ouvre (parcours unique, pas de nouvelle page).
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15000 });
     // La recherche initiale est transmise en RÉFÉRENCE (valeur du champ, §20).
@@ -53,10 +84,10 @@ test.describe('Consolidation — recherche & no-results', () => {
       .toBe(true);
   });
 
-  test('E2E 4 — mobile : parcours complet no-results -> photo', async ({ page }) => {
+  test('E2E 4 — mobile : parcours complet no-results -> photo (inline E5)', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/categorie/basket-pour-homme?search=model-x-inexistant');
-    const cta = page.getByRole('link', { name: /Ajouter une photo/i });
+    const cta = page.getByRole('button', { name: /Ajouter une photo/i }).first();
     await expect(cta).toBeVisible({ timeout: 15000 });
     const box = await cta.boundingBox();
     expect(box && box.height).toBeGreaterThanOrEqual(44); // tactile
