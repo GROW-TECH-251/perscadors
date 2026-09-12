@@ -9,6 +9,7 @@ import { useCatalog } from '@/context/CatalogContext';
 import { useCart } from '@/context/CartContext';
 import { usePublicSettings } from '@/context/PublicSettingsContext';
 import { openWhatsApp } from '@/services/whatsappService';
+import { resolvePublicImageUrl } from '@/services/orderService';
 import { Product, Size } from '@/types';
 import {Play,  ArrowLeft, MessageSquareCode, ShoppingBag, Check, Maximize2 } from 'lucide-react';
 import { ProductLightbox } from '@/components/public/ProductLightbox';
@@ -111,7 +112,8 @@ function ProductDetailContent({ product, suggestions }: ProductDetailContentProp
       `📦 *Produit :* ${product.name}\n` +
       `📏 *Taille :* ${selectedSize}\n` +
       `🎨 *Couleur :* ${selectedColor}\n` +
-      `💰 *Prix :* ${product.price.toLocaleString()} FCFA\n\n` +
+      `💰 *Prix :* ${product.price.toLocaleString()} FCFA\n` +
+      `📸 *Photo :* ${resolvePublicImageUrl(product.image_url || product.images[0])}\n\n` +
       `📍 _Livraison partout au Bénin._\n` +
       `Peux-tu me confirmer la dispo ? Merci ! 🙌`;
 

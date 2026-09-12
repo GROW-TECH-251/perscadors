@@ -133,7 +133,8 @@ export function buildWhatsAppOrderMessage(
     .map((item) => {
       const base = `• ${item.name} — ${item.quantity} × ${(item.price * item.quantity).toLocaleString()} FCFA\n  ${item.size}, ${item.color}`;
       const photo = (item as { image?: string | null }).image?.trim();
-      return photo ? `${base}\n  Photo : ${photo}` : base;
+      const publicPhoto = resolvePublicImageUrl(photo);
+      return publicPhoto ? `${base}\n  Photo : ${publicPhoto}` : base;
     })
     .join('\n');
 
@@ -146,6 +147,25 @@ export function buildWhatsAppOrderMessage(
     orderSubtotal: `${payload.subtotal.toLocaleString()} FCFA`,
     orderTotal: `${payload.total.toLocaleString()} FCFA`
   });
+}
+
+export function resolvePublicImageUrl(image: string | null | undefined): string {
+  const value = image?.trim();
+  if (!value) return '';
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  const origin = typeof window !== 'undefined'
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_SITE_URL?.trim() || 'https://perscadors.vercel.app';
+
+  try {
+    return new URL(value, origin).toString();
+  } catch {
+    return value;
+  }
 }
 
 // ============================================

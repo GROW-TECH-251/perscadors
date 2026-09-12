@@ -30,7 +30,7 @@ describe('Unit — Finalisation : stock, whatsapp, hp looks', () => {
   it('WHATSAPP commande : la photo publique de chaque article est dans le message', async () => {
     const svc = await readFile('src/services/orderService.ts', 'utf-8');
     expect(svc).toContain('const photo = (item as { image?: string | null }).image?.trim();');
-    expect(svc).toContain('Photo : ${photo}');
+    expect(svc).toContain('Photo : ${publicPhoto}');
   });
 
   it('WHATSAPP ajouter-une-photo : texte copie au presse-papier avant le partage natif (caption Android perdue)', async () => {
