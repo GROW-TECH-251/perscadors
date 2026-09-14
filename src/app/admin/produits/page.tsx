@@ -11,8 +11,8 @@ import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminToast, AdminSkeleton, AdminConfirmDialog, AdminModal, AdminInput } from '@/admin/components';
 import { Package, Plus, Edit, Trash2, Download, Check, X, Eye, EyeOff } from 'lucide-react';
 import { deleteProduct, fetchAdminProducts, invalidateAdminProductsCache, updateProduct } from '@/services/productService';
-import { countProductsInCategory, createCategory, deleteCategorySafely, fetchCategories, renameCategory, updateCategory } from '@/services/categoryService';
-import { AUTRES_SLUG, buildDeleteConfirmMessage, isAutresCategory, slugifyCategoryName } from '@/admin/categoryManagement';
+import { countProductsInCategory, createCategory, deleteCategorySafely, fetchCategories, renameCategory, reorderCategories, updateCategory } from '@/services/categoryService';
+import { AUTRES_SLUG, buildDeleteConfirmMessage, headerCategorySlugs, isAutresCategory, slugifyCategoryName } from '@/admin/categoryManagement';
 import type { AdminProduct, AdminCategory } from '@/admin/types';
 import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
 import { WhatsAppRecipientDialog } from '@/components/admin/WhatsAppRecipientDialog';
@@ -47,6 +47,8 @@ export default function AdminProductsPage() {
   const [pendingDeleteCategory, setPendingDeleteCategory] = useState<AdminCategory | null>(null);
   const [pendingDeleteCount, setPendingDeleteCount] = useState<number | null>(null);
   const [categoryDeleting, setCategoryDeleting] = useState(false);
+  // E10 — réorganisation de l'ordre (positions) depuis la modale.
+  const [categoryReordering, setCategoryReordering] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -166,6 +168,9 @@ export default function AdminProductsPage() {
     }
   };
 
+  // E10 — slugs des 4 premières catégories visibles (règle du header public).
+  const headerSlugs = headerCategorySlugs(categories);
+
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter =
@@ -239,6 +244,18 @@ export default function AdminProductsPage() {
       variant: 'success'
     });
   };
+  const moveCategory = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (categoryReordering || target < 0 || target >= categories.length) return;
+    const reordered = [...categories];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(target, 0, moved);
+    setCategoryReordering(true);
+    const result = await reorderCategories(reordered.map((category) => category.id));
+    setCategoryReordering(false);
+    if (result.error) { setToast({ message: result.error, variant: 'error' }); return; }
+    await loadCategories();
+  };
   const askRemoveCategory = async (category: AdminCategory) => {
     if (isAutresCategory(category)) return;
     setPendingDeleteCount(null);
@@ -272,7 +289,8 @@ export default function AdminProductsPage() {
         <div className="space-y-4">
           <div className="flex gap-2"><AdminInput label="Nouvelle catégorie" value={newCategoryName} onChange={setNewCategoryName} placeholder="Ex : Baskets" /><AdminButton type="button" variant="primary" loading={categorySaving} onClick={addCategory}>Ajouter</AdminButton></div>
           <p className="text-sm text-brand-text-muted">Les catégories restent secondaires : elles servent à organiser le catalogue public.</p>
-          {categories.map((category) => (
+          <p className="text-xs text-brand-text-muted">Les 4 premières catégories visibles alimentent le menu du header public ; « HP Looks » y reste fixe en 5e position. Réorganisez avec les flèches.</p>
+          {categories.map((category, index) => (
             <div key={category.id} className="rounded-xl border border-brand-gold/10 p-3">
               {renamingId === category.id ? (
                 <div className="flex flex-wrap items-end gap-2">
@@ -284,12 +302,16 @@ export default function AdminProductsPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-medium text-brand-text">
+                      <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-brand-gold/25 text-[10px] text-brand-text-muted" aria-label="Position">{index + 1}</span>
                       {category.name}
+                      {headerSlugs.includes(category.category) && <span className="ml-2 rounded-full bg-blue-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">Header</span>}
                       {isAutresCategory(category) && <span className="ml-2 rounded-full bg-brand-gold/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-gold">Système</span>}
                     </p>
                     <p className="text-xs text-brand-text-muted">{category.visible ? 'Visible' : 'Masquée'} · /categorie/{category.category}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <AdminButton type="button" size="sm" variant="secondary" disabled={categoryReordering || index === 0} onClick={() => moveCategory(index, -1)} aria-label="Monter la catégorie">↑</AdminButton>
+                    <AdminButton type="button" size="sm" variant="secondary" disabled={categoryReordering || index === categories.length - 1} onClick={() => moveCategory(index, 1)} aria-label="Descendre la catégorie">↓</AdminButton>
                     <AdminButton type="button" size="sm" variant="secondary" onClick={() => beginRenameCategory(category)}>Renommer</AdminButton>
                     <AdminButton type="button" size="sm" variant="secondary" onClick={() => toggleCategory(category)}>{category.visible ? 'Masquer' : 'Afficher'}</AdminButton>
                     <AdminButton type="button" size="sm" variant="danger" disabled={isAutresCategory(category)} onClick={() => askRemoveCategory(category)}>Supprimer</AdminButton>

@@ -21,6 +21,22 @@ test.describe('E2E — catégories (E9)', () => {
     await expect(page.locator('h1').first()).toBeVisible();
   });
 
+  test('header public : 4 catégories dans l ordre défini + HP Looks fixe en 5e position (E10)', async ({ page }) => {
+    await page.goto('/');
+    const liens = page.locator('nav a.nav-link');
+    await expect(liens).toHaveCount(6);
+    await expect(liens.nth(0)).toHaveText('Accueil');
+    // Catalogue de repli (sandbox sans base) : ordre historique 1-4.
+    await expect(liens.nth(1)).toHaveText('Baskets Homme');
+    await expect(liens.nth(2)).toHaveText('Complets Streetwear');
+    await expect(liens.nth(3)).toHaveText('Jeans Oversize');
+    await expect(liens.nth(4)).toHaveText('Tapettes & Sandales');
+    // HP Look : 5e position du menu condensé, toujours en dernier.
+    await expect(liens.nth(5)).toHaveText('HP Looks');
+    await expect(liens.nth(5)).toHaveAttribute('href', '/looks');
+    await expect(liens.nth(1)).toHaveAttribute('href', '/categorie/basket-pour-homme');
+  });
+
   test('garde admin : /admin/produits renvoie vers le login sans session', async ({ page }) => {
     await page.goto('/admin/produits');
     await expect(page).toHaveURL(/\/admin\/login/);

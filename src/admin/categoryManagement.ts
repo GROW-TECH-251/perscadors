@@ -42,6 +42,20 @@ export const HISTORICAL_CATEGORY_OPTIONS: Array<{ value: string; label: string }
   { value: 'tapettes-pour-homme', label: 'Tapettes & Sandales' }
 ];
 
+// E10 — règle du header public : les HEADER_CATEGORY_COUNT premières
+// catégories VISIBLES alimentent le menu condensé (pré-ordre : « position »
+// croissante, tel que trié par fetchCategories) ; « HP Looks » est codé en
+// 5e position dans la Navbar — un élément de navigation fixe, pas une
+// catégorie, donc ni déplaçable ni supprimable depuis cette liste.
+export const HEADER_CATEGORY_COUNT = 4;
+
+export function headerCategorySlugs(categories: AdminCategory[]): string[] {
+  return categories
+    .filter((category) => category.visible)
+    .slice(0, HEADER_CATEGORY_COUNT)
+    .map((category) => category.category);
+}
+
 // Options du sélecteur catégorie des formulaires produit : catégories
 // réellement présentes en base (visibles), + la catégorie actuelle du produit
 // (même masquée ou disparue) pour ne jamais corrompre une fiche existante,

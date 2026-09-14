@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   AUTRES_SLUG,
+  headerCategorySlugs,
   HISTORICAL_CATEGORY_OPTIONS,
   buildCategorySelectOptions,
   buildDeleteConfirmMessage,
@@ -72,6 +73,39 @@ describe('buildDeleteConfirmMessage (E9)', () => {
     const message = buildDeleteConfirmMessage('Robes', -1);
     expect(message).toContain("n'a pas pu être vérifié");
     expect(message).toContain('« Autres »');
+  });
+});
+
+describe('headerCategorySlugs (E10 — règle du header public)', () => {
+  it('retourne les 4 premières catégories visibles dans l ordre de position', () => {
+    const slugs = headerCategorySlugs([
+      categorie({ id: 1, name: 'A', category: 'a', position: 1 }),
+      categorie({ id: 2, name: 'B', category: 'b', position: 2 }),
+      categorie({ id: 3, name: 'C', category: 'c', position: 3 }),
+      categorie({ id: 4, name: 'D', category: 'd', position: 4 }),
+      categorie({ id: 5, name: 'E', category: 'e', position: 5 })
+    ]);
+    expect(slugs).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('saute les catégories masquées : la 5e visible prend la place', () => {
+    const slugs = headerCategorySlugs([
+      categorie({ id: 1, name: 'A', category: 'a', position: 1 }),
+      categorie({ id: 2, name: 'B', category: 'b', position: 2, visible: false }),
+      categorie({ id: 3, name: 'C', category: 'c', position: 3 }),
+      categorie({ id: 4, name: 'D', category: 'd', position: 4 }),
+      categorie({ id: 5, name: 'E', category: 'e', position: 5 })
+    ]);
+    expect(slugs).toEqual(['a', 'c', 'd', 'e']);
+  });
+
+  it('retourne moins de 4 slugs si moins de 4 catégories visibles', () => {
+    const slugs = headerCategorySlugs([categorie({ id: 1, name: 'A', category: 'a' })]);
+    expect(slugs).toEqual(['a']);
+  });
+
+  it('retourne un tableau vide sans catégories', () => {
+    expect(headerCategorySlugs([])).toEqual([]);
   });
 });
 
