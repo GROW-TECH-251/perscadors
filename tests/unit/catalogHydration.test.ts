@@ -78,7 +78,9 @@ describe('Unit — PERF-02 Hydratation serveur -> contextes clients', () => {
     expect(page).toContain(marker);
     // Plus AUCUN fetch direct non dédupliqué dans ces pages.
     expect(page).not.toContain('await fetchServerCatalogSnapshot()');
-    expect(page).toContain('export default async function Page()');
+    // E9 : la page /categorie/[slug] prend désormais des params (redirection
+    // des anciens slugs) — l'invariant reste « default export async function Page».
+    expect(page).toContain('export default async function Page(');
   });
 
   it('PublicSettingsContext : rafraîchissement realtime historique intact', async () => {

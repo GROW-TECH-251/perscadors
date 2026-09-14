@@ -167,6 +167,7 @@ export interface AdminCategory {
   visible: boolean;
   position: number;
   order?: number;
+  former_slugs?: string[];
   created_at: string;
   updated_at: string;
 }

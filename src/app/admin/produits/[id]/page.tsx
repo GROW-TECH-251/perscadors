@@ -11,6 +11,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminToast, AdminConfirmDialog } from '@/admin/components';
 import {Video,  Save, X, Upload } from 'lucide-react';
 import { fetchProductById, updateProduct } from '@/services/productService';
+import { HISTORICAL_CATEGORY_OPTIONS, buildCategorySelectOptions } from '@/admin/categoryManagement';
+import { fetchCategories } from '@/services/categoryService';
 import { BUCKETS, compressImage, deleteImageByUrl, deleteProductVideo, uploadProductImage, uploadProductVideo } from '@/services/mediaService';
 import type { ProductFormData } from '@/admin/types';
 
@@ -47,8 +49,24 @@ export default function EditProductPage() {
     visible: true
   });
 
+  // E9 — sélecteur alimenté par la base + catégorie actuelle du produit
+  // préservée (même masquée ou disparue) pour ne jamais corrompre la fiche.
+  const [categoryOptions, setCategoryOptions] = useState(HISTORICAL_CATEGORY_OPTIONS);
+  const [currentCategorySlug, setCurrentCategorySlug] = useState('');
+
   const [newSize, setNewSize] = useState('');
   const [newColor, setNewColor] = useState('');
+
+  // E9 — options du sélecteur : catégories visibles de la base + catégorie
+  // actuelle du produit (si absente de la liste, elle reste proposée).
+  useEffect(() => {
+    let actif = true;
+    fetchCategories().then((cats) => {
+      if (!actif) return;
+      setCategoryOptions(buildCategorySelectOptions(cats, currentCategorySlug || undefined));
+    }).catch(() => undefined);
+    return () => { actif = false; };
+  }, [currentCategorySlug]);
 
   const loadProduct = useCallback(async () => {
     setFetching(true);
@@ -70,6 +88,7 @@ export default function EditProductPage() {
           video_public_id: data.video_public_id || null,
           visible: data.visible
         });
+        setCurrentCategorySlug(data.category);
       }
     } catch (error: unknown) {
       console.error('Erreur chargement produit:', error);
@@ -269,12 +288,7 @@ export default function EditProductPage() {
               label="Catégorie"
               value={formData.category}
               onChange={(value) => setFormData({ ...formData, category: value })}
-              options={[
-                { value: 'basket-pour-homme', label: 'Baskets Homme' },
-                { value: 'complet-pour-homme', label: 'Complets Streetwear' },
-                { value: 'jean-overside-pour-homme', label: 'Jeans Oversize' },
-                { value: 'tapettes-pour-homme', label: 'Tapettes & Sandales' }
-              ]}
+              options={categoryOptions}
               required
             />
             <AdminInput label="Prix (FCFA)" value={formData.price} onChange={(value) => setFormData({ ...formData, price: Number(value) || 0 })} type="number" required />
