@@ -25,7 +25,13 @@ function hasSupabaseAuthCookie(): boolean {
   return document.cookie.split(';').some((entry) => entry.trim().startsWith('sb-') && entry.includes('auth-token'));
 }
 
-export async function signInAdmin(identifier: string, password: string, captchaToken: string | null): Promise<{ ok: boolean; message: string }> {
+export interface AdminSignInResult {
+  ok: boolean;
+  message: string;
+  retryAfterSeconds?: number;
+}
+
+export async function signInAdmin(identifier: string, password: string, captchaToken: string | null): Promise<AdminSignInResult> {
   if (!captchaToken) return { ok: false, message: 'Veuillez terminer la vérification anti-bot.' };
 
   try {
@@ -34,9 +40,19 @@ export async function signInAdmin(identifier: string, password: string, captchaT
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: identifier.trim(), password, captchaToken })
     });
-    const result = await response.json() as { ok?: boolean; message?: string };
+    // E8 : un corps non JSON ne doit plus masquer le statut réel de la réponse.
+    let result: { ok?: boolean; message?: string } = {};
+    try {
+      result = await response.json() as { ok?: boolean; message?: string };
+    } catch {
+      // Corps illisible : le statut HTTP et Retry-After restent exploitables.
+    }
+    // E8 : le serveur renvoie deja Retry-After sur les 429 — même origine, donc
+    // toujours lisible. C'est la source la plus fiable pour le compte a rebours.
+    const retryAfterRaw = Number.parseInt(response.headers.get('Retry-After') ?? '', 10);
+    const retryAfterSeconds = Number.isFinite(retryAfterRaw) && retryAfterRaw > 0 ? retryAfterRaw : undefined;
     if (!response.ok || !result.ok) {
-      return { ok: false, message: result.message || 'Connexion indisponible. Réessayez.' };
+      return { ok: false, message: result.message || 'Connexion indisponible. Réessayez.', retryAfterSeconds };
     }
 
     persistSession(identifier.trim());

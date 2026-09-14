@@ -34,8 +34,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Trop de commandes sont en cours. Réessayez dans quelques minutes.' }, { status: 429, headers: { 'Retry-After': String(orderRate.retryAfterSeconds), 'Cache-Control': 'no-store' } });
   }
 
-  if (!await verifyTurnstile(payload.turnstileToken, request, 'checkout')) {
-    return NextResponse.json({ error: 'La vérification anti-bot a expiré. Réessayez.' }, { status: 403 });
+  const turnstile = await verifyTurnstile(payload.turnstileToken, request, 'checkout');
+  if (!turnstile.valid) {
+    // E8 : meme correctif que le login admin — le token est a usage unique,
+    // le message reflète la cause reelle et le widget est rejoue cote client.
+    const message = turnstile.reason === 'consumed'
+      ? 'La vérification anti-bot a été réinitialisée. Refaites-la puis validez à nouveau votre commande.'
+      : 'La vérification anti-bot a échoué. Réessayez.';
+    return NextResponse.json({ error: message }, { status: 403 });
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();

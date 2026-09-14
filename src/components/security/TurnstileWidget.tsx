@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 
 declare global {
   interface Window {
     turnstile?: {
       render: (container: HTMLElement, options: Record<string, unknown>) => string;
+      reset: (widgetId?: string) => void;
       remove: (widgetId: string) => void;
     };
   }
@@ -35,54 +36,71 @@ function loadTurnstile(): Promise<void> {
   });
 }
 
+export interface TurnstileWidgetHandle {
+  reset: () => void;
+}
+
 interface TurnstileWidgetProps {
   action: 'admin_login' | 'checkout';
   onTokenChange: (token: string | null) => void;
   onError?: () => void;
 }
 
-export function TurnstileWidget({ action, onTokenChange, onError }: TurnstileWidgetProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string | null>(null);
-  const callbackRef = useRef(onTokenChange);
-  const errorRef = useRef(onError);
-  useEffect(() => {
-    callbackRef.current = onTokenChange;
-    errorRef.current = onError;
-  }, [onTokenChange, onError]);
+export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidgetProps>(
+  function TurnstileWidget({ action, onTokenChange, onError }, ref) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const widgetIdRef = useRef<string | null>(null);
+    const callbackRef = useRef(onTokenChange);
+    const errorRef = useRef(onError);
+    useEffect(() => {
+      callbackRef.current = onTokenChange;
+      errorRef.current = onError;
+    }, [onTokenChange, onError]);
 
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
+    // E8 : reset impératif exposé au parent. Le token Turnstile est à usage
+    // unique (consommé par siteverify) ; après toute soumission échouée, le
+    // parent rejoue le défi pour obtenir un token frais sans recharger la page.
+    // turnstile.reset() est l'API officielle Cloudflare pour cela.
+    useImperativeHandle(ref, () => ({
+      reset: () => {
+        callbackRef.current(null);
+        if (widgetIdRef.current && window.turnstile) window.turnstile.reset(widgetIdRef.current);
+      }
+    }), []);
 
-  useEffect(() => {
-    if (!siteKey || !containerRef.current) return;
-    let cancelled = false;
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 
-    loadTurnstile()
-      .then(() => {
-        if (cancelled || !containerRef.current || !window.turnstile) return;
-        widgetIdRef.current = window.turnstile.render(containerRef.current, {
-          sitekey: siteKey,
-          action,
-          callback: (token: string) => callbackRef.current(token),
-          'expired-callback': () => callbackRef.current(null),
-          'error-callback': () => {
-            callbackRef.current(null);
-            errorRef.current?.();
-          }
-        });
-      })
-      .catch(() => errorRef.current?.());
+    useEffect(() => {
+      if (!siteKey || !containerRef.current) return;
+      let cancelled = false;
 
-    return () => {
-      cancelled = true;
-      if (widgetIdRef.current && window.turnstile) window.turnstile.remove(widgetIdRef.current);
-      widgetIdRef.current = null;
-    };
-  }, [action, siteKey]);
+      loadTurnstile()
+        .then(() => {
+          if (cancelled || !containerRef.current || !window.turnstile) return;
+          widgetIdRef.current = window.turnstile.render(containerRef.current, {
+            sitekey: siteKey,
+            action,
+            callback: (token: string) => callbackRef.current(token),
+            'expired-callback': () => callbackRef.current(null),
+            'error-callback': () => {
+              callbackRef.current(null);
+              errorRef.current?.();
+            }
+          });
+        })
+        .catch(() => errorRef.current?.());
 
-  if (!siteKey) {
-    return <p className="text-sm text-red-500">La protection anti-bot est indisponible. Réessayez plus tard.</p>;
+      return () => {
+        cancelled = true;
+        if (widgetIdRef.current && window.turnstile) window.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      };
+    }, [action, siteKey]);
+
+    if (!siteKey) {
+      return <p className="text-sm text-red-500">La protection anti-bot est indisponible. Réessayez plus tard.</p>;
+    }
+
+    return <div ref={containerRef} className="min-h-[65px]" aria-label="Vérification anti-bot" />;
   }
-
-  return <div ref={containerRef} className="min-h-[65px]" aria-label="Vérification anti-bot" />;
-}
+);

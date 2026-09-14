@@ -10,7 +10,7 @@ import { ArrowLeft, Loader2, MessageCircle, ShieldCheck, Truck } from 'lucide-re
 import { useCart } from '@/context/CartContext';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import { buildWhatsAppUrl } from '@/services/whatsappService';
-import { TurnstileWidget } from '@/components/security/TurnstileWidget';
+import { TurnstileWidget, type TurnstileWidgetHandle } from '@/components/security/TurnstileWidget';
 import {
   buildWhatsAppOrderMessage,
   createOrderFromCart,
@@ -37,6 +37,8 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
   const { cartItems, cartTotal, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // E8 : handle de reset du widget anti-bot (token a usage unique).
+  const captchaRef = useRef<TurnstileWidgetHandle>(null);
   // Verrou synchrone : React met l'état à jour de façon asynchrone, ce ref bloque
   // donc un double clic avant le prochain rendu.
   const submissionLockRef = useRef(false);
@@ -106,6 +108,13 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
     } catch (error: unknown) {
       // Le service journalise le détail technique. WhatsApp reste le canal de finalisation.
       console.error('Erreur inattendue lors de la préparation de commande:', error);
+    }
+
+    // E8 : si la commande n'a pas ete persistee, l'appel API a consomme le
+    // token anti-bot. On rejoue le defi pour que la prochaine confirmation
+    // parte avec un token frais (meme correctif que le login admin).
+    if (!wasPersisted) {
+      captchaRef.current?.reset();
     }
 
     // Le message reste personnalisable depuis Réglages. En cas de réseau indisponible,
@@ -195,7 +204,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
       </div>
 
       <div className="px-6 pt-3 bg-brand-bg-alt/80 flex-shrink-0">
-        <TurnstileWidget action="checkout" onTokenChange={setCaptchaToken} onError={() => onError('La vérification anti-bot est indisponible. Réessayez.')} />
+        <TurnstileWidget ref={captchaRef} action="checkout" onTokenChange={setCaptchaToken} onError={() => onError('La vérification anti-bot est indisponible. Réessayez.')} />
       </div>
 
       <div className="border-t border-brand-gold/10 bg-brand-bg-alt/80 px-6 py-5 flex gap-3 backdrop-blur-sm flex-shrink-0">
