@@ -111,6 +111,10 @@ export const Navbar: React.FC = () => {
   useSiteAssetsRealtime(() => { setRealtimeVersion((version) => version + 1); });
 
   const navLinks = useMemo(() => {
+    // E10 — contrat du header : les 4 premières catégories VISIBLES (ordre
+    // « position » défini en admin) + « HP Looks » TOUJOURS en 5e position
+    // (élément de navigation fixe, pas une catégorie). Ne pas modifier sans
+    // revoir tests/e2e/admin-categories.spec.ts.
     const categoryLinks = categories.slice(0, 4).map((category) => ({
       name: category.name,
       href: `/categorie/${category.slug}`
