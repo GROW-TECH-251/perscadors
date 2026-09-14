@@ -26,6 +26,7 @@ export interface CatalogCategory {
   count: number;
   countLabel: string;
   tagline: string;
+  former_slugs?: string[];
 }
 
 export interface Outfit {

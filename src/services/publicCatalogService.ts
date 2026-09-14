@@ -160,7 +160,8 @@ function mergeCategoriesWithProducts(
       ...derivedCategory,
       name: category.name || derivedCategory.name,
       image: category.image_url || derivedCategory.image,
-      tagline: category.description || derivedCategory.tagline
+      tagline: category.description || derivedCategory.tagline,
+      former_slugs: category.former_slugs || []
     };
   });
 
