@@ -15,8 +15,11 @@ export { cloudinary };
 // historique les refusait (400 « Destination média invalide »), rendant
 // impossible tout ajout de vidéo produit. Le segment final est contraint
 // (id numérique, « draft », slug) : aucun traversal (« .. », slash) ne passe.
+// E12-consolidation — doit couvrir EXACTEMENT les sections SECTIONS_CONFIG de
+// la page /admin/media (garde anti-dérive : tests/unit/cloudinaryVideo.test.ts).
 const ALLOWED_SECTION_FOLDERS = new Set([
   'perscadors/hero',
+  'perscadors/logo',
   'perscadors/testimonials',
   'perscadors/ambience'
 ]);
