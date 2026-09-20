@@ -27,6 +27,46 @@ interface LookModalProps {
   onAdd: (outfit: Outfit) => void;
 }
 
+// IMPL-2 (décision C2) — pièce MASQUÉE du catalogue : affichée dans la
+// composition du look (photo, nom, prix) mais NON cliquable — pas de fiche
+// publique — et signalée « Indisponible ». Les pièces visibles restent des
+// liens vers leurs fiches produit.
+function PieceContent({ product }: { product: Outfit['products'][number] }) {
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <div className="relative w-12 h-14 overflow-hidden rounded bg-brand-bg flex-shrink-0">
+          <Image
+            src={product.images[0]}
+            alt={product.name}
+            fill
+            sizes="48px"
+            className="object-cover"
+          />
+        </div>
+
+        <div>
+          <h4 className="font-bebas text-lg leading-tight group-hover:text-brand-gold transition-colors duration-(--motion-micro) ease-out-expo">
+            {product.name}
+          </h4>
+          {product.catalogHidden ? (
+            <span className="text-[10px] uppercase tracking-wider text-brand-text-muted border border-brand-gold/20 rounded px-1.5 py-0.5 inline-block">
+              Indisponible
+            </span>
+          ) : (
+            <span className="text-xs text-brand-text-muted uppercase tracking-wider block">
+              {product.category.replace(/-/g, ' ')}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="font-bold text-sm text-brand-gold">
+        {product.price.toLocaleString()} FCFA
+      </div>
+    </>
+  );
+}
+
 export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalProps) {
   const [added, setAdded] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -145,38 +185,25 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
             </p>
 
             <div className="mt-6 space-y-4">
-              {outfit.products.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/produit/${product.id}`}
-                  onClick={onClose}
-                  className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg border border-brand-gold/5 hover:border-brand-gold/40 transition-colors duration-(--motion-micro) ease-out-expo group cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-12 h-14 overflow-hidden rounded bg-brand-bg flex-shrink-0">
-                      <Image
-                        src={product.images[0]}
-                        alt={product.name}
-                        fill
-                        sizes="48px"
-                        className="object-cover"
-                      />
-                    </div>
-
-                    <div>
-                      <h4 className="font-bebas text-lg leading-tight group-hover:text-brand-gold transition-colors duration-(--motion-micro) ease-out-expo">
-                        {product.name}
-                      </h4>
-                      <span className="text-xs text-brand-text-muted uppercase tracking-wider block">
-                        {product.category.replace(/-/g, ' ')}
-                      </span>
-                    </div>
+              {outfit.products.map((product) =>
+                product.catalogHidden ? (
+                  <div
+                    key={product.id}
+                    className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg border border-brand-gold/5 cursor-default"
+                  >
+                    <PieceContent product={product} />
                   </div>
-                  <div className="font-bold text-sm text-brand-gold">
-                    {product.price.toLocaleString()} FCFA
-                  </div>
-                </Link>
-              ))}
+                ) : (
+                  <Link
+                    key={product.id}
+                    href={`/produit/${product.id}`}
+                    onClick={onClose}
+                    className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg border border-brand-gold/5 hover:border-brand-gold/40 transition-colors duration-(--motion-micro) ease-out-expo group cursor-pointer"
+                  >
+                    <PieceContent product={product} />
+                  </Link>
+                )
+              )}
             </div>
 
             {outfit.products.length === 0 && (

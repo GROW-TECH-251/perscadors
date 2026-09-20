@@ -4,6 +4,7 @@ import { products as fallbackProducts } from '@/data/products';
 import { normalizeProductAttribute } from '@/utils/normalizeProductAttribute';
 import { outfits as fallbackOutfits } from '@/data/outfits';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { logSupabaseWarning } from '@/lib/supabaseErrors';
 import type { CatalogCategory, Outfit, Product, Size } from '@/types';
 
 export type CatalogSource = 'fallback' | 'supabase';
@@ -186,6 +187,74 @@ export function getFallbackCatalogSnapshot(): PublicCatalogSnapshot {
   };
 }
 
+
+// ---------------------------------------------------------------------------
+// IMPL-2 (décision C2, consolidation 09/2026) — composition publique des looks :
+// un article MASQUÉ référencé par un look VISIBLE doit apparaître dans SA
+// composition publique, sans réintégrer le catalogue. RLS
+// (products_public_read_visible : using visible = true) interdit à la clé anon
+// de lire les articles masqués — d'où la RPC get_outfit_composition_products
+// (security definer, cf. supabase/migrations/add_outfit_composition_public_rpc.sql)
+// qui n'expose QUE les articles masqués référencés par des looks visibles.
+// Résilience : RPC absente (migration non exécutée) ou en erreur → comportement
+// historique (composition limitée au catalogue visible), aucun ordre de
+// déploiement imposé.
+// ---------------------------------------------------------------------------
+interface OutfitCompositionRow {
+  id: number | string;
+  name: string;
+  price: number;
+  category: string;
+  image_url: string | null;
+  images: string[] | null;
+  sizes: string[] | null;
+  colors: string[] | null;
+  stock: number | null;
+}
+
+function toAdminOutfitProduct(row: OutfitCompositionRow): AdminProduct {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    category: row.category,
+    price: Number(row.price),
+    image_url: row.image_url || null,
+    images: Array.isArray(row.images) ? row.images : [],
+    sizes: Array.isArray(row.sizes) ? row.sizes : [],
+    colors: Array.isArray(row.colors) ? row.colors : [],
+    outOfStockSizes: [],
+    outOfStockColors: [],
+    demand: 0,
+    stock: Number(row.stock) || 0,
+    badge: null,
+    description: null,
+    visible: false,
+    slug: slugify(row.name),
+    isPopular: false,
+    video_url: null,
+    video_public_id: null,
+    created_at: new Date(0).toISOString(),
+    updated_at: new Date(0).toISOString()
+  };
+}
+
+async function fetchHiddenOutfitProducts(db: SupabaseClient): Promise<Map<string, Product>> {
+  const response = await db.rpc('get_outfit_composition_products');
+  if (response.error || !Array.isArray(response.data)) {
+    if (response.error) {
+      logSupabaseWarning('publicCatalogService.get_outfit_composition_products', response.error);
+    }
+    return new Map();
+  }
+
+  const hiddenProducts = new Map<string, Product>();
+  for (const row of response.data as OutfitCompositionRow[]) {
+    const product = normalizeAdminProduct(toAdminOutfitProduct(row));
+    hiddenProducts.set(product.id, { ...product, catalogHidden: true });
+  }
+  return hiddenProducts;
+}
+
 // Phase finale 09/2026 (E1) — ordre public des HP Looks : position définie
 // dans l'admin (1 = premier affiché), puis créations récentes. Repli
 // résilient : si la colonne position n'existe pas encore en base (migration
@@ -211,15 +280,24 @@ async function fetchVisibleOutfitsOrdered(db: SupabaseClient): Promise<{ data: A
     : { data: (legacy.data || []) as AdminOutfit[], error: null };
 }
 
-function normalizeOutfitRows(rows: AdminOutfit[] | null | undefined, products: Product[]): Outfit[] {
+function normalizeOutfitRows(
+  rows: AdminOutfit[] | null | undefined,
+  products: Product[],
+  hiddenProducts: Map<string, Product> = new Map()
+): Outfit[] {
   if (!rows || rows.length === 0) return [];
 
   return rows.map((outfitRow) => {
     const productIds = Array.isArray(outfitRow.product_ids) ? outfitRow.product_ids : [];
+    // C2 : le catalogue visible d'abord ; à défaut, une pièce MASQUÉE du look
+    // (marquée catalogHidden : affichée dans la composition, non cliquable,
+    // jamais dans le catalogue, les catégories ni la recherche).
     const outfitProducts = productIds
-      .map((id) => products.find((p) => p.id === String(id)))
+      .map((id) => products.find((p) => p.id === String(id)) || hiddenProducts.get(String(id)) || null)
       .filter(Boolean) as Product[];
 
+    // Somme sur les pièces résolues, masquées incluses : alignée sur le trigger
+    // set_outfit_price qui recalcule custom_price sur TOUS les product_ids.
     const calculatedPrice = outfitProducts.reduce((sum, p) => sum + p.price, 0);
     const finalPrice = outfitRow.custom_price !== null && outfitRow.custom_price !== undefined
       ? Number(outfitRow.custom_price)
@@ -240,7 +318,7 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
     return getFallbackCatalogSnapshot();
   }
 
-  const [productsResponse, categoriesResponse, outfitsResponse] = await Promise.all([
+  const [productsResponse, categoriesResponse, outfitsResponse, hiddenOutfitProducts] = await Promise.all([
     supabase
       .from('products')
       .select('*')
@@ -251,7 +329,8 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
       .select('*')
       .eq('visible', true)
       .order('position', { ascending: true }),
-    fetchVisibleOutfitsOrdered(supabase)
+    fetchVisibleOutfitsOrdered(supabase),
+    fetchHiddenOutfitProducts(supabase)
   ]);
 
   if (productsResponse.error) {
@@ -274,7 +353,7 @@ export async function fetchPublicCatalogSnapshot(): Promise<PublicCatalogSnapsho
   // carousel HP Looks vide, logo intact. Même garantie que products (erreur ->
   // fallback) : la vitrine garde TOUJOURS ses looks de référence.
   const rawOutfits = outfitsResponse.error ? null : outfitsResponse.data;
-  const normalizedOutfits = normalizeOutfitRows(rawOutfits as AdminOutfit[] | null, normalizedProducts);
+  const normalizedOutfits = normalizeOutfitRows(rawOutfits as AdminOutfit[] | null, normalizedProducts, hiddenOutfitProducts);
   const outfits = normalizedOutfits.length > 0 ? normalizedOutfits : fallbackOutfits;
 
   return {
@@ -300,10 +379,11 @@ export async function fetchServerCatalogSnapshot(): Promise<PublicCatalogSnapsho
 
   const client = createClient(url, anonKey, { auth: { persistSession: false } });
 
-  const [productsResponse, categoriesResponse, outfitsResponse] = await Promise.all([
+  const [productsResponse, categoriesResponse, outfitsResponse, hiddenOutfitProducts] = await Promise.all([
     client.from('products').select('*').eq('visible', true).order('created_at', { ascending: false }),
     client.from('categories').select('*').eq('visible', true).order('position', { ascending: true }),
-    fetchVisibleOutfitsOrdered(client)
+    fetchVisibleOutfitsOrdered(client),
+    fetchHiddenOutfitProducts(client)
   ]);
 
   if (productsResponse.error) {
@@ -322,7 +402,7 @@ export async function fetchServerCatalogSnapshot(): Promise<PublicCatalogSnapsho
   // carousel HP Looks vide, logo intact. Même garantie que products (erreur ->
   // fallback) : la vitrine garde TOUJOURS ses looks de référence.
   const rawOutfits = outfitsResponse.error ? null : outfitsResponse.data;
-  const normalizedOutfits = normalizeOutfitRows(rawOutfits as AdminOutfit[] | null, normalizedProducts);
+  const normalizedOutfits = normalizeOutfitRows(rawOutfits as AdminOutfit[] | null, normalizedProducts, hiddenOutfitProducts);
   const outfits = normalizedOutfits.length > 0 ? normalizedOutfits : fallbackOutfits;
 
   return {
