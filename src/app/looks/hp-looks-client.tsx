@@ -195,7 +195,21 @@ export default function HPLooksPage() {
                   </div>
 
                   <div className="space-y-4 pt-4 border-t border-brand-gold/10">
-                    {outfit.products.length > 0 && (
+                    {outfit.priceBreakdown && outfit.priceBreakdown.length > 0 && (
+                      <div className="space-y-1.5 pt-3 border-t border-brand-gold/10">
+                        <p className="text-[10px] uppercase tracking-widest font-semibold text-brand-text-muted">
+                          Ce que comprend le forfait
+                        </p>
+                        {outfit.priceBreakdown.map((line) => (
+                          <div key={`${outfit.id}-bd-${line.label}`} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="text-brand-text truncate">{line.label}</span>
+                            <span className="text-brand-text-muted whitespace-nowrap">{line.amount.toLocaleString()} FCFA</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {(outfit.products.length > 0 || (outfit.priceBreakdown?.length ?? 0) > 0) && (
                     <div className="flex justify-between items-center text-md font-semibold">
                       <span className="font-bebas text-brand-text-muted">Total du Look</span>
                       <span className="text-xl font-bold text-brand-gold">

@@ -39,6 +39,9 @@ export interface Outfit {
   image: string;
   price: number;
   products: Product[];
+  /** IMPL-4 (C4) — décomposition du forfait affichée au public (uniquement
+   *  si le look est en mode forfait ET configuré pour l'afficher). */
+  priceBreakdown?: { label: string; amount: number }[];
 }
 
 export interface CartItem {

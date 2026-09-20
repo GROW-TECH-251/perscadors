@@ -14,13 +14,15 @@ const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.
 // pricing_mode n'existe pas et Postgres répond 42703 — aucun ordre de
 // déploiement n'est imposé entre application et base.
 const FLAT_WITHOUT_MIGRATION_MSG =
-  'Le prix forfaitaire nécessite la migration Supabase « add_outfit_pricing_mode.sql » (colonne pricing_mode absente de la base). Exécutez-la dans le bon projet Supabase, puis réessayez.';
+  'Le prix forfaitaire nécessite la migration Supabase « add_outfit_pricing_mode.sql » (colonne pricing_mode absente de la base), et la décomposition du forfait la migration « add_outfit_price_breakdown.sql ». Exécutez la ou les migrations manquantes dans le bon projet Supabase, puis réessayez.';
 
+// IMPL-4 : détecte l'absence de N'IMPORTE LAQUELLE des colonnes optionnelles
+// des migrations IMPL-3/IMPL-4 (Postgres signale la première manquante).
 function isMissingPricingModeColumn(error: unknown): boolean {
   const candidate = error as { code?: string; message?: string } | null;
   if (!candidate) return false;
   if (candidate.code === '42703') return true;
-  return /column "pricing_mode" of relation "outfits" does not exist/i.test(String(candidate.message ?? ''));
+  return /column "(pricing_mode|price_breakdown|show_price_breakdown)" of relation "outfits" does not exist/i.test(String(candidate.message ?? ''));
 }
 
 
@@ -101,6 +103,9 @@ export async function createOutfit(formData: OutfitFormData): Promise<ApiRespons
     image_url: formData.image_url,
     custom_price: formData.custom_price ?? null,
     pricing_mode: formData.pricing_mode ?? 'calculated',
+    // IMPL-4 (C3+C4) — décomposition du forfait + interrupteur public.
+    price_breakdown: formData.price_breakdown ?? null,
+    show_price_breakdown: formData.show_price_breakdown ?? false,
     product_ids: formData.product_ids || [],
     visible: formData.visible ?? true,
     position: formData.position ?? null,
@@ -120,6 +125,10 @@ export async function createOutfit(formData: OutfitFormData): Promise<ApiRespons
     logSupabaseWarning('outfit_mutation_repli_historique', error);
     const legacyRow = { ...row };
     delete legacyRow.pricing_mode;
+    // IMPL-4 : colonnes de la décomposition également absentes avant leur
+    // migration — le repli historique les retire aussi.
+    delete legacyRow.price_breakdown;
+    delete legacyRow.show_price_breakdown;
     ({ data, error } = await db.from('outfits').insert([legacyRow]).select().single());
   }
 
@@ -157,6 +166,8 @@ export async function updateOutfit(
     logSupabaseWarning('outfit_mutation_repli_historique', error);
     const legacyPayload = { ...payload };
     delete legacyPayload.pricing_mode;
+    delete legacyPayload.price_breakdown;
+    delete legacyPayload.show_price_breakdown;
     ({ data, error } = await db.from('outfits').update(legacyPayload).eq('id', Number(id)).select().single());
   }
 

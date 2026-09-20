@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { AdminCategory, AdminProduct, AdminOutfit } from '@/admin/types';
+import type { AdminCategory, AdminProduct, AdminOutfit, OutfitPriceLine } from '@/admin/types';
 import { products as fallbackProducts } from '@/data/products';
 import { normalizeProductAttribute } from '@/utils/normalizeProductAttribute';
 import { outfits as fallbackOutfits } from '@/data/outfits';
@@ -303,12 +303,25 @@ function normalizeOutfitRows(
       ? Number(outfitRow.custom_price)
       : calculatedPrice;
 
+    // IMPL-4 (C4) — décomposition du forfait exposée au public UNIQUEMENT si
+    // le look est en mode forfait ET configuré pour l'afficher ; lignes
+    // invalides écartées (la structure est aussi garantie côté base par la
+    // contrainte outfits_price_breakdown_check).
+    const breakdownSource =
+      outfitRow.pricing_mode === 'flat' && outfitRow.show_price_breakdown && Array.isArray(outfitRow.price_breakdown)
+        ? (outfitRow.price_breakdown as OutfitPriceLine[])
+        : [];
+    const priceBreakdown = breakdownSource
+      .filter((line) => Boolean(line) && typeof line.label === 'string' && line.label.trim() !== '' && Number.isFinite(Number(line.amount)) && Number(line.amount) >= 0)
+      .map((line) => ({ label: line.label.trim(), amount: Number(line.amount) }));
+
     return {
       id: String(outfitRow.id),
       name: outfitRow.name,
       image: outfitRow.image_url || '/assets/brand/logo.png',
       price: finalPrice,
-      products: outfitProducts
+      products: outfitProducts,
+      ...(priceBreakdown.length > 0 ? { priceBreakdown } : {})
     };
   });
 }

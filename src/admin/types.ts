@@ -293,6 +293,13 @@ export type CreatedOrder = AdminOrder;
 // OUTFITS & HP LOOKS (Pôle 5 & Module HPB)
 // ============================================
 
+// IMPL-4 (C3+C4) — ligne de décomposition du forfait : libellé et montant
+// libres. JAMAIS un article catalogue (aucun lien avec products).
+export interface OutfitPriceLine {
+  label: string;
+  amount: number;
+}
+
 export interface AdminOutfit {
   id: number;
   name: string;
@@ -302,6 +309,10 @@ export interface AdminOutfit {
    *  historique) ou 'flat' (forfait manuel = référence). Absent tant que la
    *  migration add_outfit_pricing_mode.sql n'est pas exécutée en base. */
   pricing_mode?: 'calculated' | 'flat';
+  /** IMPL-4 (C3+C4) — décomposition du forfait (lignes libres). Null = aucune. */
+  price_breakdown?: OutfitPriceLine[] | null;
+  /** IMPL-4 (C4) — interrupteur par look : afficher la décomposition au public. */
+  show_price_breakdown?: boolean;
   product_ids: number[];
   visible: boolean;
   /** Phase finale 09/2026 — ordre d'affichage public (1 = premier). Null = fin de liste. */
@@ -316,6 +327,10 @@ export interface OutfitFormData {
   custom_price?: number | null;
   /** IMPL-3 (C3) — mode de prix envoyé à la sauvegarde (forfait = référence). */
   pricing_mode?: 'calculated' | 'flat';
+  /** IMPL-4 — décomposition envoyée à la sauvegarde (null = effacer). */
+  price_breakdown?: OutfitPriceLine[] | null;
+  /** IMPL-4 — interrupteur d'affichage public de la décomposition. */
+  show_price_breakdown?: boolean;
   product_ids: number[];
   visible: boolean;
   position?: number | null;
