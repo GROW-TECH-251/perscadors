@@ -8,7 +8,43 @@ import { usePublicSettings } from '@/context/PublicSettingsContext';
 import { buildWhatsAppUrl } from '@/services/whatsappService';
 import { Sparkles, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import type { Product } from '@/types';
 import { safeJsonLd } from '@/utils/safeJsonLd';
+
+// IMPL-2 (décision C2) — pièce MASQUÉE du catalogue : affichée dans la
+// composition du look (photo, nom, prix) mais NON cliquable et signalée
+// « Indisponible ». Les pièces visibles restent des liens vers leurs fiches.
+function LookGridPiece({ product }: { product: Product }) {
+  return (
+    <>
+      <div className="relative w-10 h-12 overflow-hidden rounded bg-brand-bg flex-shrink-0">
+        <Image
+          src={product.images[0]}
+          alt={product.name}
+          fill
+          className="object-cover"
+        />
+      </div>
+      <div className="flex-grow min-w-0">
+        <h4 className="font-bebas text-md text-brand-text truncate leading-tight group-hover:text-brand-gold transition-colors">
+          {product.name}
+        </h4>
+        {product.catalogHidden ? (
+          <span className="text-[10px] uppercase tracking-wider text-brand-text-muted border border-brand-gold/20 rounded px-1.5 py-0.5 inline-block">
+            Indisponible
+          </span>
+        ) : (
+          <span className="text-[10px] text-brand-text-muted uppercase tracking-wider block">
+            {product.category.replace(/-/g, ' ')}
+          </span>
+        )}
+      </div>
+      <div className="text-xs font-bold text-brand-gold">
+        {product.price.toLocaleString()} FCFA
+      </div>
+    </>
+  );
+}
 
 export default function HPLooksPage() {
   const { outfits } = useCatalog();
@@ -128,33 +164,24 @@ export default function HPLooksPage() {
                     </p>
 
                     <div className="space-y-3">
-                      {outfit.products.map((product) => (
-                        <Link
-                          key={`${outfit.id}-${product.id}`}
-                          href={`/produit/${product.id}`}
-                          className="flex items-center gap-3 p-2 bg-brand-bg hover:bg-brand-bg-alt border border-brand-gold/5 rounded-lg transition-colors group cursor-pointer"
-                        >
-                          <div className="relative w-10 h-12 overflow-hidden rounded bg-brand-bg flex-shrink-0">
-                            <Image
-                              src={product.images[0]}
-                              alt={product.name}
-                              fill
-                              className="object-cover"
-                            />
+                      {outfit.products.map((product) =>
+                        product.catalogHidden ? (
+                          <div
+                            key={`${outfit.id}-${product.id}`}
+                            className="flex items-center gap-3 p-2 bg-brand-bg border border-brand-gold/5 rounded-lg cursor-default"
+                          >
+                            <LookGridPiece product={product} />
                           </div>
-                          <div className="flex-grow min-w-0">
-                            <h4 className="font-bebas text-md text-brand-text truncate leading-tight group-hover:text-brand-gold transition-colors">
-                              {product.name}
-                            </h4>
-                            <span className="text-[10px] text-brand-text-muted uppercase tracking-wider block">
-                              {product.category.replace(/-/g, ' ')}
-                            </span>
-                          </div>
-                          <div className="text-xs font-bold text-brand-gold">
-                            {product.price.toLocaleString()} FCFA
-                          </div>
-                        </Link>
-                      ))}
+                        ) : (
+                          <Link
+                            key={`${outfit.id}-${product.id}`}
+                            href={`/produit/${product.id}`}
+                            className="flex items-center gap-3 p-2 bg-brand-bg hover:bg-brand-bg-alt border border-brand-gold/5 rounded-lg transition-colors group cursor-pointer"
+                          >
+                            <LookGridPiece product={product} />
+                          </Link>
+                        )
+                      )}
                     </div>
                     </>
                     ) : (
@@ -168,7 +195,21 @@ export default function HPLooksPage() {
                   </div>
 
                   <div className="space-y-4 pt-4 border-t border-brand-gold/10">
-                    {outfit.products.length > 0 && (
+                    {outfit.priceBreakdown && outfit.priceBreakdown.length > 0 && (
+                      <div className="space-y-1.5 pt-3 border-t border-brand-gold/10">
+                        <p className="text-[10px] uppercase tracking-widest font-semibold text-brand-text-muted">
+                          Ce que comprend le forfait
+                        </p>
+                        {outfit.priceBreakdown.map((line) => (
+                          <div key={`${outfit.id}-bd-${line.label}`} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="text-brand-text truncate">{line.label}</span>
+                            <span className="text-brand-text-muted whitespace-nowrap">{line.amount.toLocaleString()} FCFA</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {(outfit.products.length > 0 || (outfit.priceBreakdown?.length ?? 0) > 0) && (
                     <div className="flex justify-between items-center text-md font-semibold">
                       <span className="font-bebas text-brand-text-muted">Total du Look</span>
                       <span className="text-xl font-bold text-brand-gold">

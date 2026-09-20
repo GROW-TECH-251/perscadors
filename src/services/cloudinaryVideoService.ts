@@ -13,7 +13,24 @@ export async function uploadCloudinaryVideo(file: File, folder: string): Promise
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ folder })
     });
-    if (!signatureResponse.ok) return { url: '', publicId: '', error: 'Préparation Cloudinary impossible.' };
+    if (!signatureResponse.ok) {
+      // E12-consolidation : une cause = un message. Auparavant, TOUT échec de
+      // signature (session, configuration, quota, dossier) affichait la même
+      // phrase « Préparation Cloudinary impossible. » — impossible de diagnoser.
+      let messageServeur = '';
+      try {
+        messageServeur = (await signatureResponse.json() as { error?: string }).error?.trim() || '';
+      } catch {
+        // Corps non JSON : le statut reste exploitable ci-dessous.
+      }
+      if (signatureResponse.status === 403) {
+        return { url: '', publicId: '', error: 'Session administrateur expirée. Reconnectez-vous puis réessayez.' };
+      }
+      if (signatureResponse.status === 503) {
+        return { url: '', publicId: '', error: 'Service vidéo non configuré (variables Cloudinary manquantes). Contactez l’administrateur technique.' };
+      }
+      return { url: '', publicId: '', error: messageServeur || 'Préparation Cloudinary impossible.' };
+    }
     const signature = await signatureResponse.json() as { timestamp: number; signature: string; eager: string; apiKey: string; cloudName: string };
     const form = new FormData();
     form.append('file', file);

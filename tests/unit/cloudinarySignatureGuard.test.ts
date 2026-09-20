@@ -28,7 +28,9 @@ describe('Unit — E2 garde signature : dossiers autorisés', () => {
   });
 
   it('tout autre dossier, vide ou casse différente est refusé', () => {
-    expect(isAllowedMediaFolder('perscadors/logo')).toBe(false);
+    // E12-consolidation : « perscadors/logo » est devenu une section LÉGITIME du
+    // Dashboard Médias (autorisée) — l'exemple de refus devient un dossier inconnu.
+    expect(isAllowedMediaFolder('perscadors/logos')).toBe(false);
     expect(isAllowedMediaFolder('perscadors/HERO')).toBe(false);
     expect(isAllowedMediaFolder('autre/hero')).toBe(false);
     expect(isAllowedMediaFolder('')).toBe(false);
