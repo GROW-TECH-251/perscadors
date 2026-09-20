@@ -298,6 +298,10 @@ export interface AdminOutfit {
   name: string;
   image_url: string;
   custom_price: number | null;
+  /** IMPL-3 (C3) — mode de prix : 'calculated' (somme des pièces, défaut
+   *  historique) ou 'flat' (forfait manuel = référence). Absent tant que la
+   *  migration add_outfit_pricing_mode.sql n'est pas exécutée en base. */
+  pricing_mode?: 'calculated' | 'flat';
   product_ids: number[];
   visible: boolean;
   /** Phase finale 09/2026 — ordre d'affichage public (1 = premier). Null = fin de liste. */
@@ -310,6 +314,8 @@ export interface OutfitFormData {
   name: string;
   image_url: string;
   custom_price?: number | null;
+  /** IMPL-3 (C3) — mode de prix envoyé à la sauvegarde (forfait = référence). */
+  pricing_mode?: 'calculated' | 'flat';
   product_ids: number[];
   visible: boolean;
   position?: number | null;

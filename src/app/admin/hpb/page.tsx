@@ -38,9 +38,19 @@ export default function AdminHpbPage() {
   const [position, setPosition] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
+  // IMPL-3 (C3) — prix forfaitaire HP Look : 2 modes mutuellement exclusifs.
+  const [pricingMode, setPricingMode] = useState<'calculated' | 'flat'>('calculated');
+  const [flatPrice, setFlatPrice] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingId, setSavingId] = useState<number | null>(null);
+
+  // IMPL-3 (C3) — somme des pièces sélectionnées (articles masqués inclus :
+  // le trigger Supabase recalcule sur TOUS les product_ids).
+  const calculatedSum = useMemo(
+    () => selectedProductIds.reduce((sum, id) => sum + (products.find((p) => p.id === id)?.price ?? 0), 0),
+    [selectedProductIds, products]
+  );
 
   // Recherche interne du Product Picker
   const [pickerSearch, setPickerSearch] = useState('');
@@ -152,12 +162,16 @@ export default function AdminHpbPage() {
       setPosition(outfit.position != null ? String(outfit.position) : '');
       setImageUrl(outfit.image_url);
       setSelectedProductIds(outfit.product_ids || []);
+      setPricingMode(outfit.pricing_mode === 'flat' ? 'flat' : 'calculated');
+      setFlatPrice(outfit.pricing_mode === 'flat' && outfit.custom_price !== null ? String(outfit.custom_price) : '');
     } else {
       setEditingOutfit(null);
       setName('');
       setPosition('');
       setImageUrl('');
       setSelectedProductIds([]);
+      setPricingMode('calculated');
+      setFlatPrice('');
     }
     setPickerSearch('');
     setIsModalOpen(true);
@@ -193,6 +207,21 @@ export default function AdminHpbPage() {
     );
   };
 
+  // IMPL-3 (C3) : bascule de mode avec avertissement — les deux sens ont une
+  // conséquence (forfait figé / forfait remplacé par la somme des pièces).
+  const switchPricingMode = (next: 'calculated' | 'flat') => {
+    if (next === pricingMode) return;
+    const message = next === 'flat'
+      ? 'Passer au prix forfaitaire ?\n\nLe prix ne sera plus recalculé automatiquement quand tu modifieras les pièces du look : il restera fixe jusqu\u2019à ta prochaine décision.'
+      : 'Revenir au prix calculé ?\n\nLe prix forfaitaire actuel sera définitivement remplacé par la somme des pièces du look.';
+    if (!window.confirm(message)) return;
+    // Pré-remplissage pratique : la somme actuelle comme point de départ.
+    if (next === 'flat' && flatPrice.trim() === '' && calculatedSum > 0) {
+      setFlatPrice(String(calculatedSum));
+    }
+    setPricingMode(next);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -203,6 +232,10 @@ export default function AdminHpbPage() {
       setToast({ message: 'L’image du look est requise.', variant: 'error' });
       return;
     }
+    if (pricingMode === 'flat' && (!Number.isFinite(Number(flatPrice)) || Number(flatPrice) <= 0)) {
+      setToast({ message: 'Prix forfaitaire invalide : indique un nombre supérieur à 0.', variant: 'error' });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -211,7 +244,11 @@ export default function AdminHpbPage() {
         // Phase finale 09/2026 (E1) — ordre d'affichage public (1 = premier, vide = fin de liste).
         position: position.trim() === '' ? null : Number(position),
         image_url: imageUrl,
-        custom_price: null, // Le trigger Supabase calcule toujours le total depuis product_ids.
+        // IMPL-3 (C3) — 2 modes mutuellement exclusifs : forfait = référence
+        // (custom_price manuel, préservé par le trigger v2), calculé = somme
+        // des pièces recalculée par le trigger Supabase.
+        pricing_mode: pricingMode,
+        custom_price: pricingMode === 'flat' ? Number(flatPrice) : null,
         product_ids: selectedProductIds,
         visible: editingOutfit ? editingOutfit.visible : true
       };
@@ -345,9 +382,9 @@ export default function AdminHpbPage() {
                           <AlertTriangle size={12} /> À compléter
                         </span>
                       )}
-                      {outfit.custom_price !== null && (
+                      {outfit.pricing_mode === 'flat' && (
                         <span className="px-2.5 py-1 bg-brand-gold/20 text-brand-gold border border-brand-gold/40 text-xs font-semibold rounded-lg backdrop-blur-sm">
-                          Prix Spécial Look
+                          Forfait
                         </span>
                       )}
                     </div>
@@ -493,9 +530,55 @@ export default function AdminHpbPage() {
               placeholder="Ex: Cargo Explorer 2026"
               required
             />
-            <div className="rounded-xl border border-brand-gold/15 bg-brand-bg p-3">
-              <p className="text-sm font-medium text-brand-text">Prix calculé automatiquement</p>
-              <p className="mt-1 text-xs text-brand-text-muted">Le total est recalculé depuis les produits associés. Aucun prix manuel n’est nécessaire.</p>
+            {/* IMPL-3 (C3) — prix du look : 2 modes mutuellement exclusifs. */}
+            <div className="rounded-xl border border-brand-gold/15 bg-brand-bg p-3 space-y-3">
+              <p className="text-sm font-medium text-brand-text">Prix du look</p>
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Mode de prix du look">
+                <button
+                  type="button"
+                  onClick={() => switchPricingMode('calculated')}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
+                    pricingMode === 'calculated'
+                      ? 'bg-brand-gold/15 border-brand-gold text-brand-gold'
+                      : 'bg-brand-bg-alt border-brand-gold/10 text-brand-text-muted hover:border-brand-gold/40'
+                  }`}
+                >
+                  Calculé (somme)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchPricingMode('flat')}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
+                    pricingMode === 'flat'
+                      ? 'bg-brand-gold/15 border-brand-gold text-brand-gold'
+                      : 'bg-brand-bg-alt border-brand-gold/10 text-brand-text-muted hover:border-brand-gold/40'
+                  }`}
+                >
+                  Forfait (manuel)
+                </button>
+              </div>
+              {pricingMode === 'calculated' ? (
+                <p className="text-xs text-brand-text-muted">
+                  Total automatique : <span className="font-semibold text-brand-gold">{calculatedSum.toLocaleString()} FCFA</span> — recalculé à chaque modification des pièces du look.
+                </p>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#888880] mb-2">
+                    Prix forfaitaire (FCFA)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={flatPrice}
+                    onChange={(e) => setFlatPrice(e.target.value)}
+                    placeholder="Ex : 15000"
+                    className="w-full rounded-lg border border-brand-gold/20 bg-[#0F0F0F] px-4 py-3 text-sm text-brand-text focus:outline-none focus:border-brand-gold/60"
+                  />
+                  <p className="mt-1 text-xs text-brand-text-muted">
+                    Le forfait est la référence du look — il reste fixe même si tu modifies les pièces. Somme des pièces pour info : {calculatedSum.toLocaleString()} FCFA.
+                  </p>
+                </div>
+              )}
             </div>
 
                   {/* E1 — ordre d'affichage public du look (1 = premier) */}
