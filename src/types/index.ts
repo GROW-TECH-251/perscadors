@@ -17,6 +17,10 @@ export interface Product {
   isPopular?: boolean;
   video?: string;
   createdAt?: string;
+  /** IMPL-2 (C2) — article masqué du catalogue : affiché uniquement dans la
+   *  composition d'un look public (non cliquable, pas de fiche publique),
+   *  jamais dans les listes, la recherche ni les catégories. */
+  catalogHidden?: boolean;
 }
 
 export interface CatalogCategory {
@@ -35,6 +39,9 @@ export interface Outfit {
   image: string;
   price: number;
   products: Product[];
+  /** IMPL-4 (C4) — décomposition du forfait affichée au public (uniquement
+   *  si le look est en mode forfait ET configuré pour l'afficher). */
+  priceBreakdown?: { label: string; amount: number }[];
 }
 
 export interface CartItem {
