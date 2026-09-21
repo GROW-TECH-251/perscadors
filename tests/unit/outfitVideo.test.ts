@@ -164,9 +164,12 @@ describe('Unit — IMPL-C : exposition publique (modale uniquement)', () => {
 describe('Unit — IMPL-C : gardes anti-dérive (sources)', () => {
   it('LookModal : vidéo EN PREMIER (poster image, onError -> image), image sinon', async () => {
     const modal = await readFile('src/components/public/LookModal.tsx', 'utf-8');
-    expect(modal).toContain('outfit.video && failedVideo !== outfit.video ? (');
+    expect(modal).toContain('videoSrc && failedVideo !== videoSrc ? (');
     expect(modal).toContain('poster={outfit.image}');
-    expect(modal).toContain('onError={() => setFailedVideo(outfit.video ?? null)}');
+    expect(modal).toContain('onError={() => setFailedVideo(videoSrc ?? null)}');
+    // Sécurité : la vidéo du look passe par la même validation que les autres
+    // lecteurs (sanitizeMediaSrc, js/xss-through-dom).
+    expect(modal).toContain('sanitizeMediaSrc(outfit.video)');
     expect(modal).toContain('preload="metadata"');
     expect(modal).toContain('playsInline');
   });

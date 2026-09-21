@@ -12,6 +12,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { X, Sparkles, Check, MessageCircle } from 'lucide-react';
+import { sanitizeMediaSrc } from '@/lib/mediaSecurity';
 import type { Outfit } from '@/types';
 import { buildWhatsAppUrl } from '@/services/whatsappService';
 
@@ -73,6 +74,9 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
   // Échec mémorisé PAR URL (valeur dérivée, pas d'effet) : changer de look
   // réinitialise naturellement le repli.
   const [failedVideo, setFailedVideo] = useState<string | null>(null);
+  // Sécurité (js/xss-through-dom) : URL validée avant l'attribut src,
+  // même garde que les autres lecteurs vidéo du site.
+  const videoSrc = sanitizeMediaSrc(outfit.video);
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
@@ -162,16 +166,16 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
           {/* IMPL-C — la vidéo du look est présentée EN PREMIER ; sans vidéo
               (ou en cas d'échec de chargement), l'image du look reste
               l'affiche : le look reste toujours consultable. */}
-          {outfit.video && failedVideo !== outfit.video ? (
+          {videoSrc && failedVideo !== videoSrc ? (
             <video
               key={`${outfit.id}-${outfit.video}`}
-              src={outfit.video}
+              src={videoSrc}
               poster={outfit.image}
               controls
               playsInline
               preload="metadata"
               aria-label={`Vidéo du look ${outfit.name}`}
-              onError={() => setFailedVideo(outfit.video ?? null)}
+              onError={() => setFailedVideo(videoSrc ?? null)}
               className="relative z-10 h-full w-full bg-black object-contain"
             />
           ) : (
