@@ -186,6 +186,21 @@ export async function deleteProductVideo(publicId: string | null | undefined): P
   await deleteCloudinaryVideo(publicId);
 }
 
+// IMPL-C (UI Boost) — vidéo optionnelle des HP Looks : même chaîne Cloudinary
+// que les produits, dossier dédié par look (perscadors/outfits/{id}).
+export async function uploadOutfitVideo(
+  file: File,
+  outfitId: string | number = 'draft'
+): Promise<{ url: string; publicId: string; error?: string }> {
+  const safeOutfitId = ensurePathSegment(String(outfitId));
+  return await uploadCloudinaryVideo(file, `perscadors/outfits/${safeOutfitId}`);
+}
+
+export async function deleteOutfitVideo(publicId: string | null | undefined): Promise<void> {
+  if (!publicId) return;
+  await deleteCloudinaryVideo(publicId);
+}
+
 export async function uploadOutfitImage(
   file: File,
   outfitId: string | number = 'draft'

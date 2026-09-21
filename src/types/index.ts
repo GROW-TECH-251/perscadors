@@ -42,6 +42,9 @@ export interface Outfit {
   /** IMPL-4 (C4) — décomposition du forfait affichée au public (uniquement
    *  si le look est en mode forfait ET configuré pour l'afficher). */
   priceBreakdown?: { label: string; amount: number }[];
+  /** IMPL-C (UI Boost) — vidéo optionnelle du look, présentée en premier
+   *  dans la modale d'inspection (repli image en cas d'échec de chargement). */
+  video?: string;
 }
 
 export interface CartItem {

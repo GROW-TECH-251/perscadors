@@ -69,6 +69,10 @@ function PieceContent({ product }: { product: Outfit['products'][number] }) {
 
 export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalProps) {
   const [added, setAdded] = useState(false);
+  // IMPL-C — repli vidéo -> image si le chargement échoue (cas C du cahier).
+  // Échec mémorisé PAR URL (valeur dérivée, pas d'effet) : changer de look
+  // réinitialise naturellement le repli.
+  const [failedVideo, setFailedVideo] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
@@ -154,14 +158,31 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
           <X size={20} />
         </button>
 
-        <div className="relative w-full md:w-1/2 h-80 md:h-[500px] flex-shrink-0">
-          <Image
-            src={outfit.image}
-            alt={outfit.name}
-            fill
-            sizes="(max-width: 768px) 100vw, 384px"
-            className="object-cover"
-          />
+        <div className="relative w-full md:w-1/2 h-80 md:h-[500px] flex-shrink-0 bg-black">
+          {/* IMPL-C — la vidéo du look est présentée EN PREMIER ; sans vidéo
+              (ou en cas d'échec de chargement), l'image du look reste
+              l'affiche : le look reste toujours consultable. */}
+          {outfit.video && failedVideo !== outfit.video ? (
+            <video
+              key={`${outfit.id}-${outfit.video}`}
+              src={outfit.video}
+              poster={outfit.image}
+              controls
+              playsInline
+              preload="metadata"
+              aria-label={`Vidéo du look ${outfit.name}`}
+              onError={() => setFailedVideo(outfit.video ?? null)}
+              className="relative z-10 h-full w-full bg-black object-contain"
+            />
+          ) : (
+            <Image
+              src={outfit.image}
+              alt={outfit.name}
+              fill
+              sizes="(max-width: 768px) 100vw, 384px"
+              className="object-cover"
+            />
+          )}
           <div className="absolute top-4 left-4 bg-brand-gold text-brand-bg font-bebas text-sm uppercase px-3 py-1 rounded tracking-wider shadow">
             Vioutou Outfit 🔥
           </div>
