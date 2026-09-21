@@ -180,7 +180,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
                   </p>
                 </div>
                 <p className="font-semibold text-brand-gold text-sm whitespace-nowrap">
-                  {(item.price * item.quantity).toLocaleString()} FCFA
+                  {(item.price * item.quantity).toLocaleString('fr-FR')} FCFA
                 </p>
               </div>
             ))}
@@ -190,7 +190,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
         <div className="rounded-2xl border border-brand-gold/10 bg-brand-bg p-4 space-y-2 shadow-sm">
           <div className="flex items-center justify-between text-sm text-brand-text-muted">
             <span>Sous-total</span>
-            <span>{cartTotal.toLocaleString()} FCFA</span>
+            <span>{cartTotal.toLocaleString('fr-FR')} FCFA</span>
           </div>
           <div className="flex items-center justify-between text-sm text-brand-text-muted">
             <span>Frais de livraison</span>
@@ -198,7 +198,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
           </div>
           <div className="flex items-center justify-between border-t border-brand-gold/10 pt-3">
             <span className="font-bebas text-lg uppercase tracking-wider text-brand-text">Total des articles</span>
-            <span className="font-bebas text-2xl text-brand-gold">{cartTotal.toLocaleString()} FCFA</span>
+            <span className="font-bebas text-2xl text-brand-gold">{cartTotal.toLocaleString('fr-FR')} FCFA</span>
           </div>
         </div>
       </div>

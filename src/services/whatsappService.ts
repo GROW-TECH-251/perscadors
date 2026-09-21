@@ -29,11 +29,11 @@ export function buildWhatsAppMessage(params: {
 }): string {
   const { orderNumber, clientName, clientArea, items, subtotal, deliveryFee, grandTotal } = params;
   const itemsList = items
-    .map((item) => `• ${item.product.name} — ${item.quantity} × ${(item.product.price * item.quantity).toLocaleString()} FCFA\n  ${item.selectedSize}, ${item.selectedColor}`)
+    .map((item) => `• ${item.product.name} — ${item.quantity} × ${(item.product.price * item.quantity).toLocaleString('fr-FR')} FCFA\n  ${item.selectedSize}, ${item.selectedColor}`)
     .join('\n');
-  const deliveryLabel = deliveryFee > 0 ? `${deliveryFee.toLocaleString()} FCFA` : 'à confirmer';
+  const deliveryLabel = deliveryFee > 0 ? `${deliveryFee.toLocaleString('fr-FR')} FCFA` : 'à confirmer';
 
-  return `Bonjour 👋\n\nCommande ${orderNumber}\n\nClient : ${clientName}\nVille : ${clientArea}\n\nArticles\n${itemsList}\n\nSous-total : ${subtotal.toLocaleString()} FCFA\nFrais de livraison : ${deliveryLabel}\nTotal des articles : ${grandTotal.toLocaleString()} FCFA\n\nMerci, on confirme les détails ensemble sur WhatsApp 🙂`;
+  return `Bonjour 👋\n\nCommande ${orderNumber}\n\nClient : ${clientName}\nVille : ${clientArea}\n\nArticles\n${itemsList}\n\nSous-total : ${subtotal.toLocaleString('fr-FR')} FCFA\nFrais de livraison : ${deliveryLabel}\nTotal des articles : ${grandTotal.toLocaleString('fr-FR')} FCFA\n\nMerci, on confirme les détails ensemble sur WhatsApp 🙂`;
 }
 
 /**

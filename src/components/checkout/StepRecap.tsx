@@ -105,7 +105,7 @@ export function StepRecap({ onNext, onClose }: StepRecapProps) {
                     <div className="text-right">
                       <p className="text-xs uppercase tracking-wider text-brand-text-muted">Sous-total</p>
                       <p className="font-bebas text-xl text-brand-gold">
-                        {(item.product.price * item.quantity).toLocaleString()} FCFA
+                        {(item.product.price * item.quantity).toLocaleString('fr-FR')} FCFA
                       </p>
                     </div>
                   </div>
@@ -121,7 +121,7 @@ export function StepRecap({ onNext, onClose }: StepRecapProps) {
           <div className="rounded-2xl bg-brand-bg p-4 border border-brand-gold/10 space-y-2">
             <div className="flex items-center justify-between text-sm text-brand-text-muted">
               <span>Sous-total</span>
-              <span>{cartTotal.toLocaleString()} FCFA</span>
+              <span>{cartTotal.toLocaleString('fr-FR')} FCFA</span>
             </div>
             <div className="flex items-center justify-between text-sm text-brand-text-muted">
               <span>Livraison</span>
@@ -129,7 +129,7 @@ export function StepRecap({ onNext, onClose }: StepRecapProps) {
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-brand-gold/10">
               <span className="font-bebas text-lg uppercase tracking-wider text-brand-text">Total estimé</span>
-              <span className="font-bebas text-2xl text-brand-gold">{cartTotal.toLocaleString()} FCFA</span>
+              <span className="font-bebas text-2xl text-brand-gold">{cartTotal.toLocaleString('fr-FR')} FCFA</span>
             </div>
           </div>
 

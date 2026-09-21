@@ -219,7 +219,7 @@ export default function CategoryPage() {
                             <h3 className="line-clamp-2 font-bebas text-lg uppercase tracking-wide text-brand-text group-hover:text-brand-gold">
                               {suggestion.name}
                             </h3>
-                            <p className="font-bold text-brand-gold">{suggestion.price.toLocaleString()} FCFA</p>
+                            <p className="font-bold text-brand-gold">{suggestion.price.toLocaleString('fr-FR')} FCFA</p>
                           </div>
                         </Link>
                       ))}
@@ -271,7 +271,7 @@ export default function CategoryPage() {
 
                       <div className="flex justify-between items-center pt-2 border-t border-brand-gold/5 mt-auto">
                         <span className="font-bold text-sm sm:text-lg text-brand-gold">
-                          {product.price.toLocaleString()} FCFA
+                          {product.price.toLocaleString('fr-FR')} FCFA
                         </span>
                         <span className="text-xs text-brand-text-muted border border-brand-gold/15 rounded px-2 py-0.5 group-hover:border-brand-gold group-hover:text-brand-gold transition-colors">
                           Détails

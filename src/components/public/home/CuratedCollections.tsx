@@ -69,7 +69,7 @@ export async function CuratedCollections() {
                   {product.name}
                 </p>
                 <p className="mt-1 font-bebas tracking-wider text-brand-gold text-base sm:text-lg">
-                  {product.price.toLocaleString()} FCFA
+                  {product.price.toLocaleString('fr-FR')} FCFA
                 </p>
               </div>
             </Link>

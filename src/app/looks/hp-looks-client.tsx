@@ -40,7 +40,7 @@ function LookGridPiece({ product }: { product: Product }) {
         )}
       </div>
       <div className="text-xs font-bold text-brand-gold">
-        {product.price.toLocaleString()} FCFA
+        {product.price.toLocaleString('fr-FR')} FCFA
       </div>
     </>
   );
@@ -203,7 +203,7 @@ export default function HPLooksPage() {
                         {outfit.priceBreakdown.map((line) => (
                           <div key={`${outfit.id}-bd-${line.label}`} className="flex items-center justify-between gap-2 text-xs">
                             <span className="text-brand-text truncate">{line.label}</span>
-                            <span className="text-brand-text-muted whitespace-nowrap">{line.amount.toLocaleString()} FCFA</span>
+                            <span className="text-brand-text-muted whitespace-nowrap">{line.amount.toLocaleString('fr-FR')} FCFA</span>
                           </div>
                         ))}
                       </div>
@@ -213,7 +213,7 @@ export default function HPLooksPage() {
                     <div className="flex justify-between items-center text-md font-semibold">
                       <span className="font-bebas text-brand-text-muted">Total du Look</span>
                       <span className="text-xl font-bold text-brand-gold">
-                        {outfit.price.toLocaleString()} FCFA
+                        {outfit.price.toLocaleString('fr-FR')} FCFA
                       </span>
                     </div>
                     )}

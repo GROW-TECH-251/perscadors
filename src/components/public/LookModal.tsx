@@ -62,7 +62,7 @@ function PieceContent({ product }: { product: Outfit['products'][number] }) {
         </div>
       </div>
       <div className="font-bold text-sm text-brand-gold">
-        {product.price.toLocaleString()} FCFA
+        {product.price.toLocaleString('fr-FR')} FCFA
       </div>
     </>
   );
@@ -249,7 +249,7 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
                 {outfit.priceBreakdown.map((line) => (
                   <div key={`bd-${line.label}`} className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-brand-text truncate">{line.label}</span>
-                    <span className="text-brand-text-muted whitespace-nowrap">{line.amount.toLocaleString()} FCFA</span>
+                    <span className="text-brand-text-muted whitespace-nowrap">{line.amount.toLocaleString('fr-FR')} FCFA</span>
                   </div>
                 ))}
               </div>
@@ -259,7 +259,7 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
               <div className="flex justify-between items-center text-lg">
               <span className="font-bebas text-brand-text-muted">Total du Look</span>
               <span className="text-2xl font-bold text-brand-gold">
-                {outfit.price.toLocaleString()} FCFA
+                {outfit.price.toLocaleString('fr-FR')} FCFA
               </span>
             </div>
               )}

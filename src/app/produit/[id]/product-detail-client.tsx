@@ -123,7 +123,7 @@ function ProductDetailContent({ product, suggestions, otherResults, searchQuery 
       `📦 *Produit :* ${product.name}\n` +
       `📏 *Taille :* ${selectedSize}\n` +
       `🎨 *Couleur :* ${selectedColor}\n` +
-      `💰 *Prix :* ${product.price.toLocaleString()} FCFA\n` +
+      `💰 *Prix :* ${product.price.toLocaleString('fr-FR')} FCFA\n` +
       (photoUrl ? `📸 *Photo :* ${photoUrl}\n` : '') +
       `\n` +
       `📍 _Livraison partout au Bénin._\n` +
@@ -303,7 +303,7 @@ function ProductDetailContent({ product, suggestions, otherResults, searchQuery 
               {product.name}
             </h1>
             <div className="font-bebas text-3xl sm:text-4xl tracking-wider text-brand-gold">
-              {product.price.toLocaleString()} FCFA
+              {product.price.toLocaleString('fr-FR')} FCFA
             </div>
           </div>
 
@@ -446,7 +446,7 @@ function ProductDetailContent({ product, suggestions, otherResults, searchQuery 
                 </div>
                 <div className="p-6 flex flex-col gap-2 bg-brand-bg-alt/90">
                   <h3 className="font-bebas text-xl text-brand-text tracking-wider uppercase line-clamp-1 group-hover:text-brand-gold transition-colors">{result.name}</h3>
-                  <span className="font-bebas text-2xl tracking-wider text-brand-gold">{result.price.toLocaleString()} FCFA</span>
+                  <span className="font-bebas text-2xl tracking-wider text-brand-gold">{result.price.toLocaleString('fr-FR')} FCFA</span>
                 </div>
               </Link>
             ))}
@@ -496,7 +496,7 @@ function ProductDetailContent({ product, suggestions, otherResults, searchQuery 
                   {suggestion.name}
                 </h3>
                 <span className="font-bebas text-2xl tracking-wider text-brand-gold">
-                  {suggestion.price.toLocaleString()} FCFA
+                  {suggestion.price.toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
 
