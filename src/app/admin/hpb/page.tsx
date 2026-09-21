@@ -698,16 +698,17 @@ export default function AdminHpbPage() {
                 </p>
               ) : (
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#888880] mb-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-brand-text-muted mb-2">
                     Prix forfaitaire (FCFA)
                   </label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     min={1}
                     value={flatPrice}
                     onChange={(e) => setFlatPrice(e.target.value)}
                     placeholder="Ex : 15000"
-                    className="w-full rounded-lg border border-brand-gold/20 bg-[#0F0F0F] px-4 py-3 text-sm text-brand-text focus:outline-none focus:border-brand-gold/60"
+                    className="w-full rounded-lg border border-brand-gold/20 bg-brand-bg px-4 py-3 text-sm text-brand-text hide-number-spinners focus:outline-none focus:ring-2 focus:ring-brand-gold/30 focus:border-brand-gold"
                   />
                   <p className="mt-1 text-xs text-brand-text-muted">
                     Le forfait est la référence du look — il reste fixe même si tu modifies les pièces. Somme des pièces pour info : {calculatedSum.toLocaleString()} FCFA.
@@ -715,7 +716,7 @@ export default function AdminHpbPage() {
                   {/* IMPL-4 (C3+C4) — décomposition du forfait : lignes libres
                       libellé + montant, JAMAIS d'articles catalogue. */}
                   <div className="mt-4 pt-3 border-t border-brand-gold/10 space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[#888880]">Décomposition du forfait (optionnel)</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-text-muted">Décomposition du forfait (optionnel)</p>
                     <p className="text-[11px] text-brand-text-muted leading-relaxed">
                       Décris ce que comprend le forfait — libellés et montants libres. Ces lignes ne créent aucun article catalogue.
                     </p>
@@ -726,15 +727,16 @@ export default function AdminHpbPage() {
                           value={line.label}
                           onChange={(e) => setPriceLines((lines) => lines.map((l, i) => (i === index ? { ...l, label: e.target.value } : l)))}
                           placeholder="Ex : Veste signature"
-                          className="flex-1 min-w-0 rounded-lg border border-brand-gold/20 bg-[#0F0F0F] px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-gold/60"
+                          className="flex-1 min-w-0 rounded-lg border border-brand-gold/20 bg-brand-bg px-3 py-2 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/30 focus:border-brand-gold"
                         />
                         <input
                           type="number"
+                          inputMode="numeric"
                           min={0}
                           value={line.amount}
                           onChange={(e) => setPriceLines((lines) => lines.map((l, i) => (i === index ? { ...l, amount: e.target.value } : l)))}
                           placeholder="Montant"
-                          className="w-28 rounded-lg border border-brand-gold/20 bg-[#0F0F0F] px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-gold/60"
+                          className="w-28 rounded-lg border border-brand-gold/20 bg-brand-bg px-3 py-2 text-sm text-brand-text hide-number-spinners focus:outline-none focus:ring-2 focus:ring-brand-gold/30 focus:border-brand-gold"
                         />
                         <button
                           type="button"
@@ -782,16 +784,17 @@ export default function AdminHpbPage() {
 
                   {/* E1 — ordre d'affichage public du look (1 = premier) */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#888880] mb-2">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-brand-text-muted mb-2">
                       Ordre d’affichage (1 = premier)
                     </label>
                     <input
                       type="number"
+                      inputMode="numeric"
                       min={1}
                       value={position}
                       onChange={(e) => setPosition(e.target.value)}
                       placeholder="Auto (fin de liste)"
-                      className="w-full rounded-lg border border-brand-gold/20 bg-[#0F0F0F] px-4 py-3 text-sm text-brand-text focus:outline-none focus:border-brand-gold/60"
+                      className="w-full rounded-lg border border-brand-gold/20 bg-brand-bg px-4 py-3 text-sm text-brand-text hide-number-spinners focus:outline-none focus:ring-2 focus:ring-brand-gold/30 focus:border-brand-gold"
                     />
                   </div>
 
