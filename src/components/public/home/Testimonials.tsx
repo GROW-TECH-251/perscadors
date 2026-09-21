@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Quote } from 'lucide-react';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import { fetchActiveAssetsBySection } from '@/services/mediaService';
+import { sanitizeMediaSrc } from '@/lib/mediaSecurity';
 import type { ShopSettings, TestimonialsData, SiteAsset } from '@/admin/types';
 
 // Fallback de dernier recours : uniquement si aucune capture ET aucune vidéo
@@ -94,7 +95,12 @@ export const Testimonials: React.FC = () => {
 
   const screenshotUrl = testimonials.screenshot_url;
   const hasScreenshot = Boolean(screenshotUrl);
-  const hasMedia = assets.length > 0;
+  // Sécurité (js/xss-through-dom) : seules des sources validées (schéma
+  // http(s)/relatif/blob) atteignent les attributs src du DOM.
+  const mediaEntries = assets
+    .map((asset) => ({ asset, src: sanitizeMediaSrc(asset.url) }))
+    .filter((entry): entry is { asset: SiteAsset; src: string } => entry.src !== undefined);
+  const hasMedia = mediaEntries.length > 0;
 
   return (
     <section id="testimonials" className="py-24 bg-brand-bg-alt border-y border-brand-gold/10">
@@ -140,7 +146,7 @@ export const Testimonials: React.FC = () => {
             l'asset. Montage below-fold conservé (PERF-03). */}
         {hasMedia && (
           <div ref={videosSectionRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-            {assets.map((asset) => (
+            {mediaEntries.map(({ asset, src }) => (
               <div
                 key={asset.id}
                 className="bg-brand-bg border border-brand-gold/10 rounded-2xl shadow-lg overflow-hidden"
@@ -148,7 +154,7 @@ export const Testimonials: React.FC = () => {
                 {videosVisible ? (
                   asset.type === 'video' ? (
                     <video
-                      src={asset.url}
+                      src={src}
                       controls
                       playsInline
                       preload="metadata"
@@ -158,7 +164,7 @@ export const Testimonials: React.FC = () => {
                   ) : (
                     <div className="relative w-full aspect-video bg-brand-bg-alt">
                       <Image
-                        src={asset.url}
+                        src={src}
                         alt={asset.alt || asset.title}
                         fill
                         sizes="(max-width: 768px) 100vw, 33vw"
