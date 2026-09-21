@@ -31,11 +31,10 @@ const DEFAULT_TESTIMONIALS: TestimonialsData = {
   // produisait une image cassée en vitrine.
   screenshot_url: '',
   screenshot_quote: "Tu connais #HPcollection c'est la meilleure prêt à porter du Bénin 🇧🇯 actuellement chez Honoré Perscadors...",
-  videos: [
-    { src: '/assets/testimonials/video/client.mp4', title: 'Avis Client #1', description: 'Validation de l\'outfit complet par un king local.' },
-    { src: '/assets/testimonials/video/client2.mp4', title: 'Avis Client #2', description: 'Review des baskets premium à la réception.' },
-    { src: '/assets/testimonials/video/client3.mp4', title: 'Avis Client #3', description: 'Un look validé à 100% sur Cotonou.' }
-  ]
+  // IMPL-B (UI Boost, décision validée) : plus AUCUNE vidéo par défaut codée
+  // en dur — les vidéos de témoignages sont configurées à 100 % depuis le
+  // Dashboard (Médias → Témoignages = site_assets) et rendues par la vitrine.
+  videos: []
 };
 
 const DEFAULT_FAQ: FAQItem[] = [
@@ -183,7 +182,8 @@ function normalizeTestimonials(value: unknown): TestimonialsData {
   return {
     screenshot_url: cand.screenshot_url || DEFAULT_TESTIMONIALS.screenshot_url,
     screenshot_quote: cand.screenshot_quote || DEFAULT_TESTIMONIALS.screenshot_quote,
-    videos: Array.isArray(cand.videos) && cand.videos.length > 0 ? cand.videos : DEFAULT_TESTIMONIALS.videos
+    // IMPL-B : jamais de repli fantôme — videos vides = aucune vidéo affichée.
+    videos: Array.isArray(cand.videos) ? cand.videos : []
   };
 }
 

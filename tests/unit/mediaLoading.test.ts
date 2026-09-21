@@ -23,8 +23,10 @@ describe('Unit — PERF-03 Hiérarchie médias', () => {
 
   it('Testimonials : les <video> ne sont PAS rendues avant visibilité', async () => {
     const t = await readFile('src/components/public/home/Testimonials.tsx', 'utf-8');
-    // Le <video> est dans la branche conditionnelle videosVisible.
-    expect(t).toMatch(/videosVisible \? \(\s*<video/);
+    // IMPL-B (UI Boost) : le média (vidéo OU image des site_assets) reste
+    // dans la branche conditionnelle videosVisible — le <video> y est imbriqué
+    // derrière le test de type d'asset.
+    expect(t).toMatch(/videosVisible \? \(\s*asset\.type === 'video' \? \(\s*<video/);
     // Attributs conservés une fois montées.
     expect(t).toContain('preload="metadata"');
     expect(t).toContain('playsInline');
