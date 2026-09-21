@@ -263,8 +263,16 @@ describe('Unit — IMPL-4 : gardes anti-dérive (sources)', () => {
     // payload : décomposition + interrupteur transmis
     expect(page).toContain('price_breakdown: filledLines.length > 0');
     expect(page).toContain("show_price_breakdown: pricingMode === 'flat' && showBreakdown");
-    // badge liste : condition exacte du badge « Décomposition »
-    expect(page).toContain('outfit.show_price_breakdown && (outfit.price_breakdown?.length ?? 0) > 0');
+    // Lot 3 — badge liste : visible dès qu'une décomposition existe ; l'état
+    // public (interrupteur) est indiqué, plus jamais une condition d'affichage.
+    expect(page).toContain('const breakdown = outfit.price_breakdown ?? [];');
+    expect(page).toContain('{breakdown.length > 0 && (');
+    expect(page).toContain("Décomposition{outfit.show_price_breakdown ? '' : ' · privée'}");
+    expect(page).not.toContain('outfit.show_price_breakdown && (outfit.price_breakdown?.length ?? 0) > 0');
+    // Lot 3 — résumé dans la liste + états vides explicites (liste et formulaire)
+    expect(page).toContain('Total des lignes');
+    expect(page).toContain('Décomposition : aucune');
+    expect(page).toContain('Aucune décomposition enregistrée pour ce look');
   });
 
   it('rendu public : grille et modal affichent la décomposition, conditionnellement', async () => {

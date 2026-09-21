@@ -9,7 +9,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, AdminModal, AdminToast, AdminConfirmDialog } from '@/admin/components';
-import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle, Video } from 'lucide-react';
+import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle, Video, Layers } from 'lucide-react';
 import { fetchAdminOutfits, createOutfit, updateOutfit, deleteOutfit } from '@/services/outfitService';
 import { fetchAdminProducts } from '@/services/productService';
 import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
@@ -446,6 +446,9 @@ export default function AdminHpbPage() {
 
             const calculatedTotal = attachedProducts.reduce((sum, p) => sum + p.price, 0);
             const displayPrice = outfit.custom_price !== null ? outfit.custom_price : calculatedTotal;
+            // Lot 3 — décomposition du look : le résumé de liste s'affiche dès
+            // qu'elle existe ; l'interrupteur public ne concerne que la vitrine.
+            const breakdown = outfit.price_breakdown ?? [];
 
             return (
               <AdminCard key={outfit.id} className="p-0 overflow-hidden relative group/outfit border-brand-gold/15 hover:border-brand-gold/40 transition-all shadow-lg hover:shadow-2xl flex flex-col justify-between">
@@ -482,9 +485,12 @@ export default function AdminHpbPage() {
                           Forfait
                         </span>
                       )}
-                      {outfit.pricing_mode === 'flat' && outfit.show_price_breakdown && (outfit.price_breakdown?.length ?? 0) > 0 && (
-                        <span className="px-2.5 py-1 bg-brand-gold/10 text-brand-gold/90 border border-brand-gold/25 text-xs font-semibold rounded-lg backdrop-blur-sm">
-                          Décomposition
+                      {breakdown.length > 0 && (
+                        <span
+                          title={outfit.show_price_breakdown ? 'Décomposition configurée, affichée sur la boutique.' : 'Décomposition enregistrée mais NON affichée sur la boutique (interrupteur public désactivé dans le formulaire).'}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-lg backdrop-blur-sm flex items-center gap-1.5 ${outfit.show_price_breakdown ? 'bg-brand-gold/10 text-brand-gold/90 border border-brand-gold/25' : 'bg-gray-900/85 text-gray-300 border border-gray-600'}`}
+                        >
+                          <Layers size={12} /> Décomposition{outfit.show_price_breakdown ? '' : ' · privée'}
                         </span>
                       )}
                     </div>
@@ -535,6 +541,30 @@ export default function AdminHpbPage() {
                         {displayPrice.toLocaleString()} FCFA
                       </span>
                     </div>
+
+                    {/* Lot 3 — résumé de la décomposition : visible dès qu'elle
+                        existe (l'interrupteur public ne concerne que la vitrine). */}
+                    {breakdown.length > 0 ? (
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-text-muted block">
+                          Décomposition du forfait {outfit.show_price_breakdown ? '' : '· non affichée au public'}
+                        </span>
+                        <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                          {breakdown.map((line, index) => (
+                            <div key={`bd-sum-${outfit.id}-${index}`} className="flex items-center justify-between gap-2 text-xs">
+                              <span className="text-brand-text truncate">{line.label}</span>
+                              <span className="text-brand-gold font-bold whitespace-nowrap">{line.amount.toLocaleString()} FCFA</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-brand-gold/10">
+                          <span className="text-brand-text-muted">Total des lignes</span>
+                          <span className="text-brand-text font-semibold">{breakdown.reduce((sum, line) => sum + (line.amount || 0), 0).toLocaleString()} FCFA</span>
+                        </div>
+                      </div>
+                    ) : outfit.pricing_mode === 'flat' ? (
+                      <p className="text-xs text-brand-text-muted italic">Décomposition : aucune — ajoute des lignes via « Modifier ».</p>
+                    ) : null}
 
                     {/* Pièces Internes (Quick Unlink) */}
                     <div className="space-y-2">
@@ -718,6 +748,11 @@ export default function AdminHpbPage() {
                     >
                       + Ajouter une ligne
                     </button>
+                    {priceLines.length === 0 && (
+                      <p className="text-[11px] text-brand-text-muted italic">
+                        Aucune décomposition enregistrée pour ce look — « + Ajouter une ligne » pour décrire ce que comprend le forfait.
+                      </p>
+                    )}
                     {filledLinesCount > 0 && (
                       <>
                         <button
