@@ -15,6 +15,7 @@ import { fetchAdminProducts } from '@/services/productService';
 import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
 import { WhatsAppRecipientDialog } from '@/components/admin/WhatsAppRecipientDialog';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
+import { isBreakdownAmountValid } from '@/lib/breakdownValidation';
 import { openWhatsApp } from '@/services/whatsappService';
 import type { CustomerSummary } from '@/admin/types';
 import { uploadOutfitImage, uploadOutfitVideo, deleteOutfitVideo } from '@/services/mediaService';
@@ -318,9 +319,13 @@ export default function AdminHpbPage() {
     const filledLines = priceLines.filter((line) => line.label.trim() !== '' || line.amount.trim() !== '');
     if (
       pricingMode === 'flat' &&
-      filledLines.some((line) => line.label.trim() === '' || line.amount.trim() === '' || !Number.isFinite(Number(line.amount)) || Number(line.amount) <= 0)
+      // Lot 4 — validateur miroir de la contrainte SQL RÉELLE (vérifiée PG 17) :
+      // montants ENTIERS positifs uniquement (FCFA sans sous-unité) — refuse
+      // vide, non-numérique, <= 0, décimales et notations scientifiques
+      // (« 12.5 », « 1e-7 »…) que la base rejette : plus d'erreur brute.
+      filledLines.some((line) => line.label.trim() === '' || !isBreakdownAmountValid(line.amount))
     ) {
-      setToast({ message: 'Décomposition incomplète : chaque ligne doit avoir un libellé et un montant. Supprime les lignes vides.', variant: 'error' });
+      setToast({ message: 'Décomposition incomplète : chaque ligne doit avoir un libellé et un montant (entier positif en FCFA).', variant: 'error' });
       return;
     }
 
