@@ -31,11 +31,10 @@ const DEFAULT_TESTIMONIALS: TestimonialsData = {
   // produisait une image cassée en vitrine.
   screenshot_url: '',
   screenshot_quote: "Tu connais #HPcollection c'est la meilleure prêt à porter du Bénin 🇧🇯 actuellement chez Honoré Perscadors...",
-  videos: [
-    { src: '/assets/testimonials/video/client.mp4', title: 'Avis Client #1', description: 'Validation de l\'outfit complet par un king local.' },
-    { src: '/assets/testimonials/video/client2.mp4', title: 'Avis Client #2', description: 'Review des baskets premium à la réception.' },
-    { src: '/assets/testimonials/video/client3.mp4', title: 'Avis Client #3', description: 'Un look validé à 100% sur Cotonou.' }
-  ]
+  // IMPL-B (UI Boost, décision validée) : plus AUCUNE vidéo par défaut codée
+  // en dur — les vidéos de témoignages sont configurées à 100 % depuis le
+  // Dashboard (Médias → Témoignages = site_assets) et rendues par la vitrine.
+  videos: []
 };
 
 const DEFAULT_FAQ: FAQItem[] = [
@@ -80,7 +79,10 @@ export function getDefaultShopSettings(): ShopSettings {
     floating_whatsapp_text: 'Bonjour Vioutou ! Je viens du site HP Collection et j\'aimerais discuter de vos outfits.',
     social_title: 'HP Collection | Boutique Streetwear Premium',
     social_description: 'Découvrez la sélection streetwear premium HP Collection.',
-    social_image_url: '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0036.jpg',
+    // IMPL-A (UI Boost) : plus d'image de partage codée en dur — la bannière
+    // du Dashboard (Médias → « Bannière de partage ») est la source de vérité
+    // pour les métadonnées OG ; le repli final vit dans layout.tsx.
+    social_image_url: undefined,
     testimonials_json: DEFAULT_TESTIMONIALS,
     faq_json: DEFAULT_FAQ,
     updated_at: getCurrentIsoDate()
@@ -180,7 +182,8 @@ function normalizeTestimonials(value: unknown): TestimonialsData {
   return {
     screenshot_url: cand.screenshot_url || DEFAULT_TESTIMONIALS.screenshot_url,
     screenshot_quote: cand.screenshot_quote || DEFAULT_TESTIMONIALS.screenshot_quote,
-    videos: Array.isArray(cand.videos) && cand.videos.length > 0 ? cand.videos : DEFAULT_TESTIMONIALS.videos
+    // IMPL-B : jamais de repli fantôme — videos vides = aucune vidéo affichée.
+    videos: Array.isArray(cand.videos) ? cand.videos : []
   };
 }
 
@@ -222,7 +225,11 @@ function normalizeShopSettings(rawSettings: Partial<ShopSettings> | null | undef
     floating_whatsapp_text: rawSettings?.floating_whatsapp_text || defaults.floating_whatsapp_text,
     social_title: rawSettings?.social_title || defaults.social_title,
     social_description: rawSettings?.social_description || defaults.social_description,
-    social_image_url: rawSettings?.social_image_url || defaults.social_image_url,
+    // IMPL-A (UI Boost) : JAMAIS de défaut ici — la normalisation servait à
+    // réécrire l'ancienne image codée en dur dans shop_settings.social_image_url
+    // à CHAQUE sauvegarde des Réglages (upsert de l'objet complet), valeur qui
+    // écrasait ensuite la bannière configurée dans Médias (priorité layout).
+    social_image_url: rawSettings?.social_image_url || undefined,
     testimonials_json: normalizeTestimonials(rawSettings?.testimonials_json),
     faq_json: normalizeFAQ(rawSettings?.faq_json),
     updated_at: rawSettings?.updated_at || defaults.updated_at

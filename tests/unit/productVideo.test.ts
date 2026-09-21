@@ -21,7 +21,9 @@ describe('Unit — IMP-08 Vidéo produit', () => {
     const pub = await readFile('src/types/index.ts', 'utf-8');
     const adm = await readFile('src/admin/types.ts', 'utf-8');
     expect(pub).toContain('video?: string;');
-    expect(pub.match(/video\?: string;/g)?.length).toBe(1);
+    // IMPL-C (UI Boost) : « video?: string » apparaît désormais 2 fois dans
+    // les types publics — Product.video (IMP-08) et Outfit.video (IMPL-C).
+    expect(pub.match(/video\?: string;/g)?.length).toBe(2);
     expect(adm).toContain('video_url?: string | null;');
     expect(adm).toContain('video_public_id?: string | null;');
   });

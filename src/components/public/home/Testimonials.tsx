@@ -6,7 +6,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Quote } from 'lucide-react';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
-import type { ShopSettings, TestimonialsData } from '@/admin/types';
+import { fetchActiveAssetsBySection } from '@/services/mediaService';
+import type { ShopSettings, TestimonialsData, SiteAsset } from '@/admin/types';
 
 // Fallback de dernier recours : uniquement si aucune capture ET aucune vidéo
 // n'est configurée. Le schéma réellement stocké est un objet TestimonialsData
@@ -19,29 +20,34 @@ const FALLBACK_TESTIMONIALS = [
   { name: 'Marie', quote: "Les couleurs rendent encore mieux en vrai. Très satisfaite.", city: 'Porto-Novo' },
 ];
 
-function pickVideos(data: TestimonialsData) {
-  return (data.videos ?? []).filter(
-    (v) => v && typeof v.src === 'string' && v.src.length > 0
-  );
-}
-
 export const Testimonials: React.FC = () => {
   const [settings, setSettings] = useState<ShopSettings>(getDefaultShopSettings());
   const [testimonials, setTestimonials] = useState<TestimonialsData>(
     getDefaultShopSettings().testimonials_json
   );
+  // IMPL-B (UI Boost, décision validée) : les vidéos/médias de témoignages
+  // viennent des site_assets configurés dans le Dashboard (Médias →
+  // Témoignages) — plus aucun repli vers des vidéos codées en dur.
+  const [assets, setAssets] = useState<SiteAsset[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   const loadTestimonials = useCallback(async () => {
     try {
-      const data = await fetchPublicShopSettings();
+      const [data, sectionAssets] = await Promise.all([
+        fetchPublicShopSettings(),
+        fetchActiveAssetsBySection('testimonials')
+      ]);
       if (data) {
         setSettings(data);
         // data.testimonials_json est déjà normalisé côté service (objet
-        // TestimonialsData) : on le consomme tel quel.
+        // TestimonialsData) : on le consomme tel quel (capture + citation).
         setTestimonials(data.testimonials_json);
       }
+      setAssets(sectionAssets);
     } catch {
-      // Garde le contenu précédent (défauts) en cas d'erreur réseau.
+      // Garde le contenu précédent en cas d'erreur réseau.
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
@@ -87,9 +93,8 @@ export const Testimonials: React.FC = () => {
   }, []);
 
   const screenshotUrl = testimonials.screenshot_url;
-  const videos = pickVideos(testimonials);
   const hasScreenshot = Boolean(screenshotUrl);
-  const hasVideos = videos.length > 0;
+  const hasMedia = assets.length > 0;
 
   return (
     <section id="testimonials" className="py-24 bg-brand-bg-alt border-y border-brand-gold/10">
@@ -130,29 +135,45 @@ export const Testimonials: React.FC = () => {
           </div>
         )}
 
-        {/* Vidéos de validation clients (schéma stocké) */}
-        {hasVideos && (
+        {/* IMPL-B : médias de témoignages configurés dans Médias (site_assets
+            actifs de la section) — vidéos ET images, titre/description de
+            l'asset. Montage below-fold conservé (PERF-03). */}
+        {hasMedia && (
           <div ref={videosSectionRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-            {videos.map((video, index) => (
+            {assets.map((asset) => (
               <div
-                key={video.src || index}
+                key={asset.id}
                 className="bg-brand-bg border border-brand-gold/10 rounded-2xl shadow-lg overflow-hidden"
               >
                 {videosVisible ? (
-                  <video
-                    src={video.src}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    className="w-full aspect-video object-contain bg-black"
-                  />
+                  asset.type === 'video' ? (
+                    <video
+                      src={asset.url}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label={asset.alt || asset.title}
+                      className="w-full aspect-video object-contain bg-black"
+                    />
+                  ) : (
+                    <div className="relative w-full aspect-video bg-brand-bg-alt">
+                      <Image
+                        src={asset.url}
+                        alt={asset.alt || asset.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </div>
+                  )
                 ) : (
                   <div className="w-full aspect-video bg-brand-bg-alt skeleton-media" aria-busy="true" />
                 )}
                 <div className="p-5">
-                  <h4 className="font-bebas text-lg text-brand-gold mb-1">{video.title}</h4>
-                  {video.description && (
-                    <p className="text-sm text-brand-text-muted leading-relaxed">{video.description}</p>
+                  <h4 className="font-bebas text-lg text-brand-gold mb-1">{asset.title}</h4>
+                  {asset.description && (
+                    <p className="text-sm text-brand-text-muted leading-relaxed">{asset.description}</p>
                   )}
                 </div>
               </div>
@@ -160,8 +181,8 @@ export const Testimonials: React.FC = () => {
           </div>
         )}
 
-        {/* Aucune donnée configurée : citations de repli */}
-        {!hasScreenshot && !hasVideos && (
+        {/* Aucune donnée configurée (après chargement) : citations de repli */}
+        {loaded && !hasScreenshot && !hasMedia && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
             {FALLBACK_TESTIMONIALS.map((t, i) => (
               <div key={i} className="p-6 bg-brand-bg border border-brand-gold/10 rounded-2xl shadow-lg">

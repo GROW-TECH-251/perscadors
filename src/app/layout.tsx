@@ -57,8 +57,15 @@ export async function generateMetadata(): Promise<Metadata> {
       client.from('site_assets').select('url').eq('section', 'ambience').eq('active', true).order('updated_at', { ascending: false }).limit(1).maybeSingle()
     ]);
     const data = settingsResponse.data;
-    if (data) { title = data.social_title || title; description = data.social_description || description; image = data.social_image_url || bannerResponse.data?.url || image; }
-    else if (bannerResponse.data?.url) image = bannerResponse.data.url;
+    if (data) { title = data.social_title || title; description = data.social_description || description; }
+    // IMPL-A (UI Boost) : la bannière du Dashboard (Médias → « Bannière de
+    // partage » = site_assets section ambience) est la source de vérité.
+    // L'ancienne priorité (social_image_url || bannière) laissait une valeur
+    // périmée — le défaut codé en dur réécrit en base à chaque sauvegarde des
+    // Réglages — écraser l'image réellement configurée. Ordre désormais :
+    // bannière configurée → social_image_url explicite (colonne sans UI,
+    // conservée pour compatibilité) → fallback codé en dur en dernier recours.
+    image = bannerResponse.data?.url || data?.social_image_url || image;
   }
   return { metadataBase: new URL('https://perscadors.vercel.app'), title, description, robots: { index: true, follow: true }, openGraph: { title, description, url: 'https://perscadors.vercel.app', siteName: 'HP Collection Bénin', images: [{ url: image, width: 1200, height: 630, alt: title }], locale: 'fr_BJ', type: 'website' }, twitter: { card: 'summary_large_image', title, description, images: [image] }, icons: { icon: '/assets/brand/logo.png', shortcut: '/assets/brand/logo.png', apple: '/assets/brand/logo.png' } };
 }
