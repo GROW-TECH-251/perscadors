@@ -186,3 +186,76 @@ test.describe('E1-bis — LookModal utilisable quelle que soit la hauteur', () =
     await expect(page.locator('[role="dialog"]')).toHaveCount(0);
   });
 });
+
+test.describe('Lot 2 — modale ancrée au viewport (portail)', () => {
+  // Mission HP Look 09/2026 : le carrousel home est enveloppé par ScrollReveal
+  // dont le transform reste actif après révélation — avant le portail, la
+  // LookModal (position:fixed) s'ancrait sur la boîte de la SECTION, pas sur
+  // l'écran : coupée/hors champ selon la position de la grille et le scroll.
+
+  async function ouvrirModale(page: import('@playwright/test').Page, alignement: 'start' | 'end' = 'start') {
+    const section = page.locator('#carousel-outfits');
+    await section.waitFor({ state: 'attached', timeout: 20000 });
+    await page.evaluate((mode) => {
+      document.querySelector('#carousel-outfits')?.scrollIntoView({ block: mode });
+    }, alignement);
+    await page.waitForTimeout(1200);
+    const point = await page.evaluate(() => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      for (const img of Array.from(document.querySelectorAll('#carousel-outfits img'))) {
+        const r = img.getBoundingClientRect();
+        const cx = r.x + r.width / 2;
+        const cy = r.y + r.height / 2;
+        if (cx >= 24 && cx <= vw - 24 && cy >= 24 && cy <= vh - 24) return { x: cx, y: cy };
+      }
+      return null;
+    });
+    if (!point) throw new Error('aucune carte cliquable dans le viewport');
+    // le survol met l'auto-scroll en pause (même parcours que le test E1).
+    await page.mouse.move(point.x, point.y);
+    await page.waitForTimeout(1000);
+    await page.mouse.click(point.x, point.y);
+    await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 10000 });
+  }
+
+  test('grille alignée en haut du viewport : panneau entièrement dans l écran', async ({ page }) => {
+    await page.goto('/');
+    await ouvrirModale(page, 'start');
+    const dialog = page.locator('[role="dialog"]');
+    const box = await dialog.boundingBox();
+    const vw = page.viewportSize()?.width ?? 1280;
+    const vh = page.viewportSize()?.height ?? 900;
+    expect(box, 'le panneau a une boîte mesurable').toBeTruthy();
+    // AVANT le portail : ancrage sur la section (haute) -> panneau projeté
+    // hors du viewport. APRES : ancrage viewport -> entièrement visible.
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(vh + 1);
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(vw + 1);
+    // fermeture Escape préservée
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden({ timeout: 5000 });
+  });
+
+  test('après un scroll profond puis grille en bas du viewport : panneau dans l écran + fermeture', async ({ page }) => {
+    await page.goto('/');
+    // scroll important AVANT l'ouverture (critère : fonctionne après défiler)
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(600);
+    await ouvrirModale(page, 'end');
+    const dialog = page.locator('[role="dialog"]');
+    const box = await dialog.boundingBox();
+    const vw = page.viewportSize()?.width ?? 1280;
+    const vh = page.viewportSize()?.height ?? 900;
+    expect(box).toBeTruthy();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(vh + 1);
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(vw + 1);
+    // fermeture par le bouton de fermeture préservée
+    await dialog.getByRole('button', { name: /fermer/i }).click();
+    await expect(dialog).toBeHidden({ timeout: 5000 });
+  });
+});
+

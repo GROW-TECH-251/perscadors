@@ -5,10 +5,13 @@
 // produit, ajout au panier en un clic avec confirmation visuelle, relais
 // WhatsApp (même message que la page /looks). Accessible : role dialog +
 // aria-modal, Escape, focus initial sur la fermeture, piège de focus (Tab),
-// focus restitué et scroll body restauré au démontage. Animations 100%
+// focus restitué et scroll body restauré au démontage. Rendue en portail
+// sous <body> (Lot 2) : ancrage viewport insensible aux ancêtres transformés.
+// Animations 100%
 // tokens IMP-01, neutralisées par prefers-reduced-motion (règle globale).
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
 import { X, Sparkles, Check, MessageCircle } from 'lucide-react';
@@ -137,7 +140,19 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
     window.open(buildWhatsAppUrl(message, whatsappPhone), '_blank');
   };
 
-  return (
+  // Lot 2 (mission HP Look 09/2026) — portail vers document.body.
+  // La modale était rendue DANS la section carrousel, enveloppée par
+  // ScrollReveal : son transform (translate3d) reste actif après révélation,
+  // or tout ancêtre transformé devient le bloc d'ancrage des descendants
+  // position:fixed — la modale se positionnait donc par rapport à la boîte
+  // de la section (coupée ou hors écran selon la position de la grille et le
+  // scroll) au lieu du viewport. Rendue en portail directement sous <body>,
+  // elle n'a plus AUCUN ancêtre transformé : ancrage viewport garanti.
+  // Garde SSR inoffensive : la modale n'est montée qu'après un clic client
+  // (état local du carrousel), le rendu serveur ne passe jamais ici.
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="lightbox-fade-in absolute inset-0 bg-black/80 backdrop-blur-md"
@@ -302,6 +317,7 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
