@@ -320,6 +320,8 @@ function normalizeOutfitRows(
       name: outfitRow.name,
       image: outfitRow.image_url || '/assets/brand/logo.png',
       price: finalPrice,
+      // IMPL-C — vidéo optionnelle du look (modale d'inspection).
+      video: outfitRow.video_url?.trim() || undefined,
       products: outfitProducts,
       ...(priceBreakdown.length > 0 ? { priceBreakdown } : {})
     };

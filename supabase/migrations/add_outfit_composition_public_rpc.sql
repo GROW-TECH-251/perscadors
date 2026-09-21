@@ -16,8 +16,24 @@
 --
 -- Rollback : drop function if exists public.get_outfit_composition_products();
 -- (l'application retombe automatiquement sur le comportement historique).
+--
+-- PRÉREQUIS : exécuter dans le projet Supabase de PRODUCTION — celui dont
+-- l'URL correspond à NEXT_PUBLIC_SUPABASE_URL (Vercel → Settings → Environment
+-- Variables). Dans un autre projet ou une branche preview (base vide), la
+-- création échoue avec « relation "public.products" does not exist » (42P01).
 
 begin;
+
+-- Garde-fou (retour d'expérience 09/2026) : échouer IMMÉDIATEMENT avec un
+-- message explicite si la base visée n'est pas la bonne (tables absentes),
+-- au lieu du « relation "public.products" does not exist » (42P01) difficile
+-- à interpréter. Ne modifie rien : simple vérification.
+do $$
+begin
+  if to_regclass('public.products') is null or to_regclass('public.outfits') is null then
+    raise exception 'PRÉREQUIS ABSENT : la table public.products ou public.outfits n''existe pas dans cette base — vous n''êtes probablement pas sur le bon projet Supabase. Vérifiez le sélecteur de projet (et Project Settings > API > Project Ref, qui doit correspondre à NEXT_PUBLIC_SUPABASE_URL).';
+  end if;
+end $$;
 
 create or replace function public.get_outfit_composition_products()
 returns jsonb

@@ -313,6 +313,11 @@ export interface AdminOutfit {
   price_breakdown?: OutfitPriceLine[] | null;
   /** IMPL-4 (C4) — interrupteur par look : afficher la décomposition au public. */
   show_price_breakdown?: boolean;
+  /** IMPL-C (UI Boost) — vidéo optionnelle du look (Cloudinary), présentée
+   *  en premier dans la modale d'inspection publique. */
+  video_url?: string | null;
+  /** IMPL-C — identifiant public Cloudinary (suppression au remplacement). */
+  video_public_id?: string | null;
   product_ids: number[];
   visible: boolean;
   /** Phase finale 09/2026 — ordre d'affichage public (1 = premier). Null = fin de liste. */
@@ -331,6 +336,9 @@ export interface OutfitFormData {
   price_breakdown?: OutfitPriceLine[] | null;
   /** IMPL-4 — interrupteur d'affichage public de la décomposition. */
   show_price_breakdown?: boolean;
+  /** IMPL-C — vidéo du look envoyée à la sauvegarde (null = pas de vidéo). */
+  video_url?: string | null;
+  video_public_id?: string | null;
   product_ids: number[];
   visible: boolean;
   position?: number | null;

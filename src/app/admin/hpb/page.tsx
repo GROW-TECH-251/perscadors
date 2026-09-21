@@ -5,11 +5,11 @@
 
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, AdminModal, AdminToast, AdminConfirmDialog } from '@/admin/components';
-import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle, Video } from 'lucide-react';
 import { fetchAdminOutfits, createOutfit, updateOutfit, deleteOutfit } from '@/services/outfitService';
 import { fetchAdminProducts } from '@/services/productService';
 import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
@@ -17,7 +17,7 @@ import { WhatsAppRecipientDialog } from '@/components/admin/WhatsAppRecipientDia
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
 import { openWhatsApp } from '@/services/whatsappService';
 import type { CustomerSummary } from '@/admin/types';
-import { uploadOutfitImage } from '@/services/mediaService';
+import { uploadOutfitImage, uploadOutfitVideo, deleteOutfitVideo } from '@/services/mediaService';
 import type { AdminOutfit, AdminProduct } from '@/admin/types';
 
 export default function AdminHpbPage() {
@@ -44,6 +44,11 @@ export default function AdminHpbPage() {
   // IMPL-4 (C3+C4) — décomposition du forfait : lignes libres libellé + montant.
   const [priceLines, setPriceLines] = useState<{ label: string; amount: string }[]>([]);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  // IMPL-C (UI Boost) — vidéo optionnelle du look (Cloudinary).
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoPublicId, setVideoPublicId] = useState<string | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingId, setSavingId] = useState<number | null>(null);
@@ -182,6 +187,8 @@ export default function AdminHpbPage() {
         }))
       );
       setShowBreakdown(Boolean(outfit.show_price_breakdown));
+      setVideoUrl(outfit.video_url || null);
+      setVideoPublicId(outfit.video_public_id || null);
     } else {
       setEditingOutfit(null);
       setName('');
@@ -192,6 +199,8 @@ export default function AdminHpbPage() {
       setFlatPrice('');
       setPriceLines([]);
       setShowBreakdown(false);
+      setVideoUrl(null);
+      setVideoPublicId(null);
     }
     setPickerSearch('');
     setIsModalOpen(true);
@@ -217,6 +226,55 @@ export default function AdminHpbPage() {
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  // IMPL-C — upload vidéo du look : mêmes règles que les produits
+  // (MIME video/* + .mp4/.mov/.webm, 30 Mo max, MP4 H.264 recommandé).
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/') && !file.name.match(/\.(mp4|mov|webm)$/i)) {
+      setToast({ message: 'Veuillez sélectionner un fichier vidéo valide (MP4, WebM ou MOV).', variant: 'error' });
+      return;
+    }
+
+    if (file.size > 30 * 1024 * 1024) {
+      setToast({ message: 'La vidéo ne doit pas dépasser 30 Mo.', variant: 'error' });
+      return;
+    }
+
+    setVideoUploading(true);
+    try {
+      const result = await uploadOutfitVideo(file, editingOutfit?.id ?? 'draft');
+      if (result.error || !result.url) {
+        setToast({ message: result.error || 'Erreur d’upload vidéo.', variant: 'error' });
+      } else {
+        if (videoPublicId) {
+          void deleteOutfitVideo(videoPublicId);
+        }
+        setVideoUrl(result.url);
+        setVideoPublicId(result.publicId);
+        setToast({ message: 'Vidéo ajoutée au look.', variant: 'success' });
+      }
+    } catch (error: unknown) {
+      console.error('Erreur upload vidéo look:', error);
+      setToast({ message: 'Erreur lors de l’upload de la vidéo.', variant: 'error' });
+    } finally {
+      setVideoUploading(false);
+      if (videoInputRef.current) {
+        videoInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveVideo = () => {
+    if (videoPublicId) {
+      void deleteOutfitVideo(videoPublicId);
+    }
+    setVideoUrl(null);
+    setVideoPublicId(null);
+    setToast({ message: 'Vidéo retirée du look.', variant: 'info' });
   };
 
   const handleToggleProductSelection = (productId: number) => {
@@ -283,6 +341,9 @@ export default function AdminHpbPage() {
         // saisies sont conservées même hors mode forfait (non affichées).
         price_breakdown: filledLines.length > 0 ? filledLines.map((line) => ({ label: line.label.trim(), amount: Number(line.amount) })) : null,
         show_price_breakdown: pricingMode === 'flat' && showBreakdown && filledLines.length > 0,
+        // IMPL-C — vidéo optionnelle du look.
+        video_url: videoUrl,
+        video_public_id: videoPublicId,
         product_ids: selectedProductIds,
         visible: editingOutfit ? editingOutfit.visible : true
       };
@@ -739,6 +800,45 @@ export default function AdminHpbPage() {
                 />
               </div>
             )}
+          </div>
+
+          {/* IMPL-C (UI Boost) — vidéo optionnelle du look : présentée en
+              premier dans la fenêtre d'inspection publique ; l'image reste
+              l'affiche des listes (grille /looks et carrousel accueil). */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-brand-text mb-1">Vidéo du Look (optionnelle)</label>
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              onChange={handleVideoUpload}
+              disabled={videoUploading}
+              className="hidden"
+              id="outfit-video-upload"
+              aria-label="Uploader une vidéo pour le look"
+              title="Uploader une vidéo pour le look"
+            />
+            <div className="flex items-center gap-4">
+              <label
+                htmlFor="outfit-video-upload"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-gold text-[#0A0A0A] rounded-xl cursor-pointer hover:bg-brand-gold-light transition-colors font-medium font-bebas uppercase tracking-wider text-sm shadow-md"
+              >
+                <Video size={18} />
+                {videoUploading ? 'Upload de la vidéo...' : videoUrl ? 'Remplacer la vidéo' : 'Ajouter une vidéo'}
+              </label>
+              {videoUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveVideo}
+                  className="p-2 text-red-500 hover:bg-red-950 rounded-lg transition-colors cursor-pointer text-sm font-medium"
+                >
+                  Retirer la vidéo
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-brand-text-muted">
+              MP4, WebM ou MOV — 30 Mo max. Si elle existe, elle est présentée en premier dans la fenêtre d&apos;inspection du look.
+            </p>
           </div>
 
           {/* SÉLECTEUR DE PRODUITS (PRODUCT PICKER) */}

@@ -25,8 +25,12 @@ const ALLOWED_SECTION_FOLDERS = new Set([
 ]);
 const PRODUCT_FOLDER_PATTERN = /^perscadors\/products\/[A-Za-z0-9_-]+$/;
 
+// IMPL-C (UI Boost) — vidéos des HP Looks : dossier dédié par look, même règle que les produits.
+
+const OUTFIT_FOLDER_PATTERN = /^perscadors\/outfits\/[A-Za-z0-9_-]+$/;
+
 export function isAllowedMediaFolder(folder: string): boolean {
   const value = folder.trim();
   if (!value) return false;
-  return ALLOWED_SECTION_FOLDERS.has(value) || PRODUCT_FOLDER_PATTERN.test(value);
+  return ALLOWED_SECTION_FOLDERS.has(value) || PRODUCT_FOLDER_PATTERN.test(value) || OUTFIT_FOLDER_PATTERN.test(value);
 }
