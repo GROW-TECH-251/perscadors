@@ -4,6 +4,7 @@ import { useShopSettingsRealtime } from '@/hooks/useShopSettingsRealtime';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
+import Link from 'next/link';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import { buildWhatsAppUrl } from '@/services/whatsappService';
 import { shareFileWithText } from '@/services/whatsappShareService';
@@ -241,7 +242,19 @@ function ArticleSubmissionModal({
   );
 }
 
-export const ArticleRequestSection: React.FC = () => {
+type ArticleRequestSectionProps = {
+  variant?: 'full' | 'compact';
+  searchQuery?: string;
+  onReset?: () => void;
+  collectionHref?: string;
+};
+
+export const ArticleRequestSection: React.FC<ArticleRequestSectionProps> = ({
+  variant = 'full',
+  searchQuery,
+  onReset,
+  collectionHref,
+}) => {
   const [settings, setSettings] = useState(getDefaultShopSettings());
   const [showArticleForm, setShowArticleForm] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -304,6 +317,24 @@ export const ArticleRequestSection: React.FC = () => {
     setShowArticleForm(false);
     resetArticleForm();
   };
+
+  // Consolidation 09/2026 — No-results -> parcours existant : en arrivant
+  // depuis une recherche sans résultat (?demande=...), la modale s'ouvre
+  // directement avec la recherche en référence. Zéro formulaire dupliqué ;
+  // le paramètre est consommé (replaceState) pour ne pas rouvrir à chaque
+  // visite de la home.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const demande = params.get('demande');
+    if (demande && demande.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- lecture unique de l'URL au montage : ouverture intentionnelle de la modale (no-results -> photo), aucun rendu en cascade ensuite
+      setArticleForm((prev) => (prev.reference ? prev : { ...prev, reference: demande.trim().slice(0, 120) }));
+      setShowArticleForm(true);
+      params.delete('demande');
+      const search = params.toString();
+      window.history.replaceState(null, '', window.location.pathname + (search ? `?${search}` : '') + window.location.hash);
+    }
+  }, []);
 
   // Le body est fixé à sa position courante : contrairement à overflow:hidden,
   // cette technique bloque aussi le défilement tactile sur iOS Safari.
@@ -431,6 +462,75 @@ export const ArticleRequestSection: React.FC = () => {
     setIsUploading(false);
     closeArticleForm();
   };
+
+  // E5 (Riel, adapté) — Variante compacte : no-results catégorie/fiche produit.
+  // Ouverture inline de la MÊME modale (zéro formulaire dupliqué) + préfill
+  // de la référence avec la recherche en échec (fusion avec l'ancien parcours
+  // ?demande= : la demande est déjà saisie, sans navigation vers la home).
+  const openCompactArticleForm = () => {
+    if (searchQuery?.trim()) {
+      setArticleForm((prev) => (prev.reference ? prev : { ...prev, reference: searchQuery.trim().slice(0, 120) }));
+    }
+    setShowArticleForm(true);
+  };
+
+  if (variant === 'compact') {
+    return (
+      <section id="article-request" className="py-20 bg-brand-bg-alt border-y border-brand-gold/10 scroll-mt-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="rounded-2xl border border-brand-gold/10 bg-brand-bg-alt px-6 py-20 text-center shadow-sm sm:px-10">
+            <SearchX size={40} className="mx-auto mb-6 text-brand-gold" />
+            <h2 className="font-bebas text-2xl uppercase tracking-wider text-brand-text sm:text-3xl">
+              {searchQuery
+                ? `Aucun article ne correspond à « ${searchQuery} »`
+                : 'Vous ne trouvez pas ce que vous cherchez ?'}
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-brand-text-muted">
+              Envoyez-nous une photo de l&apos;article que vous cherchez : l&apos;équipe Pescador vous trouve ça en 24h, gratuitement.
+            </p>
+            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={openCompactArticleForm}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-4 font-bebas text-lg uppercase tracking-wider text-brand-bg shadow-xl transition hover:bg-brand-gold-light"
+              >
+                <Upload size={18} />
+                Ajouter une photo
+              </button>
+              {collectionHref ? (
+                <Link
+                  href={collectionHref}
+                  className="rounded-xl border border-brand-gold/30 px-6 py-4 font-bebas text-lg uppercase tracking-wider text-brand-text transition hover:border-brand-gold hover:text-brand-gold"
+                >
+                  Voir toute la collection
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onReset}
+                  className="rounded-xl border border-brand-gold/30 px-6 py-4 font-bebas text-lg uppercase tracking-wider text-brand-text transition hover:border-brand-gold hover:text-brand-gold"
+                >
+                  Voir toute la collection
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        <ArticleSubmissionModal
+          show={showArticleForm}
+          settings={settings}
+          imagePreview={imagePreview}
+          articleForm={articleForm}
+          fileInputRef={fileInputRef}
+          isUploading={isUploading}
+          onImageSelect={handleImageSelect}
+          onFieldChange={handleFieldChange}
+          onSubmit={handleSubmitArticle}
+          onClose={closeArticleForm}
+        />
+      </section>
+    );
+  }
 
   return (
     <section id="article-request" className="py-20 bg-brand-bg-alt border-y border-brand-gold/10 scroll-mt-20">

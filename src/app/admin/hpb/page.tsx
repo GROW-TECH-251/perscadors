@@ -5,19 +5,20 @@
 
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminInput, AdminModal, AdminToast, AdminConfirmDialog } from '@/admin/components';
-import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Sparkles, Plus, Edit, Trash2, Check, Eye, EyeOff, Upload, Shirt, MessageCircle, AlertTriangle, Video, Layers } from 'lucide-react';
 import { fetchAdminOutfits, createOutfit, updateOutfit, deleteOutfit } from '@/services/outfitService';
 import { fetchAdminProducts } from '@/services/productService';
 import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
 import { WhatsAppRecipientDialog } from '@/components/admin/WhatsAppRecipientDialog';
 import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from '@/services/settingsService';
+import { isBreakdownAmountValid } from '@/lib/breakdownValidation';
 import { openWhatsApp } from '@/services/whatsappService';
 import type { CustomerSummary } from '@/admin/types';
-import { uploadOutfitImage } from '@/services/mediaService';
+import { uploadOutfitImage, uploadOutfitVideo, deleteOutfitVideo } from '@/services/mediaService';
 import type { AdminOutfit, AdminProduct } from '@/admin/types';
 
 export default function AdminHpbPage() {
@@ -35,11 +36,38 @@ export default function AdminHpbPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOutfit, setEditingOutfit] = useState<AdminOutfit | null>(null);
   const [name, setName] = useState('');
+  const [position, setPosition] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
+  // IMPL-3 (C3) — prix forfaitaire HP Look : 2 modes mutuellement exclusifs.
+  const [pricingMode, setPricingMode] = useState<'calculated' | 'flat'>('calculated');
+  const [flatPrice, setFlatPrice] = useState('');
+  // IMPL-4 (C3+C4) — décomposition du forfait : lignes libres libellé + montant.
+  const [priceLines, setPriceLines] = useState<{ label: string; amount: string }[]>([]);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  // IMPL-C (UI Boost) — vidéo optionnelle du look (Cloudinary).
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoPublicId, setVideoPublicId] = useState<string | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingId, setSavingId] = useState<number | null>(null);
+
+  // IMPL-3 (C3) — somme des pièces sélectionnées (articles masqués inclus :
+  // le trigger Supabase recalcule sur TOUS les product_ids).
+  const calculatedSum = useMemo(
+    () => selectedProductIds.reduce((sum, id) => sum + (products.find((p) => p.id === id)?.price ?? 0), 0),
+    [selectedProductIds, products]
+  );
+
+  // IMPL-4 — lignes réellement remplies + somme indicative (le forfait reste
+  // la référence : la somme des lignes n'est jamais imposée).
+  const filledLinesCount = priceLines.filter((line) => line.label.trim() !== '' || line.amount.trim() !== '').length;
+  const breakdownSum = useMemo(
+    () => priceLines.reduce((sum, line) => sum + (Number.isFinite(Number(line.amount)) ? Number(line.amount) : 0), 0),
+    [priceLines]
+  );
 
   // Recherche interne du Product Picker
   const [pickerSearch, setPickerSearch] = useState('');
@@ -148,13 +176,32 @@ export default function AdminHpbPage() {
     if (outfit) {
       setEditingOutfit(outfit);
       setName(outfit.name);
+      setPosition(outfit.position != null ? String(outfit.position) : '');
       setImageUrl(outfit.image_url);
       setSelectedProductIds(outfit.product_ids || []);
+      setPricingMode(outfit.pricing_mode === 'flat' ? 'flat' : 'calculated');
+      setFlatPrice(outfit.pricing_mode === 'flat' && outfit.custom_price !== null ? String(outfit.custom_price) : '');
+      setPriceLines(
+        (outfit.price_breakdown || []).map((line) => ({
+          label: line?.label ?? '',
+          amount: line && line.amount != null ? String(line.amount) : ''
+        }))
+      );
+      setShowBreakdown(Boolean(outfit.show_price_breakdown));
+      setVideoUrl(outfit.video_url || null);
+      setVideoPublicId(outfit.video_public_id || null);
     } else {
       setEditingOutfit(null);
       setName('');
+      setPosition('');
       setImageUrl('');
       setSelectedProductIds([]);
+      setPricingMode('calculated');
+      setFlatPrice('');
+      setPriceLines([]);
+      setShowBreakdown(false);
+      setVideoUrl(null);
+      setVideoPublicId(null);
     }
     setPickerSearch('');
     setIsModalOpen(true);
@@ -182,12 +229,76 @@ export default function AdminHpbPage() {
     }
   };
 
+  // IMPL-C — upload vidéo du look : mêmes règles que les produits
+  // (MIME video/* + .mp4/.mov/.webm, 30 Mo max, MP4 H.264 recommandé).
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/') && !file.name.match(/\.(mp4|mov|webm)$/i)) {
+      setToast({ message: 'Veuillez sélectionner un fichier vidéo valide (MP4, WebM ou MOV).', variant: 'error' });
+      return;
+    }
+
+    if (file.size > 30 * 1024 * 1024) {
+      setToast({ message: 'La vidéo ne doit pas dépasser 30 Mo.', variant: 'error' });
+      return;
+    }
+
+    setVideoUploading(true);
+    try {
+      const result = await uploadOutfitVideo(file, editingOutfit?.id ?? 'draft');
+      if (result.error || !result.url) {
+        setToast({ message: result.error || 'Erreur d’upload vidéo.', variant: 'error' });
+      } else {
+        if (videoPublicId) {
+          void deleteOutfitVideo(videoPublicId);
+        }
+        setVideoUrl(result.url);
+        setVideoPublicId(result.publicId);
+        setToast({ message: 'Vidéo ajoutée au look.', variant: 'success' });
+      }
+    } catch (error: unknown) {
+      console.error('Erreur upload vidéo look:', error);
+      setToast({ message: 'Erreur lors de l’upload de la vidéo.', variant: 'error' });
+    } finally {
+      setVideoUploading(false);
+      if (videoInputRef.current) {
+        videoInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveVideo = () => {
+    if (videoPublicId) {
+      void deleteOutfitVideo(videoPublicId);
+    }
+    setVideoUrl(null);
+    setVideoPublicId(null);
+    setToast({ message: 'Vidéo retirée du look.', variant: 'info' });
+  };
+
   const handleToggleProductSelection = (productId: number) => {
     setSelectedProductIds((currentIds) =>
       currentIds.includes(productId)
         ? currentIds.filter((id) => id !== productId)
         : [...currentIds, productId]
     );
+  };
+
+  // IMPL-3 (C3) : bascule de mode avec avertissement — les deux sens ont une
+  // conséquence (forfait figé / forfait remplacé par la somme des pièces).
+  const switchPricingMode = (next: 'calculated' | 'flat') => {
+    if (next === pricingMode) return;
+    const message = next === 'flat'
+      ? 'Passer au prix forfaitaire ?\n\nLe prix ne sera plus recalculé automatiquement quand tu modifieras les pièces du look : il restera fixe jusqu\u2019à ta prochaine décision.'
+      : 'Revenir au prix calculé ?\n\nLe prix forfaitaire actuel sera définitivement remplacé par la somme des pièces du look.';
+    if (!window.confirm(message)) return;
+    // Pré-remplissage pratique : la somme actuelle comme point de départ.
+    if (next === 'flat' && flatPrice.trim() === '' && calculatedSum > 0) {
+      setFlatPrice(String(calculatedSum));
+    }
+    setPricingMode(next);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -200,13 +311,44 @@ export default function AdminHpbPage() {
       setToast({ message: 'L’image du look est requise.', variant: 'error' });
       return;
     }
+    if (pricingMode === 'flat' && (!Number.isFinite(Number(flatPrice)) || Number(flatPrice) <= 0)) {
+      setToast({ message: 'Prix forfaitaire invalide : indique un nombre supérieur à 0.', variant: 'error' });
+      return;
+    }
+    // IMPL-4 — lignes de décomposition complètes ou vides, jamais à moitié.
+    const filledLines = priceLines.filter((line) => line.label.trim() !== '' || line.amount.trim() !== '');
+    if (
+      pricingMode === 'flat' &&
+      // Lot 4 — validateur miroir de la contrainte SQL RÉELLE (vérifiée PG 17) :
+      // montants ENTIERS positifs uniquement (FCFA sans sous-unité) — refuse
+      // vide, non-numérique, <= 0, décimales et notations scientifiques
+      // (« 12.5 », « 1e-7 »…) que la base rejette : plus d'erreur brute.
+      filledLines.some((line) => line.label.trim() === '' || !isBreakdownAmountValid(line.amount))
+    ) {
+      setToast({ message: 'Décomposition incomplète : chaque ligne doit avoir un libellé et un montant (entier positif en FCFA).', variant: 'error' });
+      return;
+    }
 
     setSaving(true);
     try {
       const payload = {
         name: name.trim(),
+        // Phase finale 09/2026 (E1) — ordre d'affichage public (1 = premier, vide = fin de liste).
+        position: position.trim() === '' ? null : Number(position),
         image_url: imageUrl,
-        custom_price: null, // Le trigger Supabase calcule toujours le total depuis product_ids.
+        // IMPL-3 (C3) — 2 modes mutuellement exclusifs : forfait = référence
+        // (custom_price manuel, préservé par le trigger v2), calculé = somme
+        // des pièces recalculée par le trigger Supabase.
+        pricing_mode: pricingMode,
+        custom_price: pricingMode === 'flat' ? Number(flatPrice) : null,
+        // IMPL-4 (C3+C4) — décomposition libre du forfait (jamais des articles
+        // catalogue) + interrupteur d'affichage public par look. Les lignes
+        // saisies sont conservées même hors mode forfait (non affichées).
+        price_breakdown: filledLines.length > 0 ? filledLines.map((line) => ({ label: line.label.trim(), amount: Number(line.amount) })) : null,
+        show_price_breakdown: pricingMode === 'flat' && showBreakdown && filledLines.length > 0,
+        // IMPL-C — vidéo optionnelle du look.
+        video_url: videoUrl,
+        video_public_id: videoPublicId,
         product_ids: selectedProductIds,
         visible: editingOutfit ? editingOutfit.visible : true
       };
@@ -309,6 +451,9 @@ export default function AdminHpbPage() {
 
             const calculatedTotal = attachedProducts.reduce((sum, p) => sum + p.price, 0);
             const displayPrice = outfit.custom_price !== null ? outfit.custom_price : calculatedTotal;
+            // Lot 3 — décomposition du look : le résumé de liste s'affiche dès
+            // qu'elle existe ; l'interrupteur public ne concerne que la vitrine.
+            const breakdown = outfit.price_breakdown ?? [];
 
             return (
               <AdminCard key={outfit.id} className="p-0 overflow-hidden relative group/outfit border-brand-gold/15 hover:border-brand-gold/40 transition-all shadow-lg hover:shadow-2xl flex flex-col justify-between">
@@ -340,9 +485,17 @@ export default function AdminHpbPage() {
                           <AlertTriangle size={12} /> À compléter
                         </span>
                       )}
-                      {outfit.custom_price !== null && (
+                      {outfit.pricing_mode === 'flat' && (
                         <span className="px-2.5 py-1 bg-brand-gold/20 text-brand-gold border border-brand-gold/40 text-xs font-semibold rounded-lg backdrop-blur-sm">
-                          Prix Spécial Look
+                          Forfait
+                        </span>
+                      )}
+                      {breakdown.length > 0 && (
+                        <span
+                          title={outfit.show_price_breakdown ? 'Décomposition configurée, affichée sur la boutique.' : 'Décomposition enregistrée mais NON affichée sur la boutique (interrupteur public désactivé dans le formulaire).'}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-lg backdrop-blur-sm flex items-center gap-1.5 ${outfit.show_price_breakdown ? 'bg-brand-gold/10 text-brand-gold/90 border border-brand-gold/25' : 'bg-gray-900/85 text-gray-300 border border-gray-600'}`}
+                        >
+                          <Layers size={12} /> Décomposition{outfit.show_price_breakdown ? '' : ' · privée'}
                         </span>
                       )}
                     </div>
@@ -393,6 +546,30 @@ export default function AdminHpbPage() {
                         {displayPrice.toLocaleString()} FCFA
                       </span>
                     </div>
+
+                    {/* Lot 3 — résumé de la décomposition : visible dès qu'elle
+                        existe (l'interrupteur public ne concerne que la vitrine). */}
+                    {breakdown.length > 0 ? (
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-text-muted block">
+                          Décomposition du forfait {outfit.show_price_breakdown ? '' : '· non affichée au public'}
+                        </span>
+                        <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                          {breakdown.map((line, index) => (
+                            <div key={`bd-sum-${outfit.id}-${index}`} className="flex items-center justify-between gap-2 text-xs">
+                              <span className="text-brand-text truncate">{line.label}</span>
+                              <span className="text-brand-gold font-bold whitespace-nowrap">{line.amount.toLocaleString()} FCFA</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-brand-gold/10">
+                          <span className="text-brand-text-muted">Total des lignes</span>
+                          <span className="text-brand-text font-semibold">{breakdown.reduce((sum, line) => sum + (line.amount || 0), 0).toLocaleString()} FCFA</span>
+                        </div>
+                      </div>
+                    ) : outfit.pricing_mode === 'flat' ? (
+                      <p className="text-xs text-brand-text-muted italic">Décomposition : aucune — ajoute des lignes via « Modifier ».</p>
+                    ) : null}
 
                     {/* Pièces Internes (Quick Unlink) */}
                     <div className="space-y-2">
@@ -488,10 +665,139 @@ export default function AdminHpbPage() {
               placeholder="Ex: Cargo Explorer 2026"
               required
             />
-            <div className="rounded-xl border border-brand-gold/15 bg-brand-bg p-3">
-              <p className="text-sm font-medium text-brand-text">Prix calculé automatiquement</p>
-              <p className="mt-1 text-xs text-brand-text-muted">Le total est recalculé depuis les produits associés. Aucun prix manuel n’est nécessaire.</p>
+            {/* IMPL-3 (C3) — prix du look : 2 modes mutuellement exclusifs. */}
+            <div className="rounded-xl border border-brand-gold/15 bg-brand-bg p-3 space-y-3">
+              <p className="text-sm font-medium text-brand-text">Prix du look</p>
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Mode de prix du look">
+                <button
+                  type="button"
+                  onClick={() => switchPricingMode('calculated')}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
+                    pricingMode === 'calculated'
+                      ? 'bg-brand-gold/15 border-brand-gold text-brand-gold'
+                      : 'bg-brand-bg-alt border-brand-gold/10 text-brand-text-muted hover:border-brand-gold/40'
+                  }`}
+                >
+                  Calculé (somme)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchPricingMode('flat')}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
+                    pricingMode === 'flat'
+                      ? 'bg-brand-gold/15 border-brand-gold text-brand-gold'
+                      : 'bg-brand-bg-alt border-brand-gold/10 text-brand-text-muted hover:border-brand-gold/40'
+                  }`}
+                >
+                  Forfait (manuel)
+                </button>
+              </div>
+              {pricingMode === 'calculated' ? (
+                <p className="text-xs text-brand-text-muted">
+                  Total automatique : <span className="font-semibold text-brand-gold">{calculatedSum.toLocaleString()} FCFA</span> — recalculé à chaque modification des pièces du look.
+                </p>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-brand-text-muted mb-2">
+                    Prix forfaitaire (FCFA)
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    value={flatPrice}
+                    onChange={(e) => setFlatPrice(e.target.value)}
+                    placeholder="Ex : 15000"
+                    className="w-full rounded-lg border border-brand-gold/20 bg-brand-bg px-4 py-3 text-sm text-brand-text hide-number-spinners focus:outline-none focus:ring-2 focus:ring-brand-gold/30 focus:border-brand-gold"
+                  />
+                  <p className="mt-1 text-xs text-brand-text-muted">
+                    Le forfait est la référence du look — il reste fixe même si tu modifies les pièces. Somme des pièces pour info : {calculatedSum.toLocaleString()} FCFA.
+                  </p>
+                  {/* IMPL-4 (C3+C4) — décomposition du forfait : lignes libres
+                      libellé + montant, JAMAIS d'articles catalogue. */}
+                  <div className="mt-4 pt-3 border-t border-brand-gold/10 space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-text-muted">Décomposition du forfait (optionnel)</p>
+                    <p className="text-[11px] text-brand-text-muted leading-relaxed">
+                      Décris ce que comprend le forfait — libellés et montants libres. Ces lignes ne créent aucun article catalogue.
+                    </p>
+                    {priceLines.map((line, index) => (
+                      <div key={`bd-${index}`} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={line.label}
+                          onChange={(e) => setPriceLines((lines) => lines.map((l, i) => (i === index ? { ...l, label: e.target.value } : l)))}
+                          placeholder="Ex : Veste signature"
+                          className="flex-1 min-w-0 rounded-lg border border-brand-gold/20 bg-brand-bg px-3 py-2 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/30 focus:border-brand-gold"
+                        />
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          value={line.amount}
+                          onChange={(e) => setPriceLines((lines) => lines.map((l, i) => (i === index ? { ...l, amount: e.target.value } : l)))}
+                          placeholder="Montant"
+                          className="w-28 rounded-lg border border-brand-gold/20 bg-brand-bg px-3 py-2 text-sm text-brand-text hide-number-spinners focus:outline-none focus:ring-2 focus:ring-brand-gold/30 focus:border-brand-gold"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPriceLines((lines) => lines.filter((_, i) => i !== index))}
+                          aria-label={`Supprimer la ligne ${index + 1} de la décomposition`}
+                          className="p-2 text-red-500 hover:bg-red-950 rounded-lg transition-colors cursor-pointer flex-shrink-0"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setPriceLines((lines) => [...lines, { label: '', amount: '' }])}
+                      className="text-xs font-medium text-brand-gold hover:text-brand-gold-light transition-colors cursor-pointer"
+                    >
+                      + Ajouter une ligne
+                    </button>
+                    {priceLines.length === 0 && (
+                      <p className="text-[11px] text-brand-text-muted italic">
+                        Aucune décomposition enregistrée pour ce look — « + Ajouter une ligne » pour décrire ce que comprend le forfait.
+                      </p>
+                    )}
+                    {filledLinesCount > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setShowBreakdown((visible) => !visible)}
+                          className={`flex items-center gap-2 text-xs font-medium transition-colors cursor-pointer ${showBreakdown ? 'text-brand-gold' : 'text-brand-text-muted hover:text-brand-text'}`}
+                        >
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${showBreakdown ? 'bg-brand-gold border-brand-gold text-[#0A0A0A]' : 'border-gray-600'}`}>
+                            {showBreakdown && <Check size={12} className="stroke-[3]" />}
+                          </span>
+                          Afficher la décomposition sur la boutique
+                        </button>
+                        <p className="text-[11px] text-brand-text-muted">
+                          Somme des lignes : <span className="font-semibold text-brand-text">{breakdownSum.toLocaleString()} FCFA</span> — indicative, le forfait reste la référence.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+
+                  {/* E1 — ordre d'affichage public du look (1 = premier) */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-brand-text-muted mb-2">
+                      Ordre d’affichage (1 = premier)
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      value={position}
+                      onChange={(e) => setPosition(e.target.value)}
+                      placeholder="Auto (fin de liste)"
+                      className="w-full rounded-lg border border-brand-gold/20 bg-brand-bg px-4 py-3 text-sm text-brand-text hide-number-spinners focus:outline-none focus:ring-2 focus:ring-brand-gold/30 focus:border-brand-gold"
+                    />
+                  </div>
+
           </div>
 
           <div className="space-y-2">
@@ -537,6 +843,45 @@ export default function AdminHpbPage() {
                 />
               </div>
             )}
+          </div>
+
+          {/* IMPL-C (UI Boost) — vidéo optionnelle du look : présentée en
+              premier dans la fenêtre d'inspection publique ; l'image reste
+              l'affiche des listes (grille /looks et carrousel accueil). */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-brand-text mb-1">Vidéo du Look (optionnelle)</label>
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              onChange={handleVideoUpload}
+              disabled={videoUploading}
+              className="hidden"
+              id="outfit-video-upload"
+              aria-label="Uploader une vidéo pour le look"
+              title="Uploader une vidéo pour le look"
+            />
+            <div className="flex items-center gap-4">
+              <label
+                htmlFor="outfit-video-upload"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-gold text-[#0A0A0A] rounded-xl cursor-pointer hover:bg-brand-gold-light transition-colors font-medium font-bebas uppercase tracking-wider text-sm shadow-md"
+              >
+                <Video size={18} />
+                {videoUploading ? 'Upload de la vidéo...' : videoUrl ? 'Remplacer la vidéo' : 'Ajouter une vidéo'}
+              </label>
+              {videoUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveVideo}
+                  className="p-2 text-red-500 hover:bg-red-950 rounded-lg transition-colors cursor-pointer text-sm font-medium"
+                >
+                  Retirer la vidéo
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-brand-text-muted">
+              MP4, WebM ou MOV — 30 Mo max. Si elle existe, elle est présentée en premier dans la fenêtre d&apos;inspection du look.
+            </p>
           </div>
 
           {/* SÉLECTEUR DE PRODUITS (PRODUCT PICKER) */}

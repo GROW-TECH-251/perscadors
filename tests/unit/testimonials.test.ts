@@ -11,7 +11,11 @@ describe('Unit — Témoignages (schéma stocké vs tableau)', () => {
     const component = await readFile('src/components/public/home/Testimonials.tsx', 'utf-8');
     expect(component).not.toContain('Array.isArray(data.testimonials_json)');
     expect(component).toContain('screenshot_url');
-    expect(component).toContain('.videos');
+    // IMPL-B (UI Boost, décision validée) : la capture et la citation restent
+    // dans le schéma stocké ; les MÉDIAS (vidéos/images) viennent désormais
+    // des site_assets configurés dans Médias — l'assertion historique
+    // '.videos' (schéma stocké) est remplacée par la nouvelle source.
+    expect(component).toContain("fetchActiveAssetsBySection('testimonials')");
     expect(component).toContain('data.testimonials_json');
   });
 

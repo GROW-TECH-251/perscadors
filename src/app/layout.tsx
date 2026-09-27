@@ -8,8 +8,13 @@ import { createClient } from '@supabase/supabase-js';
 import { Barlow, Bebas_Neue } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
+import { cache } from 'react';
 import { CatalogProvider } from '@/context/CatalogContext';
 import { PublicSettingsProvider } from '@/context/PublicSettingsContext';
+import { DataHydrator } from '@/components/public/DataHydrator';
+import { fetchServerCatalogSnapshot } from '@/services/publicCatalogService';
+import { fetchServerPublicShopSettings } from '@/services/settingsService';
+import { fetchServerSiteAssets } from '@/services/mediaService';
 
 // Performance : On retire force-dynamic pour permettre ISR et cache
 // La génération de metadata utilise Promise.all déjà parallèle
@@ -52,18 +57,43 @@ export async function generateMetadata(): Promise<Metadata> {
       client.from('site_assets').select('url').eq('section', 'ambience').eq('active', true).order('updated_at', { ascending: false }).limit(1).maybeSingle()
     ]);
     const data = settingsResponse.data;
-    if (data) { title = data.social_title || title; description = data.social_description || description; image = data.social_image_url || bannerResponse.data?.url || image; }
-    else if (bannerResponse.data?.url) image = bannerResponse.data.url;
+    if (data) { title = data.social_title || title; description = data.social_description || description; }
+    // IMPL-A (UI Boost) : la bannière du Dashboard (Médias → « Bannière de
+    // partage » = site_assets section ambience) est la source de vérité.
+    // L'ancienne priorité (social_image_url || bannière) laissait une valeur
+    // périmée — le défaut codé en dur réécrit en base à chaque sauvegarde des
+    // Réglages — écraser l'image réellement configurée. Ordre désormais :
+    // bannière configurée → social_image_url explicite (colonne sans UI,
+    // conservée pour compatibilité) → fallback codé en dur en dernier recours.
+    image = bannerResponse.data?.url || data?.social_image_url || image;
   }
   return { metadataBase: new URL('https://perscadors.vercel.app'), title, description, robots: { index: true, follow: true }, openGraph: { title, description, url: 'https://perscadors.vercel.app', siteName: 'HP Collection Bénin', images: [{ url: image, width: 1200, height: 630, alt: title }], locale: 'fr_BJ', type: 'website' }, twitter: { card: 'summary_large_image', title, description, images: [image] }, icons: { icon: '/assets/brand/logo.png', shortcut: '/assets/brand/logo.png', apple: '/assets/brand/logo.png' } };
 }
 
 
-export default function RootLayout({
+// Consolidation 09/2026 — fix hydratation React #418 (mesuré en prod) :
+// le DataHydrator vivait DANS les pages, donc APRÈS le premier render des
+// providers du layout racine -> l'état initial (fallback statique) ne
+// correspondait pas à l'HTML serveur (données réelles) -> régénération
+// complète de l'arbre (saisie navbar effacée, recherche cassée home/looks).
+// Remède : un DataHydrator au niveau du LAYOUT, frère PRÉCÉDANT les
+// providers — son render sème les caches AVANT leurs useState initiaux,
+// en SSR comme en hydratation. cache() déduplique avec les fetch des pages.
+const getLayoutSnapshot = cache(fetchServerCatalogSnapshot);
+const getLayoutSettings = cache(fetchServerPublicShopSettings);
+const getLayoutSiteAssets = cache(fetchServerSiteAssets);
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [snapshot, settings, siteAssets] = await Promise.all([
+    getLayoutSnapshot(),
+    getLayoutSettings(),
+    getLayoutSiteAssets(),
+  ]);
+
   return (
     <html lang="fr" data-scroll-behavior="smooth" suppressHydrationWarning className={`${barlow.variable} ${bebasNeue.variable} h-full antialiased scroll-smooth`}>
       <head>
@@ -82,6 +112,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-brand-bg text-brand-text font-barlow selection:bg-brand-gold/30 selection:text-brand-text">
+        <DataHydrator snapshot={snapshot} settings={settings} siteAssets={siteAssets} />
         <CatalogProvider>
           <CartProvider>
             <PublicSettingsProvider>

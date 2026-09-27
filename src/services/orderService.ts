@@ -131,7 +131,7 @@ export function buildWhatsAppOrderMessage(
   // permet au commerçant de VOIR l'article en un clic, desktop et mobile.
   const itemsList = payload.items
     .map((item) => {
-      const base = `• ${item.name} — ${item.quantity} × ${(item.price * item.quantity).toLocaleString()} FCFA\n  ${item.size}, ${item.color}`;
+      const base = `• ${item.name} — ${item.quantity} × ${(item.price * item.quantity).toLocaleString('fr-FR')} FCFA\n  ${item.size}, ${item.color}`;
       const photo = (item as { image?: string | null }).image?.trim();
       const publicPhoto = resolvePublicImageUrl(photo);
       return publicPhoto ? `${base}\n  Photo : ${publicPhoto}` : base;
@@ -144,8 +144,8 @@ export function buildWhatsAppOrderMessage(
     clientPhone: payload.client_phone || 'Non renseigné',
     clientArea: payload.client_area,
     itemsList,
-    orderSubtotal: `${payload.subtotal.toLocaleString()} FCFA`,
-    orderTotal: `${payload.total.toLocaleString()} FCFA`
+    orderSubtotal: `${payload.subtotal.toLocaleString('fr-FR')} FCFA`,
+    orderTotal: `${payload.total.toLocaleString('fr-FR')} FCFA`
   });
 }
 

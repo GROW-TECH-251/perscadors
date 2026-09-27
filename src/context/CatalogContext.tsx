@@ -102,10 +102,19 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       // l'injection serveur pour atterrir AVANT de tomber sur le fetch réseau
       // (zéro requête quand elle arrive ; sinon fetch = dégradation propre).
       await new Promise((resolve) => setTimeout(resolve, 60));
-      if (cancelled || injectedCatalogSnapshot) {
+      // E2 — Course StrictMode (double montage dev) : le premier run annulé
+      // passait isInitialLoad à false, ce qui déclenchait le cleanup du second
+      // run AVANT son réveil : aucun des deux ne fetchait, et l'effet de
+      // relance sortait immédiatement — le catalogue client n'était JAMAIS
+      // chargé quand le snapshot serveur était en fallback (produit déclaré
+      // « ARTICLE INTROUVABLE » alors qu'il existe en base). Ici, seul le cas
+      // « snapshot injecté » clôt le chargement ; un run annulé laisse la
+      // relange (l'effet re-run) retenter le fetch.
+      if (injectedCatalogSnapshot) {
         setIsInitialLoad(false);
         return;
       }
+      if (cancelled) return;
       await loadCatalog();
     };
     void start();

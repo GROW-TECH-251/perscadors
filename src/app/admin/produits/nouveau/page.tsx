@@ -5,11 +5,14 @@
 
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminToast, AdminConfirmDialog } from '@/admin/components';
-import {Video,  Save, X, Upload } from 'lucide-react';
+
+import { Video, Save, X, Upload } from 'lucide-react';
+import { HISTORICAL_CATEGORY_OPTIONS, buildCategorySelectOptions } from '@/admin/categoryManagement';
+import { fetchCategories } from '@/services/categoryService';
 import { createProduct } from '@/services/productService';
 import { BUCKETS, compressImage, deleteImageByUrl, deleteProductVideo, uploadProductImage, uploadProductVideo } from '@/services/mediaService';
 import type { ProductFormData } from '@/admin/types';
@@ -49,6 +52,28 @@ export default function NewProductPage() {
     video_public_id: null,
     visible: true
   });
+
+  // E9 — sélecteur de catégories alimenté par la base (repli : options
+  // historiques si la base ne répond rien, ex. environnement de test).
+  const [categoryOptions, setCategoryOptions] = useState(HISTORICAL_CATEGORY_OPTIONS);
+
+  // E9 — le sélecteur lit les catégories réelles de la base ; sans base
+  // (environnement de test), on garde les options historiques.
+  useEffect(() => {
+    let actif = true;
+    fetchCategories().then((cats) => {
+      if (!actif || cats.length === 0) return;
+      setCategoryOptions(buildCategorySelectOptions(cats));
+    }).catch(() => undefined);
+    return () => { actif = false; };
+  }, []);
+
+  // Si la valeur par défaut n'existe pas dans les options chargées, afficher
+  // la première catégorie disponible plutôt qu'une valeur fantôme (valeur
+  // dérivée au rendu : aucun setState dans un effet).
+  const effectiveCategory = categoryOptions.some((option) => option.value === formData.category)
+    ? formData.category
+    : categoryOptions[0]?.value || formData.category;
 
   const [newSize, setNewSize] = useState('');
   const [newColor, setNewColor] = useState('');
@@ -166,7 +191,8 @@ export default function NewProductPage() {
     setLoading(true);
 
     try {
-      const result = await createProduct(formData);
+      // E9 : soumettre toujours une catégorie réellement proposée.
+      const result = await createProduct({ ...formData, category: effectiveCategory });
       if (result.error) {
         setToast({ message: result.error, variant: 'error' });
         return;
@@ -228,14 +254,9 @@ export default function NewProductPage() {
             />
             <AdminSelect
               label="Catégorie"
-              value={formData.category}
+              value={effectiveCategory}
               onChange={(value) => setFormData({ ...formData, category: value })}
-              options={[
-                { value: 'basket-pour-homme', label: 'Baskets Homme' },
-                { value: 'complet-pour-homme', label: 'Complets Streetwear' },
-                { value: 'jean-overside-pour-homme', label: 'Jeans Oversize' },
-                { value: 'tapettes-pour-homme', label: 'Tapettes & Sandales' }
-              ]}
+              options={categoryOptions}
               required
             />
             <AdminInput

@@ -167,6 +167,7 @@ export interface AdminCategory {
   visible: boolean;
   position: number;
   order?: number;
+  former_slugs?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -292,13 +293,35 @@ export type CreatedOrder = AdminOrder;
 // OUTFITS & HP LOOKS (Pôle 5 & Module HPB)
 // ============================================
 
+// IMPL-4 (C3+C4) — ligne de décomposition du forfait : libellé et montant
+// libres. JAMAIS un article catalogue (aucun lien avec products).
+export interface OutfitPriceLine {
+  label: string;
+  amount: number;
+}
+
 export interface AdminOutfit {
   id: number;
   name: string;
   image_url: string;
   custom_price: number | null;
+  /** IMPL-3 (C3) — mode de prix : 'calculated' (somme des pièces, défaut
+   *  historique) ou 'flat' (forfait manuel = référence). Absent tant que la
+   *  migration add_outfit_pricing_mode.sql n'est pas exécutée en base. */
+  pricing_mode?: 'calculated' | 'flat';
+  /** IMPL-4 (C3+C4) — décomposition du forfait (lignes libres). Null = aucune. */
+  price_breakdown?: OutfitPriceLine[] | null;
+  /** IMPL-4 (C4) — interrupteur par look : afficher la décomposition au public. */
+  show_price_breakdown?: boolean;
+  /** IMPL-C (UI Boost) — vidéo optionnelle du look (Cloudinary), présentée
+   *  en premier dans la modale d'inspection publique. */
+  video_url?: string | null;
+  /** IMPL-C — identifiant public Cloudinary (suppression au remplacement). */
+  video_public_id?: string | null;
   product_ids: number[];
   visible: boolean;
+  /** Phase finale 09/2026 — ordre d'affichage public (1 = premier). Null = fin de liste. */
+  position?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -307,8 +330,18 @@ export interface OutfitFormData {
   name: string;
   image_url: string;
   custom_price?: number | null;
+  /** IMPL-3 (C3) — mode de prix envoyé à la sauvegarde (forfait = référence). */
+  pricing_mode?: 'calculated' | 'flat';
+  /** IMPL-4 — décomposition envoyée à la sauvegarde (null = effacer). */
+  price_breakdown?: OutfitPriceLine[] | null;
+  /** IMPL-4 — interrupteur d'affichage public de la décomposition. */
+  show_price_breakdown?: boolean;
+  /** IMPL-C — vidéo du look envoyée à la sauvegarde (null = pas de vidéo). */
+  video_url?: string | null;
+  video_public_id?: string | null;
   product_ids: number[];
   visible: boolean;
+  position?: number | null;
 }
 
 // ============================================

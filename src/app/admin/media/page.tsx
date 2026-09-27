@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminModal, AdminSkeleton, AdminConfirmDialog, AdminToast } from '@/admin/components';
 import { Film, Image as ImageIcon, Plus, Trash2, Eye, EyeOff, Upload, Link as LinkIcon, Sparkles } from 'lucide-react';
 import { fetchSiteAssets, uploadSiteAssetMedia, upsertSiteAsset, deleteSiteAsset, toggleSiteAssetActive } from '@/services/mediaService';
+import { sanitizeMediaSrc } from '@/lib/mediaSecurity';
 import type { SiteAsset, SiteAssetSection, SiteAssetType } from '@/admin/types';
 
 const SECTIONS_CONFIG: { id: SiteAssetSection; label: string; description: string; hybrid: boolean }[] = [
@@ -142,7 +143,8 @@ export default function AdminMediaPage() {
     setSelectedFile(file);
     setIsSocialUrl(false);
     setSocialUrl('');
-    setFilePreview(URL.createObjectURL(file));
+    // Sécurité (js/xss-through-dom) : blob: validé puis encodé.
+    setFilePreview(sanitizeMediaSrc(URL.createObjectURL(file)) ?? '');
 
     if (!title) {
       const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
@@ -344,7 +346,7 @@ export default function AdminMediaPage() {
                           </div>
                         ) : (
                           <video
-                            src={asset.url}
+                            src={sanitizeMediaSrc(asset.url)}
                             controls
                             preload="metadata"
                             muted

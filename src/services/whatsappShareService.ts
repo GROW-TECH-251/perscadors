@@ -1,9 +1,42 @@
+/**
+ * E6 (étude natif gratuit) — Extension du fichier partagé dérivée du type
+ * MIME réel (avec repli sur l'extension de l'URL, puis « jpg »). Avant : tout
+ * média non-png était nommé .jpg — un webp/jsong contenu .jpg est rejeté par
+ * certains lecteurs stricts (et WhatsApp peut refuser la pièce).
+ */
+const MEDIA_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/heic': 'heic',
+  'image/heif': 'heif',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/quicktime': 'mov',
+};
+
+export function mediaShareExtension(blobType: string, url: string): string {
+  const fromType = MEDIA_EXTENSIONS[blobType.split(';')[0].trim().toLowerCase()];
+  if (fromType) return fromType;
+  const fromUrl = url.split('?')[0].split('.').pop()?.toLowerCase();
+  if (fromUrl && /^[a-z0-9]{2,5}$/.test(fromUrl) && fromUrl !== url.split('?')[0].toLowerCase()) return fromUrl;
+  return 'jpg';
+}
 export async function shareMediaToWhatsAppStatus(url: string, title = 'Perscadors'): Promise<{ shared: boolean; message?: string }> {
   try {
-    const response = await fetch(url);
+    // E6 — timeout : un média lent/injoignable ne doit plus laisser le bouton
+    // sans retour indéfiniment (l'utilisateur récupère le repli onglet).
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 12_000);
+    let response: Response;
+    try {
+      response = await fetch(url, { signal: abort.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!response.ok) throw new Error('media_fetch_failed');
     const blob = await response.blob();
-    const extension = blob.type.startsWith('video/') ? 'mp4' : blob.type.includes('png') ? 'png' : 'jpg';
+    const extension = mediaShareExtension(blob.type, url);
     const file = new File([blob], `${title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.${extension}`, { type: blob.type });
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file] });

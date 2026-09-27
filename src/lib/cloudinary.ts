@@ -7,3 +7,30 @@ cloudinary.config({
 });
 
 export { cloudinary };
+
+
+// E2 — Garde de signature : dossiers d'upload autorisés. Les trois sections
+// « contenu » restent en égalité stricte ; les vidéos PRODUIT vivent sous
+// « perscadors/products/<id> » (uploadProductVideo). L'allowlist stricte
+// historique les refusait (400 « Destination média invalide »), rendant
+// impossible tout ajout de vidéo produit. Le segment final est contraint
+// (id numérique, « draft », slug) : aucun traversal (« .. », slash) ne passe.
+// E12-consolidation — doit couvrir EXACTEMENT les sections SECTIONS_CONFIG de
+// la page /admin/media (garde anti-dérive : tests/unit/cloudinaryVideo.test.ts).
+const ALLOWED_SECTION_FOLDERS = new Set([
+  'perscadors/hero',
+  'perscadors/logo',
+  'perscadors/testimonials',
+  'perscadors/ambience'
+]);
+const PRODUCT_FOLDER_PATTERN = /^perscadors\/products\/[A-Za-z0-9_-]+$/;
+
+// IMPL-C (UI Boost) — vidéos des HP Looks : dossier dédié par look, même règle que les produits.
+
+const OUTFIT_FOLDER_PATTERN = /^perscadors\/outfits\/[A-Za-z0-9_-]+$/;
+
+export function isAllowedMediaFolder(folder: string): boolean {
+  const value = folder.trim();
+  if (!value) return false;
+  return ALLOWED_SECTION_FOLDERS.has(value) || PRODUCT_FOLDER_PATTERN.test(value) || OUTFIT_FOLDER_PATTERN.test(value);
+}

@@ -9,6 +9,7 @@ import { useCatalog } from '@/context/CatalogContext';
 import { Product, Size } from '@/types';
 import { SlidersHorizontal, ArrowLeft } from 'lucide-react';
 import { normalizeProductAttribute, normalizeSize } from '@/utils/normalizeProductAttribute';
+import { ArticleRequestSection } from '@/components/public/home/ArticleRequestSection';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -60,6 +61,9 @@ export default function CategoryPage() {
 
     return result;
   }, [rawProducts, searchQuery, selectedSizes, selectedColors]);
+
+  // E5 (Riel) — no-results : suggestions « Complète le look » (4 articles de la catégorie).
+  const lookSuggestions = useMemo(() => rawProducts.slice(0, 4), [rawProducts]);
 
   const toggleSize = (size: Size) => {
     const normalizedSize = normalizeSize(size);
@@ -182,16 +186,47 @@ export default function CategoryPage() {
 
           <div className="lg:col-span-3">
             {filteredProducts.length === 0 ? (
-              <div className="py-24 text-center space-y-4 bg-brand-bg-alt rounded-2xl border border-brand-gold/10">
-                <span className="text-4xl block">🔍</span>
-                <p className="font-bebas text-2xl text-brand-text-muted uppercase">Aucun article ne correspond à votre sélection.</p>
-                <button
-                  onClick={resetFilters}
-                  className="px-6 py-2 bg-brand-gold hover:bg-brand-gold-light text-brand-bg rounded font-bebas text-lg uppercase tracking-wider transition-colors"
-                >
-                  Voir toute la collection
-                </button>
-              </div>
+              <>
+                {/* E5 (Riel, adapté) — no-results INLINE : la modale de soumission
+                    s'ouvre ici même (plus de redirection vers la home), référence
+                    préremplie avec la recherche en échec. */}
+                <ArticleRequestSection variant="compact" searchQuery={searchQuery || undefined} onReset={resetFilters} collectionHref={`/categorie/${slug}`} />
+                {lookSuggestions.length > 0 && (
+                  <section className="mt-16 border-t border-brand-gold/15 pt-16">
+                    <div className="mb-10 text-center sm:text-left">
+                      <h2 className="font-bebas text-4xl uppercase tracking-wider text-brand-gold sm:text-5xl">
+                        Complète le look
+                      </h2>
+                      <div className="mx-auto mt-3 h-1 w-20 bg-brand-gold sm:mx-0" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+                      {lookSuggestions.map((suggestion) => (
+                        <Link
+                          key={suggestion.id}
+                          href={`/produit/${suggestion.id}`}
+                          className="group overflow-hidden rounded-2xl border border-brand-gold/10 bg-brand-bg-alt shadow-md transition-all hover:-translate-y-1 hover:shadow-xl"
+                        >
+                          <div className="relative aspect-[3/4] overflow-hidden bg-brand-bg">
+                            <Image
+                              src={suggestion.images[0]}
+                              alt={suggestion.name}
+                              fill
+                              sizes="(max-width: 640px) 50vw, 25vw"
+                              className="object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          </div>
+                          <div className="space-y-1 p-4">
+                            <h3 className="line-clamp-2 font-bebas text-lg uppercase tracking-wide text-brand-text group-hover:text-brand-gold">
+                              {suggestion.name}
+                            </h3>
+                            <p className="font-bold text-brand-gold">{suggestion.price.toLocaleString('fr-FR')} FCFA</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8">
                 {filteredProducts.map((product) => (
@@ -236,7 +271,7 @@ export default function CategoryPage() {
 
                       <div className="flex justify-between items-center pt-2 border-t border-brand-gold/5 mt-auto">
                         <span className="font-bold text-sm sm:text-lg text-brand-gold">
-                          {product.price.toLocaleString()} FCFA
+                          {product.price.toLocaleString('fr-FR')} FCFA
                         </span>
                         <span className="text-xs text-brand-text-muted border border-brand-gold/15 rounded px-2 py-0.5 group-hover:border-brand-gold group-hover:text-brand-gold transition-colors">
                           Détails
@@ -250,6 +285,9 @@ export default function CategoryPage() {
           </div>
         </div>
 
+        {filteredProducts.length > 0 && (
+          <ArticleRequestSection variant="compact" collectionHref={`/categorie/${slug}`} />
+        )}
         {isFilterDrawerOpen && (
           <div className="fixed inset-0 z-50 flex lg:hidden">
             <div

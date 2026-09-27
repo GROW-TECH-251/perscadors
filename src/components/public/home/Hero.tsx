@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import { fetchActiveAssetBySection } from '@/services/mediaService';
 import { ChevronDown } from 'lucide-react';
+import { sanitizeMediaSrc } from '@/lib/mediaSecurity';
 import type { ShopSettings } from '@/admin/types';
 
 const LEGACY_HERO_VIDEO_4K = '/assets/backgrounds/7679830-uhd_4096_2160_25fps.mp4';
@@ -107,19 +108,22 @@ export const Hero: React.FC = () => {
       // défauts. L'état initial (poster + vidéo variante) est déjà affiché.
       if (assetData) {
         if (assetData.type === 'image') {
+          // Sécurité (js/xss-through-dom) : seule une URL validée atteint le DOM.
           setMediaType('image');
-          setMediaUrl(assetData.url);
+          setMediaUrl(sanitizeMediaSrc(assetData.url) ?? '');
           return;
         }
         setMediaType('video');
-        const nextUrl = mapLegacyHeroVideo(assetData.url);
+        // Sécurité (js/xss-through-dom) : URL validée (schéma http(s)/relatif)
+        // puis encodée — jamais de schéma arbitraire dans l'attribut src.
+        const nextUrl = sanitizeMediaSrc(mapLegacyHeroVideo(assetData.url)) ?? '';
         setMediaUrl((current) => (current === nextUrl ? current : nextUrl));
         return;
       }
 
       if (settingsData?.hero_video_url) {
         setMediaType('video');
-        const nextUrl = mapLegacyHeroVideo(settingsData.hero_video_url);
+        const nextUrl = sanitizeMediaSrc(mapLegacyHeroVideo(settingsData.hero_video_url)) ?? '';
         setMediaUrl((current) => (current === nextUrl ? current : nextUrl));
         return;
       }

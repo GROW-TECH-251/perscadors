@@ -9,6 +9,28 @@ import type { AdminOutfit, OutfitFormData, ApiResponse } from '@/admin/types';
 
 const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
+// IMPL-3 (C3) — prix forfaitaire HP Look. Résilience de déploiement : tant
+// que la migration add_outfit_pricing_mode.sql n'est pas exécutée, la colonne
+// pricing_mode n'existe pas et Postgres répond 42703 — aucun ordre de
+// déploiement n'est imposé entre application et base.
+const FLAT_WITHOUT_MIGRATION_MSG =
+  'Le prix forfaitaire nécessite la migration Supabase « add_outfit_pricing_mode.sql » (colonne pricing_mode absente de la base), et la décomposition du forfait la migration « add_outfit_price_breakdown.sql ». Exécutez la ou les migrations manquantes dans le bon projet Supabase, puis réessayez.';
+
+// IMPL-4/IMPL-C : détecte l'absence de N'IMPORTE LAQUELLE des colonnes
+// optionnelles des migrations IMPL-3/IMPL-4/IMPL-C (Postgres signale la
+// première manquante).
+function isMissingPricingModeColumn(error: unknown): boolean {
+  const candidate = error as { code?: string; message?: string } | null;
+  if (!candidate) return false;
+  if (candidate.code === '42703') return true;
+  return /column "(pricing_mode|price_breakdown|show_price_breakdown|video_url|video_public_id)" of relation "outfits" does not exist/i.test(String(candidate.message ?? ''));
+}
+
+// IMPL-C (UI Boost) — la vidéo d'un look exige sa migration : jamais de perte
+// silencieuse (l'upload n'est pas « oublié » à la sauvegarde).
+const OUTFIT_VIDEO_WITHOUT_MIGRATION_MSG =
+  'La vidéo du look nécessite la migration Supabase « add_outfit_video.sql » (colonnes video_url/video_public_id absentes de la base). Exécutez-la dans le bon projet Supabase, puis réessayez.';
+
 
 // ============================================
 // PERF-05 — Requête bornée + cache de session admin (TTL 60 s, invalidé
@@ -80,19 +102,52 @@ export async function createOutfit(formData: OutfitFormData): Promise<ApiRespons
 
   const db = requireSupabase();
 
-  const { data, error } = await db
-    .from('outfits')
-    .insert([{
-      name: formData.name,
-      image_url: formData.image_url,
-      custom_price: formData.custom_price ?? null,
-      product_ids: formData.product_ids || [],
-      visible: formData.visible ?? true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }])
-    .select()
-    .single();
+  // IMPL-3 (C3) : mode de prix explicite — 'flat' = forfait (référence),
+  // 'calculated' = somme des pièces recalculée par le trigger Supabase.
+  const row: Record<string, unknown> = {
+    name: formData.name,
+    image_url: formData.image_url,
+    custom_price: formData.custom_price ?? null,
+    pricing_mode: formData.pricing_mode ?? 'calculated',
+    // IMPL-4 (C3+C4) — décomposition du forfait + interrupteur public.
+    price_breakdown: formData.price_breakdown ?? null,
+    show_price_breakdown: formData.show_price_breakdown ?? false,
+    // IMPL-C — vidéo optionnelle du look (Cloudinary).
+    video_url: formData.video_url ?? null,
+    video_public_id: formData.video_public_id ?? null,
+    product_ids: formData.product_ids || [],
+    visible: formData.visible ?? true,
+    position: formData.position ?? null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  let { data, error } = await db.from('outfits').insert([row]).select().single();
+
+  if (error && isMissingPricingModeColumn(error)) {
+    if ((formData.pricing_mode ?? 'calculated') === 'flat') {
+      // Jamais de perte silencieuse du forfait : cause expliquée clairement.
+      logSupabaseWarning('outfit_mutation_flat_sans_migration', error);
+      return { data: null, error: FLAT_WITHOUT_MIGRATION_MSG };
+    }
+    if (formData.video_url) {
+      // IMPL-C : vidéo fournie sans migration -> message explicite.
+      logSupabaseWarning('outfit_mutation_video_sans_migration', error);
+      return { data: null, error: OUTFIT_VIDEO_WITHOUT_MIGRATION_MSG };
+    }
+    // Mode calculé : repli historique strictement identique (somme trigger).
+    logSupabaseWarning('outfit_mutation_repli_historique', error);
+    const legacyRow = { ...row };
+    delete legacyRow.pricing_mode;
+    // IMPL-4 : colonnes de la décomposition également absentes avant leur
+    // migration — le repli historique les retire aussi.
+    delete legacyRow.price_breakdown;
+    delete legacyRow.show_price_breakdown;
+    // IMPL-C : colonnes vidéo idem.
+    delete legacyRow.video_url;
+    delete legacyRow.video_public_id;
+    ({ data, error } = await db.from('outfits').insert([legacyRow]).select().single());
+  }
 
   if (error) {
     const normalized = logSupabaseWarning('outfit_mutation', error);
@@ -113,15 +168,31 @@ export async function updateOutfit(
 
   const db = requireSupabase();
 
-  const { data, error } = await db
-    .from('outfits')
-    .update({
-      ...formData,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', Number(id))
-    .select()
-    .single();
+  const payload: Record<string, unknown> = {
+    ...formData,
+    updated_at: new Date().toISOString()
+  };
+
+  let { data, error } = await db.from('outfits').update(payload).eq('id', Number(id)).select().single();
+
+  if (error && isMissingPricingModeColumn(error)) {
+    if (formData.pricing_mode === 'flat') {
+      logSupabaseWarning('outfit_mutation_flat_sans_migration', error);
+      return { data: null, error: FLAT_WITHOUT_MIGRATION_MSG };
+    }
+    if (formData.video_url) {
+      logSupabaseWarning('outfit_mutation_video_sans_migration', error);
+      return { data: null, error: OUTFIT_VIDEO_WITHOUT_MIGRATION_MSG };
+    }
+    logSupabaseWarning('outfit_mutation_repli_historique', error);
+    const legacyPayload = { ...payload };
+    delete legacyPayload.pricing_mode;
+    delete legacyPayload.price_breakdown;
+    delete legacyPayload.show_price_breakdown;
+    delete legacyPayload.video_url;
+    delete legacyPayload.video_public_id;
+    ({ data, error } = await db.from('outfits').update(legacyPayload).eq('id', Number(id)).select().single());
+  }
 
   if (error) {
     const normalized = logSupabaseWarning('outfit_mutation', error);

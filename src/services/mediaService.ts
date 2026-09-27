@@ -37,6 +37,9 @@ export const DEFAULT_SITE_ASSETS: SiteAsset[] = [
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   },
+  // IMPL-B (UI Boost) : aucune entrée témoignages par défaut — la section
+  // est configurée à 100 % depuis Médias (site_assets) ; table vide = rien
+  // n'est affiché en vitrine (plus de vidéos fantômes client*.mp4).
   {
     id: 'logo-default',
     type: 'image',
@@ -48,51 +51,6 @@ export const DEFAULT_SITE_ASSETS: SiteAsset[] = [
     description: 'Logo utilisé dans la navigation et le pied de page.',
     active: true,
     order_index: 1,
-    is_social_url: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'testim-1',
-    type: 'video',
-    section: 'testimonials',
-    url: '/assets/testimonials/video/client.mp4',
-    storage_path: 'testimonials/client.mp4',
-    alt: 'Témoignage Client VIP 1',
-    title: 'Avis Client en vidéo #1',
-    description: 'Vidéo d\'un client satisfait portant le jean oversize.',
-    active: true,
-    order_index: 1,
-    is_social_url: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'testim-2',
-    type: 'video',
-    section: 'testimonials',
-    url: '/assets/testimonials/video/client2.mp4',
-    storage_path: 'testimonials/client2.mp4',
-    alt: 'Témoignage Client VIP 2',
-    title: 'Avis Client en vidéo #2',
-    description: 'Client portant l\'ensemble denim premium.',
-    active: true,
-    order_index: 2,
-    is_social_url: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'testim-3',
-    type: 'video',
-    section: 'testimonials',
-    url: '/assets/testimonials/video/client3.mp4',
-    storage_path: 'testimonials/client3.mp4',
-    alt: 'Témoignage Client VIP 3',
-    title: 'Avis Client en vidéo #3',
-    description: 'Avis d\'un influenceur béninois en direct de Cotonou.',
-    active: true,
-    order_index: 3,
     is_social_url: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -224,6 +182,21 @@ export async function uploadProductVideo(
 }
 
 export async function deleteProductVideo(publicId: string | null | undefined): Promise<void> {
+  if (!publicId) return;
+  await deleteCloudinaryVideo(publicId);
+}
+
+// IMPL-C (UI Boost) — vidéo optionnelle des HP Looks : même chaîne Cloudinary
+// que les produits, dossier dédié par look (perscadors/outfits/{id}).
+export async function uploadOutfitVideo(
+  file: File,
+  outfitId: string | number = 'draft'
+): Promise<{ url: string; publicId: string; error?: string }> {
+  const safeOutfitId = ensurePathSegment(String(outfitId));
+  return await uploadCloudinaryVideo(file, `perscadors/outfits/${safeOutfitId}`);
+}
+
+export async function deleteOutfitVideo(publicId: string | null | undefined): Promise<void> {
   if (!publicId) return;
   await deleteCloudinaryVideo(publicId);
 }

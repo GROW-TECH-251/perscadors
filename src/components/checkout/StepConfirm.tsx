@@ -10,7 +10,7 @@ import { ArrowLeft, Loader2, MessageCircle, ShieldCheck, Truck } from 'lucide-re
 import { useCart } from '@/context/CartContext';
 import { fetchPublicShopSettings, getDefaultShopSettings } from '@/services/settingsService';
 import { buildWhatsAppUrl } from '@/services/whatsappService';
-import { TurnstileWidget } from '@/components/security/TurnstileWidget';
+import { TurnstileWidget, type TurnstileWidgetHandle } from '@/components/security/TurnstileWidget';
 import {
   buildWhatsAppOrderMessage,
   createOrderFromCart,
@@ -37,6 +37,8 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
   const { cartItems, cartTotal, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // E8 : handle de reset du widget anti-bot (token a usage unique).
+  const captchaRef = useRef<TurnstileWidgetHandle>(null);
   // Verrou synchrone : React met l'état à jour de façon asynchrone, ce ref bloque
   // donc un double clic avant le prochain rendu.
   const submissionLockRef = useRef(false);
@@ -108,6 +110,13 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
       console.error('Erreur inattendue lors de la préparation de commande:', error);
     }
 
+    // E8 : si la commande n'a pas ete persistee, l'appel API a consomme le
+    // token anti-bot. On rejoue le defi pour que la prochaine confirmation
+    // parte avec un token frais (meme correctif que le login admin).
+    if (!wasPersisted) {
+      captchaRef.current?.reset();
+    }
+
     // Le message reste personnalisable depuis Réglages. En cas de réseau indisponible,
     // le modèle par défaut garde la commande utilisable sans bloquer WhatsApp.
     const shopSettings = await fetchPublicShopSettings();
@@ -171,7 +180,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
                   </p>
                 </div>
                 <p className="font-semibold text-brand-gold text-sm whitespace-nowrap">
-                  {(item.price * item.quantity).toLocaleString()} FCFA
+                  {(item.price * item.quantity).toLocaleString('fr-FR')} FCFA
                 </p>
               </div>
             ))}
@@ -181,7 +190,7 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
         <div className="rounded-2xl border border-brand-gold/10 bg-brand-bg p-4 space-y-2 shadow-sm">
           <div className="flex items-center justify-between text-sm text-brand-text-muted">
             <span>Sous-total</span>
-            <span>{cartTotal.toLocaleString()} FCFA</span>
+            <span>{cartTotal.toLocaleString('fr-FR')} FCFA</span>
           </div>
           <div className="flex items-center justify-between text-sm text-brand-text-muted">
             <span>Frais de livraison</span>
@@ -189,13 +198,13 @@ export function StepConfirm({ formData, onBack, onError, onSuccess }: StepConfir
           </div>
           <div className="flex items-center justify-between border-t border-brand-gold/10 pt-3">
             <span className="font-bebas text-lg uppercase tracking-wider text-brand-text">Total des articles</span>
-            <span className="font-bebas text-2xl text-brand-gold">{cartTotal.toLocaleString()} FCFA</span>
+            <span className="font-bebas text-2xl text-brand-gold">{cartTotal.toLocaleString('fr-FR')} FCFA</span>
           </div>
         </div>
       </div>
 
       <div className="px-6 pt-3 bg-brand-bg-alt/80 flex-shrink-0">
-        <TurnstileWidget action="checkout" onTokenChange={setCaptchaToken} onError={() => onError('La vérification anti-bot est indisponible. Réessayez.')} />
+        <TurnstileWidget ref={captchaRef} action="checkout" onTokenChange={setCaptchaToken} onError={() => onError('La vérification anti-bot est indisponible. Réessayez.')} />
       </div>
 
       <div className="border-t border-brand-gold/10 bg-brand-bg-alt/80 px-6 py-5 flex gap-3 backdrop-blur-sm flex-shrink-0">

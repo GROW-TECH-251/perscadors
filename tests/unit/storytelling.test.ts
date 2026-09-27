@@ -59,7 +59,8 @@ describe('Unit — IMP-06 Storytelling accueil', () => {
     expect(curated).toContain('products.slice(0, CURATED_COUNT)');
     expect(curated).toContain('if (curated.length === 0) return null;');
     expect(curated).toContain('href={`/produit/${product.id}`}');
-    expect(curated).toContain('toLocaleString()} FCFA');
+    // Lot 1 (anti #418) : locale explicite fr-FR depuis le 21/09/2026.
+    expect(curated).toContain("toLocaleString('fr-FR')} FCFA");
     expect(curated).toContain('skeleton-media');
   });
 

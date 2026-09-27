@@ -420,3 +420,18 @@ html[data-pescador-intro='off'] .pescador-intro {
 .intro-cue-chevron {
   animation: scroll-cue-float 2.4s var(--ease-out-luxe) infinite;
 }
+
+/* Lot 5 (mission HP Look 09/2026) — masque les flèches natives des champs
+   numériques (décision validée : formulaire HP Look uniquement). La saisie
+   directe reste identique (type="number" conservé : validation native,
+   inputMode="numeric" pour le clavier mobile). */
+.hide-number-spinners::-webkit-outer-spin-button,
+.hide-number-spinners::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.hide-number-spinners {
+  -moz-appearance: textfield; /* Firefox */
+  appearance: textfield;
+}

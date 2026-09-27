@@ -5,13 +5,17 @@
 // produit, ajout au panier en un clic avec confirmation visuelle, relais
 // WhatsApp (même message que la page /looks). Accessible : role dialog +
 // aria-modal, Escape, focus initial sur la fermeture, piège de focus (Tab),
-// focus restitué et scroll body restauré au démontage. Animations 100%
+// focus restitué et scroll body restauré au démontage. Rendue en portail
+// sous <body> (Lot 2) : ancrage viewport insensible aux ancêtres transformés.
+// Animations 100%
 // tokens IMP-01, neutralisées par prefers-reduced-motion (règle globale).
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
 import { X, Sparkles, Check, MessageCircle } from 'lucide-react';
+import { sanitizeMediaSrc } from '@/lib/mediaSecurity';
 import type { Outfit } from '@/types';
 import { buildWhatsAppUrl } from '@/services/whatsappService';
 
@@ -27,8 +31,55 @@ interface LookModalProps {
   onAdd: (outfit: Outfit) => void;
 }
 
+// IMPL-2 (décision C2) — pièce MASQUÉE du catalogue : affichée dans la
+// composition du look (photo, nom, prix) mais NON cliquable — pas de fiche
+// publique — et signalée « Indisponible ». Les pièces visibles restent des
+// liens vers leurs fiches produit.
+function PieceContent({ product }: { product: Outfit['products'][number] }) {
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <div className="relative w-12 h-14 overflow-hidden rounded bg-brand-bg flex-shrink-0">
+          <Image
+            src={product.images[0]}
+            alt={product.name}
+            fill
+            sizes="48px"
+            className="object-cover"
+          />
+        </div>
+
+        <div>
+          <h4 className="font-bebas text-lg leading-tight group-hover:text-brand-gold transition-colors duration-(--motion-micro) ease-out-expo">
+            {product.name}
+          </h4>
+          {product.catalogHidden ? (
+            <span className="text-[10px] uppercase tracking-wider text-brand-text-muted border border-brand-gold/20 rounded px-1.5 py-0.5 inline-block">
+              Indisponible
+            </span>
+          ) : (
+            <span className="text-xs text-brand-text-muted uppercase tracking-wider block">
+              {product.category.replace(/-/g, ' ')}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="font-bold text-sm text-brand-gold">
+        {product.price.toLocaleString('fr-FR')} FCFA
+      </div>
+    </>
+  );
+}
+
 export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalProps) {
   const [added, setAdded] = useState(false);
+  // IMPL-C — repli vidéo -> image si le chargement échoue (cas C du cahier).
+  // Échec mémorisé PAR URL (valeur dérivée, pas d'effet) : changer de look
+  // réinitialise naturellement le repli.
+  const [failedVideo, setFailedVideo] = useState<string | null>(null);
+  // Sécurité (js/xss-through-dom) : URL validée avant l'attribut src,
+  // même garde que les autres lecteurs vidéo du site.
+  const videoSrc = sanitizeMediaSrc(outfit.video);
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
@@ -89,7 +140,19 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
     window.open(buildWhatsAppUrl(message, whatsappPhone), '_blank');
   };
 
-  return (
+  // Lot 2 (mission HP Look 09/2026) — portail vers document.body.
+  // La modale était rendue DANS la section carrousel, enveloppée par
+  // ScrollReveal : son transform (translate3d) reste actif après révélation,
+  // or tout ancêtre transformé devient le bloc d'ancrage des descendants
+  // position:fixed — la modale se positionnait donc par rapport à la boîte
+  // de la section (coupée ou hors écran selon la position de la grille et le
+  // scroll) au lieu du viewport. Rendue en portail directement sous <body>,
+  // elle n'a plus AUCUN ancêtre transformé : ancrage viewport garanti.
+  // Garde SSR inoffensive : la modale n'est montée qu'après un clic client
+  // (état local du carrousel), le rendu serveur ne passe jamais ici.
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="lightbox-fade-in absolute inset-0 bg-black/80 backdrop-blur-md"
@@ -102,7 +165,7 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
         role="dialog"
         aria-modal="true"
         aria-label={`Inspecter le look ${outfit.name}`}
-        className="look-modal-in relative w-full max-w-3xl bg-brand-bg text-brand-text rounded-2xl overflow-hidden border border-brand-gold/30 shadow-2xl flex flex-col md:flex-row z-10 max-h-[90vh] overflow-y-auto md:overflow-visible"
+        className="look-modal-in relative w-full max-w-3xl bg-brand-bg text-brand-text rounded-2xl overflow-hidden border border-brand-gold/30 shadow-2xl flex flex-col md:flex-row z-10 max-h-[90vh] overflow-y-auto"
       >
         <button
           ref={closeRef}
@@ -114,14 +177,31 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
           <X size={20} />
         </button>
 
-        <div className="relative w-full md:w-1/2 h-80 md:h-[500px] flex-shrink-0">
-          <Image
-            src={outfit.image}
-            alt={outfit.name}
-            fill
-            sizes="(max-width: 768px) 100vw, 384px"
-            className="object-cover"
-          />
+        <div className="relative w-full md:w-1/2 h-80 md:h-[500px] flex-shrink-0 bg-black">
+          {/* IMPL-C — la vidéo du look est présentée EN PREMIER ; sans vidéo
+              (ou en cas d'échec de chargement), l'image du look reste
+              l'affiche : le look reste toujours consultable. */}
+          {videoSrc && failedVideo !== videoSrc ? (
+            <video
+              key={`${outfit.id}-${outfit.video}`}
+              src={videoSrc}
+              poster={outfit.image}
+              controls
+              playsInline
+              preload="metadata"
+              aria-label={`Vidéo du look ${outfit.name}`}
+              onError={() => setFailedVideo(videoSrc ?? null)}
+              className="relative z-10 h-full w-full bg-black object-contain"
+            />
+          ) : (
+            <Image
+              src={outfit.image}
+              alt={outfit.name}
+              fill
+              sizes="(max-width: 768px) 100vw, 384px"
+              className="object-cover"
+            />
+          )}
           <div className="absolute top-4 left-4 bg-brand-gold text-brand-bg font-bebas text-sm uppercase px-3 py-1 rounded tracking-wider shadow">
             Vioutou Outfit 🔥
           </div>
@@ -139,53 +219,69 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
               {outfit.name}
             </h3>
             <p className="text-sm text-brand-text-muted mt-2">
-              Cet outfit est composé de pièces streetwear HP Collection exclusives sélectionnées par Vioutou — clique sur une pièce pour la découvrir :
+              {outfit.products.length > 0
+                ? 'Cet outfit est composé de pièces streetwear HP Collection exclusives sélectionnées par Vioutou — clique sur une pièce pour la découvrir :'
+                : 'Look en cours d’assemblage.'}
             </p>
 
-            <div className="mt-6 space-y-4 max-h-48 md:max-h-none overflow-y-auto pr-1">
-              {outfit.products.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/produit/${product.id}`}
-                  onClick={onClose}
-                  className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg border border-brand-gold/5 hover:border-brand-gold/40 transition-colors duration-(--motion-micro) ease-out-expo group cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-12 h-14 overflow-hidden rounded bg-brand-bg flex-shrink-0">
-                      <Image
-                        src={product.images[0]}
-                        alt={product.name}
-                        fill
-                        sizes="48px"
-                        className="object-cover"
-                      />
-                    </div>
-                    <div>
-                      <h4 className="font-bebas text-lg leading-tight group-hover:text-brand-gold transition-colors duration-(--motion-micro) ease-out-expo">
-                        {product.name}
-                      </h4>
-                      <span className="text-xs text-brand-text-muted uppercase tracking-wider block">
-                        {product.category.replace(/-/g, ' ')}
-                      </span>
-                    </div>
+            <div className="mt-6 space-y-4">
+              {outfit.products.map((product) =>
+                product.catalogHidden ? (
+                  <div
+                    key={product.id}
+                    className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg border border-brand-gold/5 cursor-default"
+                  >
+                    <PieceContent product={product} />
                   </div>
-                  <div className="font-bold text-sm text-brand-gold">
-                    {product.price.toLocaleString()} FCFA
-                  </div>
-                </Link>
-              ))}
+                ) : (
+                  <Link
+                    key={product.id}
+                    href={`/produit/${product.id}`}
+                    onClick={onClose}
+                    className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg border border-brand-gold/5 hover:border-brand-gold/40 transition-colors duration-(--motion-micro) ease-out-expo group cursor-pointer"
+                  >
+                    <PieceContent product={product} />
+                  </Link>
+                )
+              )}
             </div>
+
+            {outfit.products.length === 0 && (
+              <div className="mt-6 rounded-xl border border-brand-gold/20 bg-brand-bg-alt p-5">
+                <p className="text-sm text-brand-text-muted leading-relaxed">
+                  Les pièces de ce look ne sont pas encore reliées au catalogue. Demandez-le directement à Vioutou — réponse en 24h.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 pt-4 border-t border-brand-gold/10">
-            <div className="flex justify-between items-center text-lg">
+            {outfit.priceBreakdown && outfit.priceBreakdown.length > 0 && (
+              <div className="space-y-1.5 pt-3 border-t border-brand-gold/10">
+                <p className="text-[10px] uppercase tracking-widest font-semibold text-brand-text-muted">
+                  Ce que comprend le forfait
+                </p>
+                {outfit.priceBreakdown.map((line) => (
+                  <div key={`bd-${line.label}`} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-brand-text truncate">{line.label}</span>
+                    <span className="text-brand-text-muted whitespace-nowrap">{line.amount.toLocaleString('fr-FR')} FCFA</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(outfit.products.length > 0 || (outfit.priceBreakdown?.length ?? 0) > 0) && (
+              <div className="flex justify-between items-center text-lg">
               <span className="font-bebas text-brand-text-muted">Total du Look</span>
               <span className="text-2xl font-bold text-brand-gold">
-                {outfit.price.toLocaleString()} FCFA
+                {outfit.price.toLocaleString('fr-FR')} FCFA
               </span>
             </div>
+              )}
 
-            <button
+
+            {outfit.products.length > 0 && (
+              <button
               type="button"
               onClick={handleAdd}
               disabled={added}
@@ -207,6 +303,8 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
                 </>
               )}
             </button>
+              )}
+
 
             <button
               type="button"
@@ -219,6 +317,7 @@ export function LookModal({ outfit, whatsappPhone, onClose, onAdd }: LookModalPr
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

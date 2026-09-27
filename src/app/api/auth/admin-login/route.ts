@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rateLimit';
-import { verifyTurnstile } from '@/lib/turnstile';
+import { verifyTurnstile, type TurnstileRejectionReason } from '@/lib/turnstile';
 import { recordSecurityEvent } from '@/lib/securityAudit';
 
 export const runtime = 'nodejs';
@@ -44,13 +44,39 @@ export async function POST(request: Request) {
   const rate = await enforceRateLimit(request, 'admin-login', email);
   if (!rate.allowed) {
     return NextResponse.json(
-      { ok: false, message: 'Trop de tentatives. Réessayez dans quelques minutes.' },
+      { ok: false, message: 'Trop de tentatives de connexion. Pour protéger votre compte, les nouvelles tentatives sont temporairement bloquées. Veuillez patienter quelques minutes avant de réessayer.' },
       { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds), 'Cache-Control': 'no-store' } }
     );
   }
 
-  if (!await verifyTurnstile(captchaToken, request, 'admin_login')) {
-    return NextResponse.json({ ok: false, message: 'La vérification anti-bot a expiré. Réessayez.' }, { status: 403 });
+  const turnstile = await verifyTurnstile(captchaToken, request, 'admin_login');
+  if (!turnstile.valid) {
+    // E8 : une cause = un message. Fini le 403 unique « expiré » qui masquait
+    // quatre realites differentes (token consomme, hostname, action, reseau).
+    const messages: Record<TurnstileRejectionReason, { status: number; message: string }> = {
+      consumed: {
+        status: 403,
+        message: 'La vérification anti-bot a été réinitialisée automatiquement. Attendez la case verte puis soumettez à nouveau.'
+      },
+      hostname: {
+        status: 403,
+        message: 'Vérification anti-bot impossible depuis ce domaine. Ouvrez le site à l’adresse perscadors.vercel.app.'
+      },
+      action: {
+        status: 403,
+        message: 'La vérification anti-bot a échoué. Rafraîchissez la page et réessayez.'
+      },
+      network: {
+        status: 503,
+        message: 'Le service anti-bot est momentanément injoignable. Vérifiez votre connexion et réessayez.'
+      },
+      malformed: {
+        status: 403,
+        message: 'Veuillez terminer la vérification anti-bot avant de vous connecter.'
+      }
+    };
+    const { status, message } = messages[turnstile.reason ?? 'malformed'];
+    return NextResponse.json({ ok: false, message }, { status });
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();

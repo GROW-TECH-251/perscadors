@@ -10,8 +10,9 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminSearch, AdminEmptyState, AdminToast, AdminSkeleton, AdminConfirmDialog, AdminModal, AdminInput } from '@/admin/components';
 import { Package, Plus, Edit, Trash2, Download, Check, X, Eye, EyeOff } from 'lucide-react';
-import { fetchAdminProducts, deleteProduct, updateProduct } from '@/services/productService';
-import { createCategory, deleteCategory, fetchCategories, updateCategory } from '@/services/categoryService';
+import { deleteProduct, fetchAdminProducts, invalidateAdminProductsCache, updateProduct } from '@/services/productService';
+import { countProductsInCategory, createCategory, deleteCategorySafely, fetchCategories, renameCategory, reorderCategories, updateCategory } from '@/services/categoryService';
+import { AUTRES_SLUG, buildDeleteConfirmMessage, headerCategorySlugs, isAutresCategory, slugifyCategoryName } from '@/admin/categoryManagement';
 import type { AdminProduct, AdminCategory } from '@/admin/types';
 import { shareMediaToWhatsAppStatus } from '@/services/whatsappShareService';
 import { WhatsAppRecipientDialog } from '@/components/admin/WhatsAppRecipientDialog';
@@ -39,6 +40,15 @@ export default function AdminProductsPage() {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categorySaving, setCategorySaving] = useState(false);
+  // E9 — renommage inline + suppression sécurisée (confirmation avec comptage).
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [pendingDeleteCategory, setPendingDeleteCategory] = useState<AdminCategory | null>(null);
+  const [pendingDeleteCount, setPendingDeleteCount] = useState<number | null>(null);
+  const [categoryDeleting, setCategoryDeleting] = useState(false);
+  // E10 — réorganisation de l'ordre (positions) depuis la modale.
+  const [categoryReordering, setCategoryReordering] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -158,6 +168,9 @@ export default function AdminProductsPage() {
     }
   };
 
+  // E10 — slugs des 4 premières catégories visibles (règle du header public).
+  const headerSlugs = headerCategorySlugs(categories);
+
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter =
@@ -187,22 +200,85 @@ export default function AdminProductsPage() {
   const addCategory = async () => {
     const name = newCategoryName.trim();
     if (!name) return;
+    const slug = slugifyCategoryName(name);
+    if (!slug) { setToast({ message: 'Le nom de la catégorie est invalide.', variant: 'error' }); return; }
+    if (categories.some((category) => category.category === slug)) { setToast({ message: 'Une catégorie utilise déjà ce nom.', variant: 'error' }); return; }
     setCategorySaving(true);
-    const slug = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const result = await createCategory({ name, category: slug, description: '', image_url: null, visible: true, position: categories.length + 1 });
     setCategorySaving(false);
     if (result.error) { setToast({ message: result.error, variant: 'error' }); return; }
-    setNewCategoryName(''); await loadCategories(); setToast({ message: 'Catégorie créée.', variant: 'success' });
+    setNewCategoryName(''); await loadCategories(); setToast({ message: 'Catégorie créée. Elle est immédiatement disponible dans les formulaires produit.', variant: 'success' });
   };
   const toggleCategory = async (category: AdminCategory) => {
     const result = await updateCategory(category.id, { visible: !category.visible });
     if (result.error) { setToast({ message: result.error, variant: 'error' }); return; }
     await loadCategories();
   };
-  const removeCategory = async (category: AdminCategory) => {
-    const result = await deleteCategory(category.id);
+  const beginRenameCategory = (category: AdminCategory) => {
+    setRenamingId(category.id);
+    setRenameValue(category.name);
+  };
+  const confirmRenameCategory = async () => {
+    if (renamingId === null) return;
+    const name = renameValue.trim();
+    const category = categories.find((entry) => entry.id === renamingId);
+    if (!category || !name) return;
+    const slug = slugifyCategoryName(name);
+    if (name === category.name && slug === category.category) { setRenamingId(null); return; }
+    if (slug !== category.category && categories.some((entry) => entry.id !== renamingId && entry.category === slug)) {
+      setToast({ message: 'Une autre catégorie utilise déjà ce nom.', variant: 'error' });
+      return;
+    }
+    setRenameSaving(true);
+    const result = await renameCategory(renamingId, name, slug);
+    setRenameSaving(false);
     if (result.error) { setToast({ message: result.error, variant: 'error' }); return; }
-    await loadCategories(); setToast({ message: 'Catégorie supprimée.', variant: 'success' });
+    setRenamingId(null);
+    // Les produits ont suivi le nouveau slug : rafraîchir aussi la liste.
+    invalidateAdminProductsCache();
+    await Promise.all([loadCategories(), loadProducts()]);
+    setToast({
+      message: result.data && result.data.movedProducts > 0
+        ? `Catégorie renommée. ${result.data.movedProducts} produit(s) mis à jour.`
+        : 'Catégorie renommée.',
+      variant: 'success'
+    });
+  };
+  const moveCategory = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (categoryReordering || target < 0 || target >= categories.length) return;
+    const reordered = [...categories];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(target, 0, moved);
+    setCategoryReordering(true);
+    const result = await reorderCategories(reordered.map((category) => category.id));
+    setCategoryReordering(false);
+    if (result.error) { setToast({ message: result.error, variant: 'error' }); return; }
+    await loadCategories();
+  };
+  const askRemoveCategory = async (category: AdminCategory) => {
+    if (isAutresCategory(category)) return;
+    setPendingDeleteCount(null);
+    setPendingDeleteCategory(category);
+    const count = await countProductsInCategory(category.category);
+    setPendingDeleteCount(count);
+  };
+  const confirmRemoveCategory = async () => {
+    if (!pendingDeleteCategory) return;
+    setCategoryDeleting(true);
+    const result = await deleteCategorySafely(pendingDeleteCategory.id);
+    setCategoryDeleting(false);
+    if (result.error) { setToast({ message: result.error, variant: 'error' }); setPendingDeleteCategory(null); return; }
+    setPendingDeleteCategory(null);
+    // Les produits ont été transférés vers « Autres » : rafraîchir la liste.
+    invalidateAdminProductsCache();
+    await Promise.all([loadCategories(), loadProducts()]);
+    setToast({
+      message: result.data && result.data.movedProducts > 0
+        ? `Catégorie supprimée. ${result.data.movedProducts} produit(s) déplacé(s) vers « Autres ».`
+        : 'Catégorie supprimée.',
+      variant: 'success'
+    });
   };
 
   return (
@@ -213,11 +289,54 @@ export default function AdminProductsPage() {
         <div className="space-y-4">
           <div className="flex gap-2"><AdminInput label="Nouvelle catégorie" value={newCategoryName} onChange={setNewCategoryName} placeholder="Ex : Baskets" /><AdminButton type="button" variant="primary" loading={categorySaving} onClick={addCategory}>Ajouter</AdminButton></div>
           <p className="text-sm text-brand-text-muted">Les catégories restent secondaires : elles servent à organiser le catalogue public.</p>
-          {categories.map((category) => <div key={category.id} className="flex items-center justify-between rounded-xl border border-brand-gold/10 p-3"><div><p className="font-medium text-brand-text">{category.name}</p><p className="text-xs text-brand-text-muted">{category.visible ? 'Visible' : 'Masquée'}</p></div><div className="flex gap-2"><AdminButton type="button" size="sm" variant="secondary" onClick={() => toggleCategory(category)}>{category.visible ? 'Masquer' : 'Afficher'}</AdminButton><AdminButton type="button" size="sm" variant="danger" onClick={() => removeCategory(category)}>Supprimer</AdminButton></div></div>)}
+          <p className="text-xs text-brand-text-muted">Les 4 premières catégories visibles alimentent le menu du header public ; « HP Looks » y reste fixe en 5e position. Réorganisez avec les flèches.</p>
+          {categories.map((category, index) => (
+            <div key={category.id} className="rounded-xl border border-brand-gold/10 p-3">
+              {renamingId === category.id ? (
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-[200px] flex-1"><AdminInput label="Nouveau nom" value={renameValue} onChange={setRenameValue} placeholder="Ex : Jeans & Pantalons" /></div>
+                  <AdminButton type="button" size="sm" variant="primary" loading={renameSaving} onClick={confirmRenameCategory}>Enregistrer</AdminButton>
+                  <AdminButton type="button" size="sm" variant="secondary" onClick={() => setRenamingId(null)}>Annuler</AdminButton>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-brand-text">
+                      <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-brand-gold/25 text-[10px] text-brand-text-muted" aria-label="Position">{index + 1}</span>
+                      {category.name}
+                      {headerSlugs.includes(category.category) && <span className="ml-2 rounded-full bg-blue-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">Header</span>}
+                      {isAutresCategory(category) && <span className="ml-2 rounded-full bg-brand-gold/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-gold">Système</span>}
+                    </p>
+                    <p className="text-xs text-brand-text-muted">{category.visible ? 'Visible' : 'Masquée'} · /categorie/{category.category}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <AdminButton type="button" size="sm" variant="secondary" disabled={categoryReordering || index === 0} onClick={() => moveCategory(index, -1)} aria-label="Monter la catégorie">↑</AdminButton>
+                    <AdminButton type="button" size="sm" variant="secondary" disabled={categoryReordering || index === categories.length - 1} onClick={() => moveCategory(index, 1)} aria-label="Descendre la catégorie">↓</AdminButton>
+                    <AdminButton type="button" size="sm" variant="secondary" onClick={() => beginRenameCategory(category)}>Renommer</AdminButton>
+                    <AdminButton type="button" size="sm" variant="secondary" onClick={() => toggleCategory(category)}>{category.visible ? 'Masquer' : 'Afficher'}</AdminButton>
+                    <AdminButton type="button" size="sm" variant="danger" disabled={isAutresCategory(category)} onClick={() => askRemoveCategory(category)}>Supprimer</AdminButton>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          {!categories.some((category) => category.category === AUTRES_SLUG) && (
+            <p className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 text-sm text-amber-600">
+              La catégorie « Autres » est absente : la suppression d&#39;une catégorie contenant des produits sera bloquée jusqu&#39;à sa création ou sa restauration.
+            </p>
+          )}
         </div>
       </AdminModal>
 
       <AdminConfirmDialog isOpen={pendingDeleteId !== null} title="Supprimer cette produit ?" description="Cette action est irréversible. Vérifiez que cet élément ne doit plus apparaître dans votre boutique." loading={savingId === pendingDeleteId} onCancel={() => setPendingDeleteId(null)} onConfirm={() => pendingDeleteId !== null && handleDelete(pendingDeleteId)} />
+      <AdminConfirmDialog
+        isOpen={pendingDeleteCategory !== null}
+        title={pendingDeleteCategory ? `Supprimer « ${pendingDeleteCategory.name} » ?` : ''}
+        description={pendingDeleteCategory ? buildDeleteConfirmMessage(pendingDeleteCategory.name, pendingDeleteCount ?? -1) : ''}
+        loading={categoryDeleting}
+        onCancel={() => setPendingDeleteCategory(null)}
+        onConfirm={confirmRemoveCategory}
+      />
       
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>

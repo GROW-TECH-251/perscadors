@@ -14,7 +14,7 @@ import { Settings, Save, Upload, Trash2, Plus, LogOut, MessageCircle, Truck, Zap
 import { clearAdminSession } from '@/admin/auth';
 import { BUCKETS, compressImage, deleteImageByUrl, uploadBrandAsset } from '@/services/mediaService';
 import { fetchShopSettings, upsertShopSettings, getDefaultShopSettings } from '@/services/settingsService';
-import type { DeliveryZone, ShopSettings, TestimonialVideo, FAQItem } from '@/admin/types';
+import type { DeliveryZone, ShopSettings, FAQItem } from '@/admin/types';
 
 function createDeliveryZone(): DeliveryZone {
   return {
@@ -227,23 +227,6 @@ export default function AdminSettingsPage() {
       setUploadingScreenshot(false);
       if (screenshotInputRef.current) screenshotInputRef.current.value = '';
     }
-  };
-
-  const handleVideoChange = (index: number, field: keyof TestimonialVideo, value: string) => {
-    setSettings((currentSettings) => {
-      const nextVideos = [...currentSettings.testimonials_json.videos];
-      nextVideos[index] = {
-        ...nextVideos[index],
-        [field]: value
-      };
-      return {
-        ...currentSettings,
-        testimonials_json: {
-          ...currentSettings.testimonials_json,
-          videos: nextVideos
-        }
-      };
-    });
   };
 
   if (loading) {
@@ -476,28 +459,15 @@ export default function AdminSettingsPage() {
               />
             </div>
 
-            <div className="space-y-6 pt-6 border-t border-brand-gold/15">
-              <h3 className="font-bebas text-lg uppercase text-brand-gold">2. Vidéos de Validation Clients (MP4)</h3>
-              {settings.testimonials_json.videos.map((vid, index) => (
-                <div key={index} className="p-4 bg-brand-bg rounded-xl border border-brand-gold/10 space-y-3">
-                  <h4 className="font-bebas text-base text-brand-text uppercase">Vidéo #{index + 1}</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <AdminInput
-                      label="Titre de la vidéo"
-                      value={vid.title}
-                      onChange={(value) => handleVideoChange(index, 'title', value)}
-                    />
-                    <div className="rounded-xl border border-brand-gold/15 bg-brand-bg p-3 text-sm text-brand-text-muted">
-                      Les fichiers témoignages sont gérés dans Médias par upload direct.
-                    </div>
-                  </div>
-                  <AdminInput
-                    label="Description rapide"
-                    value={vid.description}
-                    onChange={(value) => handleVideoChange(index, 'description', value)}
-                  />
-                </div>
-              ))}
+            <div className="space-y-4 pt-6 border-t border-brand-gold/15">
+              <h3 className="font-bebas text-lg uppercase text-brand-gold">2. Vidéos et médias de Validation Clients</h3>
+              <div className="rounded-xl border border-brand-gold/15 bg-brand-bg p-4">
+                <p className="font-medium text-brand-text">Gérés dans Médias</p>
+                <p className="mt-1 text-sm text-brand-text-muted">
+                  Ajoute, titre, décrit, ordonne, active ou désactive tes vidéos (et images) de témoignages depuis Médias → section Témoignages : tout ce qui y est actif s&apos;affiche sur la boutique.
+                </p>
+                <AdminButton type="button" variant="secondary" size="sm" className="mt-3" onClick={() => router.push('/admin/media')}>Gérer les médias de témoignages</AdminButton>
+              </div>
             </div>
           </AdminCard>
 

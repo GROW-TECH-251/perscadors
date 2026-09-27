@@ -172,6 +172,91 @@ export async function deleteCategory(id: number | string): Promise<ApiResponse<b
   return { data: true, error: null };
 }
 
+// ============================================
+// E9 — Gestion sûre via RPC transactionnelles (rename avec propagation des
+// slugs aux produits, suppression avec transfert vers « Autres »). Les
+// fonctions SQL retournent des codes ; on les traduit en messages clairs.
+
+export interface CategoryMutationResult {
+  slug?: string;
+  movedProducts: number;
+}
+
+const RPC_ERROR_MESSAGES: Record<string, string> = {
+  forbidden: 'Action réservée aux administrateurs.',
+  invalid_name: 'Le nom de la catégorie est invalide (1 à 100 caractères).',
+  invalid_slug: 'L’identifiant de catégorie généré est invalide. Utilisez des lettres et des chiffres.',
+  not_found: 'Catégorie introuvable. Rechargez la page et réessayez.',
+  protected_slug: 'La catégorie « Autres » est protégée : son identifiant ne peut pas changer.',
+  duplicate: 'Une autre catégorie utilise déjà cet identifiant.',
+  no_autres: 'La catégorie « Autres » est absente : créez-la ou restaurez-la avant de supprimer cette catégorie.',
+  protected: 'La catégorie « Autres » ne peut pas être supprimée (destination des transferts).'
+};
+
+export async function renameCategory(
+  id: number | string,
+  name: string,
+  slug: string
+): Promise<ApiResponse<CategoryMutationResult>> {
+  invalidateAdminCategoriesCache();
+  const db = requireSupabase();
+
+  const { data, error } = await db.rpc('admin_rename_category', {
+    p_id: Number(id),
+    p_name: name,
+    p_slug: slug
+  });
+
+  if (error) {
+    logSupabaseWarning('categoryService', error);
+    return { data: null, error: USER_ERROR_MSG };
+  }
+
+  const result = data as { ok?: boolean; code?: string; slug?: string; moved_products?: number } | null;
+  if (!result?.ok) {
+    return { data: null, error: RPC_ERROR_MESSAGES[result?.code || ''] || USER_ERROR_MSG };
+  }
+
+  return { data: { slug: result.slug, movedProducts: result.moved_products || 0 }, error: null };
+}
+
+export async function deleteCategorySafely(id: number | string): Promise<ApiResponse<CategoryMutationResult>> {
+  invalidateAdminCategoriesCache();
+  const db = requireSupabase();
+
+  const { data, error } = await db.rpc('admin_delete_category', { p_id: Number(id) });
+
+  if (error) {
+    logSupabaseWarning('categoryService', error);
+    return { data: null, error: USER_ERROR_MSG };
+  }
+
+  const result = data as { ok?: boolean; code?: string; moved_products?: number } | null;
+  if (!result?.ok) {
+    return { data: null, error: RPC_ERROR_MESSAGES[result?.code || ''] || USER_ERROR_MSG };
+  }
+
+  return { data: { movedProducts: result.moved_products || 0 }, error: null };
+}
+
+// Comptage des produits d'une catégorie (par slug) pour la confirmation de
+// suppression. Retourne -1 si le comptage échoue (message adapté en amont).
+export async function countProductsInCategory(slug: string): Promise<number> {
+  if (!supabase) return -1;
+
+  const { count, error } = await supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('category', slug);
+
+  if (error) {
+    logSupabaseWarning('categoryService', error);
+    return -1;
+  }
+
+  return count ?? 0;
+}
+
 export async function reorderCategories(categoryIds: (number | string)[]): Promise<ApiResponse<boolean>> {
   invalidateAdminCategoriesCache();
   const db = requireSupabase();
