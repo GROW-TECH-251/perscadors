@@ -62,7 +62,9 @@ export default function AdminCategoriesPage() {
       description: '',
       image_url: '',
       visible: true,
-      position: categories.length
+      // P1-1A — numérotation 1-based (comme la base et l'ajout rapide
+      // addCategory) : prochaine position libre, jamais 0.
+      position: categories.length + 1
     });
   }, [categories.length]);
 
@@ -294,8 +296,9 @@ export default function AdminCategoriesPage() {
               <AdminInput
                 label="Position"
                 value={formData.position}
-                onChange={(value) => setFormData((currentData) => ({ ...currentData, position: Number(value) || 0 }))}
+                onChange={(value) => setFormData((currentData) => ({ ...currentData, position: Math.max(1, Number(value) || 1) }))}
                 type="number"
+                placeholder="1, 2, 3…"
               />
               <div className="flex items-center gap-4 pt-7">
                 <label className="flex items-center gap-2 cursor-pointer">

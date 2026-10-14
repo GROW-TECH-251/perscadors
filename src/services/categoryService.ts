@@ -11,6 +11,16 @@ export type CategoryFormData = Omit<AdminCategory, 'id' | 'created_at' | 'update
 
 const USER_ERROR_MSG = 'Une erreur est survenue. Contactez votre administrateur.';
 
+// P1-1A (finalisation 10/2026) — message explicite quand la requête part sans
+// session valide (token expiré, ex. Dashboard laissé ouvert longtemps :
+// PostgreSQL 42501 / PostgREST PGRST301) ou depuis un compte sans droits
+// admin. L'ancien message générique masquait entièrement cette cause.
+const SESSION_ERROR_MSG = 'Votre session a expiré ou vos droits administrateur sont manquants. Déconnectez-vous, reconnectez-vous, puis réessayez.';
+
+function friendlyMutationError(error: { code?: string } | null): string {
+  return error?.code === '42501' || error?.code === 'PGRST301' ? SESSION_ERROR_MSG : USER_ERROR_MSG;
+}
+
 // ============================================
 // PERF-05 — Requête bornée + cache de session admin (les catégories changent
 // rarement : TTL plus long que produits/commandes, invalidé par les mutations).
@@ -124,7 +134,7 @@ export async function createCategory(categoryData: CategoryFormData): Promise<Ap
 
   if (error) {
     logSupabaseWarning('categoryService', error);
-    return { data: null, error: USER_ERROR_MSG };
+    return { data: null, error: friendlyMutationError(error) };
   }
 
   return { data: data as AdminCategory, error: null };
@@ -149,7 +159,7 @@ export async function updateCategory(
 
   if (error) {
     logSupabaseWarning('categoryService', error);
-    return { data: null, error: USER_ERROR_MSG };
+    return { data: null, error: friendlyMutationError(error) };
   }
 
   return { data: data as AdminCategory, error: null };
@@ -166,7 +176,7 @@ export async function deleteCategory(id: number | string): Promise<ApiResponse<b
 
   if (error) {
     logSupabaseWarning('categoryService', error);
-    return { data: false, error: USER_ERROR_MSG };
+    return { data: false, error: friendlyMutationError(error) };
   }
 
   return { data: true, error: null };
@@ -261,9 +271,14 @@ export async function reorderCategories(categoryIds: (number | string)[]): Promi
   invalidateAdminCategoriesCache();
   const db = requireSupabase();
 
+  // P1-1A (finalisation 10/2026) — positions en numérotation 1-based, comme
+  // toutes les autres voies d'écriture (données historiques, formulaire
+  // /admin/categories, ajout rapide addCategory). L'ancien `index` (0-based)
+  // envoyait position = 0 sur la première catégorie : refus de contrainte SQL
+  // 23514 -> HTTP 400 -> « Une erreur est survenue » à CHAQUE déplacement.
   const updates = categoryIds.map((id, index) => ({
     id: Number(id),
-    position: index
+    position: index + 1
   }));
 
   const { error } = await db
@@ -272,7 +287,7 @@ export async function reorderCategories(categoryIds: (number | string)[]): Promi
 
   if (error) {
     logSupabaseWarning('categoryService', error);
-    return { data: false, error: USER_ERROR_MSG };
+    return { data: false, error: friendlyMutationError(error) };
   }
 
   return { data: true, error: null };

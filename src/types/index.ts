@@ -31,6 +31,9 @@ export interface CatalogCategory {
   countLabel: string;
   tagline: string;
   former_slugs?: string[];
+  /** Position admin (1 = première affichée). Absente sur le catalogue de
+   *  repli (catégories dérivées des produits statiques, sans base). */
+  position?: number;
 }
 
 export interface Outfit {

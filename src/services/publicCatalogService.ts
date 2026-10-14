@@ -162,7 +162,10 @@ function mergeCategoriesWithProducts(
       name: category.name || derivedCategory.name,
       image: category.image_url || derivedCategory.image,
       tagline: category.description || derivedCategory.tagline,
-      former_slugs: category.former_slugs || []
+      former_slugs: category.former_slugs || [],
+      // P1-1B — la position admin accompagne la catégorie jusqu'à
+      // l'affichage (tri + découpe à 8 côté grille).
+      position: category.position
     };
   });
 

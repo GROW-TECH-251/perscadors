@@ -115,3 +115,32 @@ function humanizeSlug(slug: string): string {
     .map((value) => value.charAt(0).toUpperCase() + value.slice(1))
     .join(' ');
 }
+
+// P1-1C (finalisation 10/2026) — page « Toutes les catégories » (/categories).
+export function allCategoriesMetadata(categories: CatalogCategory[]): Metadata {
+  const title = 'Toutes les catégories | HP Collection';
+  const description = `Explorez les ${categories.length} collections streetwear de HP Collection à Cotonou : baskets, complets, jeans oversize et plus encore, dans l'ordre choisi par la boutique.`;
+  const image = categories[0]?.image || '/assets/brand/logo.png';
+  const url = `${SEO_BASE_URL}/categories`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: SEO_SITE_NAME,
+      images: [{ url: absoluteUrl(image), alt: 'Collections HP Collection' }],
+      locale: 'fr_BJ',
+      type: 'website'
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [absoluteUrl(image)]
+    }
+  };
+}

@@ -37,6 +37,28 @@ test.describe('E2E — catégories (E9)', () => {
     await expect(liens.nth(1)).toHaveAttribute('href', '/categorie/basket-pour-homme');
   });
 
+  test('page publique /categories : toutes les catégories, cartes vers les produits (P1-1C)', async ({ page }) => {
+    const reponse = await page.goto('/categories');
+    expect(reponse?.status()).toBe(200);
+    await expect(page.locator('h1').first()).toHaveText('Toutes les catégories');
+    // Catalogue de repli sandbox (sans base) : les 4 collections historiques.
+    // Avec la base réelle, cette page montre TOUTES les catégories visibles.
+    const cartes = page.locator('section#all-categories a[href^="/categorie/"]');
+    await expect(cartes).toHaveCount(4);
+    await expect(cartes.first()).toHaveAttribute('href', '/categorie/basket-pour-homme');
+  });
+
+  test('grille d’accueil : 8 catégories max, CTA « Voir toutes les catégories » si dépassement (P1-1B)', async ({ page }) => {
+    await page.goto('/');
+    const cartes = page.locator('section#categories a[href^="/categorie/"]');
+    const total = await cartes.count();
+    expect(total).toBeLessThanOrEqual(8);
+    // Repli sandbox : 4 catégories, pas de dépassement -> pas de CTA. Le cas
+    // > 8 (base réelle : 10 catégories) est couvert par les tests unitaires
+    // de selectHomeCategories et la validation post-déploiement.
+    await expect(page.locator('section#categories a[href="/categories"]')).toHaveCount(total > 8 ? 1 : 0);
+  });
+
   test('garde admin : /admin/produits renvoie vers le login sans session', async ({ page }) => {
     await page.goto('/admin/produits');
     await expect(page).toHaveURL(/\/admin\/login/);
