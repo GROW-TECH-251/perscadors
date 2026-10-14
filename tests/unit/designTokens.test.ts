@@ -37,11 +37,15 @@ describe('Unit — IMP-01 Design tokens (motion & typographie fluide)', () => {
   });
 
   it('les cards catégories consomment les tokens motion (raise/reveal)', async () => {
+    // P1-1B/1C — carte extraite de la grille (CategoryCard), réutilisée par
+    // la grille d'accueil et la page /categories : la garde suit le markup.
+    const card = await readFile('src/components/public/CategoryCard.tsx', 'utf-8');
     const grid = await readFile('src/components/public/home/CategoryGrid.tsx', 'utf-8');
-    expect(grid).toContain('ease-out-luxe');
-    expect(grid).toContain('duration-(--motion-raise)');
-    expect(grid).toContain('duration-(--motion-reveal)');
-    expect(grid).not.toContain('ease-[cubic-bezier');
+    expect(card).toContain('ease-out-luxe');
+    expect(card).toContain('duration-(--motion-raise)');
+    expect(card).toContain('duration-(--motion-reveal)');
+    expect(card).not.toContain('ease-[cubic-bezier');
+    expect(grid).toContain('duration-(--motion-fast)');
   });
 
   it('les valeurs motion de globals.css passent par les tokens (source unique)', async () => {

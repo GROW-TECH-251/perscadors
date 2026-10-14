@@ -16,6 +16,11 @@ export async function proxy(request: NextRequest) {
 
   const isLoginPath = pathname === '/admin/login';
   const response = NextResponse.next({ request });
+  // P4 (SEO, 10/2026) : TOUTES les réponses admin (login compris) portent
+  // l'interdiction d'indexation — robots.txt bloque déjà le crawl ; ce header
+  // couvre aussi le cas « indexé sans être exploré » (lien externe vers
+  // /admin). Positionné ici pour englober chaque chemin de retour ci-dessous.
+  response.headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
@@ -52,7 +57,6 @@ export async function proxy(request: NextRequest) {
 
   if (isLoginPath) return NextResponse.redirect(new URL('/admin', request.url));
 
-  response.headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
   response.headers.set('cache-control', 'private, no-store, max-age=0');
   return response;
 }

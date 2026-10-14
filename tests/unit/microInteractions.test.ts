@@ -41,16 +41,20 @@ describe('Unit — IMP-02 Micro-interactions & états', () => {
   });
 
   it('les deux grilles publiques posent un squelette derrière leurs images', async () => {
-    const grid = await readFile('src/components/public/home/CategoryGrid.tsx', 'utf-8');
+    // P1-1B/1C — squelette porté par la carte partagée CategoryCard.
+    const card = await readFile('src/components/public/CategoryCard.tsx', 'utf-8');
     const carousel = await readFile('src/components/public/home/OutfitCarousel.tsx', 'utf-8');
-    expect(grid).toContain('skeleton-media');
+    expect(card).toContain('skeleton-media');
     expect(carousel).toContain('skeleton-media');
   });
 
   it('les composants migrés consomment les tokens motion IMP-01', async () => {
+    // P1-1B/1C — motion-raise vit dans CategoryCard ; le CTA de la grille
+    // conserve motion-fast.
+    const card = await readFile('src/components/public/CategoryCard.tsx', 'utf-8');
     const grid = await readFile('src/components/public/home/CategoryGrid.tsx', 'utf-8');
     const carousel = await readFile('src/components/public/home/OutfitCarousel.tsx', 'utf-8');
-    expect(grid).toContain('duration-(--motion-raise)');
+    expect(card).toContain('duration-(--motion-raise)');
     expect(grid).toContain('duration-(--motion-fast)');
     expect(carousel).toContain('duration-(--motion-reveal)');
     expect(carousel).toContain('duration-(--motion-fast)');
