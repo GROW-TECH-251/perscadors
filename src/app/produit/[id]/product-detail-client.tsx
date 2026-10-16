@@ -226,7 +226,7 @@ function ProductDetailContent({ product, suggestions, otherResults, searchQuery 
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 50vw"
-                className="relative z-10 object-cover transition-transform duration-(--motion-reveal) ease-out-luxe group-hover:scale-[1.05]"
+                className="relative z-10 object-contain transition-transform duration-(--motion-reveal) ease-out-luxe group-hover:scale-[1.05]"
               />
             )}
 

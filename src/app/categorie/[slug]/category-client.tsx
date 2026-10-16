@@ -9,6 +9,7 @@ import { useCatalog } from '@/context/CatalogContext';
 import { Product, Size } from '@/types';
 import { SlidersHorizontal, ArrowLeft } from 'lucide-react';
 import { normalizeProductAttribute, normalizeSize } from '@/utils/normalizeProductAttribute';
+import { filterProductsByAudience, type AudienceFilter } from '@/lib/productAudience';
 import { ArticleRequestSection } from '@/components/public/home/ArticleRequestSection';
 
 export default function CategoryPage() {
@@ -26,21 +27,33 @@ export default function CategoryPage() {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
+  // LOT 3 — filtre public cible : « Homme » actif par défaut à l'ouverture
+  // de la catégorie, « Femme » en bascule. Pas de 3e bouton Unisexe : les
+  // articles unisexes vivent dans les DEUX vues (une seule carte chacun).
+  // Produits non classés (NULL, classification manuelle progressive) :
+  // visibles dans les deux vues — aucun retrait silencieux.
+  const [audience, setAudience] = useState<AudienceFilter>('homme');
+
+  const audienceProducts = useMemo(
+    () => filterProductsByAudience(rawProducts, audience),
+    [rawProducts, audience]
+  );
+
   const uniqueSizes = useMemo(
-    () => Array.from(new Map(rawProducts.flatMap((product) => product.sizes.map((size) => [normalizeSize(size), size] as const))).values()).sort(),
-    [rawProducts]
+    () => Array.from(new Map(audienceProducts.flatMap((product) => product.sizes.map((size) => [normalizeSize(size), size] as const))).values()).sort(),
+    [audienceProducts]
   );
   const uniqueColors = useMemo(
-    () => Array.from(new Map(rawProducts.flatMap((product) => product.colors.map((color) => [normalizeProductAttribute(color), color.trim().replace(/\s+/g, ' ')] as const))).values()).sort(),
-    [rawProducts]
+    () => Array.from(new Map(audienceProducts.flatMap((product) => product.colors.map((color) => [normalizeProductAttribute(color), color.trim().replace(/\s+/g, ' ')] as const))).values()).sort(),
+    [audienceProducts]
   );
 
   const filteredProducts = useMemo<Product[]>(() => {
-    let result = [...rawProducts];
+    let result = [...audienceProducts];
 
     if (searchQuery) {
       const query = normalizeProductAttribute(searchQuery);
-      result = rawProducts.filter(
+      result = audienceProducts.filter(
         (product) =>
           normalizeProductAttribute(product.name).includes(query) ||
           normalizeProductAttribute(product.description).includes(query)
@@ -60,7 +73,7 @@ export default function CategoryPage() {
     }
 
     return result;
-  }, [rawProducts, searchQuery, selectedSizes, selectedColors]);
+  }, [audienceProducts, searchQuery, selectedSizes, selectedColors]);
 
   // E5 (Riel) — no-results : suggestions « Complète le look » (4 articles de la catégorie).
   const lookSuggestions = useMemo(() => rawProducts.slice(0, 4), [rawProducts]);
@@ -112,6 +125,29 @@ export default function CategoryPage() {
               Résultats de recherche pour : &quot;<span className="text-brand-text font-semibold">{searchQuery}</span>&quot;
             </p>
           )}
+        </div>
+
+        {/* LOT 3 — bascule public cible : deux boutons seulement (Homme /
+            Femme). Unisexe et non-classés sont servies par les deux vues. */}
+        <div className="mb-8 flex flex-wrap items-center gap-3">
+          <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-brand-text-muted">
+            Public :
+          </span>
+          {(['homme', 'femme'] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setAudience(key)}
+              aria-pressed={audience === key}
+              className={`px-5 py-2 text-sm font-semibold rounded-full transition-all border cursor-pointer ${
+                audience === key
+                  ? 'bg-brand-gold border-brand-gold text-brand-bg shadow'
+                  : 'border-brand-gold/20 hover:border-brand-gold/60 text-brand-text bg-brand-bg'
+              }`}
+            >
+              {key === 'homme' ? 'Homme' : 'Femme'}
+            </button>
+          ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">

@@ -659,13 +659,13 @@ export default function AdminOrdersPage() {
                   <div key={`${item.name}-${index}`} className="flex items-center justify-between p-3 bg-brand-bg-alt rounded-lg">
                     <div className="flex items-center gap-3">
                       {item.image && (
-                        <div className="relative w-12 h-12 overflow-hidden rounded">
+                        <div className="relative w-12 h-12 overflow-hidden rounded bg-brand-bg-alt">
                           <Image
                             src={item.image}
                             alt={item.name}
                             fill
                             sizes="48px"
-                            className="object-cover"
+                            className="object-contain"
                             unoptimized
                           />
                         </div>

@@ -1,3 +1,5 @@
+import type { ProductAudience } from '@/lib/productAudience';
+
 export type Size = 'S' | 'M' | 'L' | 'XL' | 'XXL' | '39' | '40' | '41' | '42' | '43' | '44' | '45';
 
 export interface Product {
@@ -15,6 +17,8 @@ export interface Product {
   inStock: boolean;
   description: string;
   isPopular?: boolean;
+  /** LOT 3 — public cible ('homme' | 'femme' | 'unisexe'). NULL/absent = non classé : visible dans les deux vues. */
+  target_audience?: ProductAudience | null;
   video?: string;
   createdAt?: string;
   /** IMPL-2 (C2) — article masqué du catalogue : affiché uniquement dans la

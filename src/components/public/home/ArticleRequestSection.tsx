@@ -100,7 +100,7 @@ function ArticleSubmissionModal({
                   alt="Aperçu article"
                   fill
                   sizes="(max-width: 767px) 100vw, 180px"
-                  className="object-cover"
+                  className="object-contain"
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-center text-xs text-[#4d4d4d]">Aucune photo</div>

@@ -217,7 +217,7 @@ export default function AdminStockPage() {
                           alt=""
                           fill
                           sizes="96px"
-                          className="object-cover"
+                          className="object-contain"
                         />
                       </span>
                     ) : (

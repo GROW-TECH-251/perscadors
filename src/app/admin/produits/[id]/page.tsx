@@ -9,6 +9,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminToast, AdminConfirmDialog } from '@/admin/components';
+import { PRODUCT_AUDIENCE_OPTIONS, type ProductAudience } from '@/lib/productAudience';
 import {Video,  Save, X, Upload } from 'lucide-react';
 import { fetchProductById, updateProduct } from '@/services/productService';
 import { HISTORICAL_CATEGORY_OPTIONS, buildCategorySelectOptions } from '@/admin/categoryManagement';
@@ -46,7 +47,8 @@ export default function EditProductPage() {
     description: '',
     video_url: null,
     video_public_id: null,
-    visible: true
+    visible: true,
+    target_audience: null
   });
 
   // E9 — sélecteur alimenté par la base + catégorie actuelle du produit
@@ -86,7 +88,8 @@ export default function EditProductPage() {
           description: data.description || '',
           video_url: data.video_url || null,
           video_public_id: data.video_public_id || null,
-          visible: data.visible
+          visible: data.visible,
+          target_audience: data.target_audience ?? null
         });
         setCurrentCategorySlug(data.category);
       }
@@ -218,6 +221,14 @@ export default function EditProductPage() {
     setLoading(true);
 
     try {
+      // LOT 3 — public cible obligatoire : un produit existant non classé
+      // (NULL, migration progressive) doit être classé explicitement avant
+      // enregistrement — aucune classification automatique.
+      if (!formData.target_audience) {
+        setToast({ message: 'Le public cible (Homme, Femme ou Unisexe) est obligatoire.', variant: 'error' });
+        return;
+      }
+
       const result = await updateProduct(Number(productId), formData);
       if (result.error) {
         setToast({ message: result.error, variant: 'error' });
@@ -291,6 +302,14 @@ export default function EditProductPage() {
               options={categoryOptions}
               required
             />
+            <AdminSelect
+              label="Public cible"
+              value={formData.target_audience || ''}
+              onChange={(value) => setFormData({ ...formData, target_audience: (value || null) as ProductAudience | null })}
+              options={PRODUCT_AUDIENCE_OPTIONS}
+              placeholder="Sélectionner le public cible"
+              required
+            />
             <AdminInput label="Prix (FCFA)" value={formData.price} onChange={(value) => setFormData({ ...formData, price: Number(value) || 0 })} type="number" required />
             <AdminInput label="Stock" value={formData.stock} onChange={(value) => setFormData({ ...formData, stock: Number(value) || 0 })} type="number" />
             <AdminInput label="Badge" value={formData.badge} onChange={(value) => setFormData({ ...formData, badge: value })} placeholder="Nouveau, Promo..." />
@@ -341,7 +360,7 @@ export default function EditProductPage() {
                   alt={formData.name}
                   fill
                   sizes="320px"
-                  className="object-cover"
+                  className="object-contain"
                   unoptimized
                 />
               </div>

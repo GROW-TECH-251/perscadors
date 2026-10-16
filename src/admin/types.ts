@@ -3,6 +3,8 @@
 // Types TypeScript pour l'administration et le Checkout
 // ============================================
 
+import type { ProductAudience } from '@/lib/productAudience';
+
 export type AdminScreen = 
   | 'home'
   | 'products'
@@ -47,6 +49,8 @@ export interface AdminProduct {
   visible: boolean;
   slug: string;
   isPopular: boolean;
+  /** LOT 3 — public cible (donnée saisie en admin, jamais déduite). NULL = non classé. */
+  target_audience?: ProductAudience | null;
   video_url?: string | null;
   video_public_id?: string | null;
   created_at: string;
@@ -72,6 +76,7 @@ export interface ProductFormData {
   visible: boolean;
   slug?: string;
   isPopular?: boolean;
+  target_audience?: ProductAudience | null;
 }
 
 export type OrderStatus = 

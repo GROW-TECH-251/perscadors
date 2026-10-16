@@ -471,7 +471,7 @@ export default function AdminDashboardPage() {
                           alt={product.name}
                           fill
                           sizes="64px"
-                          className="object-cover group-hover/bestseller:scale-105 transition-transform duration-300"
+                          className="object-contain group-hover/bestseller:scale-105 transition-transform duration-300"
                           unoptimized
                         />
                       ) : (

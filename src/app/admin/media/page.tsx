@@ -511,11 +511,11 @@ export default function AdminMediaPage() {
                   <div className="space-y-4 pointer-events-none relative z-10">
                     {selectedFile?.type.startsWith('video/') ? (
                       <div className="w-full max-w-xs aspect-[16/10] mx-auto bg-black rounded-2xl overflow-hidden border border-brand-gold/20 shadow">
-                        <video src={filePreview} controls preload="metadata" muted playsInline onError={() => setToastMessage({ variant: 'success', text: 'Prévisualisation locale indisponible. Cloudinary optimisera la vidéo après upload.' })} className="w-full h-full object-cover" />
+                        <video src={filePreview} controls preload="metadata" muted playsInline onError={() => setToastMessage({ variant: 'success', text: 'Prévisualisation locale indisponible. Cloudinary optimisera la vidéo après upload.' })} className="w-full h-full object-contain" />
                       </div>
                     ) : (
                       <div className="relative w-full max-w-xs aspect-[16/10] mx-auto bg-black rounded-2xl overflow-hidden border border-brand-gold/20 shadow">
-                        <Image src={filePreview} alt="Preview" fill sizes="320px" className="object-cover" unoptimized />
+                        <Image src={filePreview} alt="Preview" fill sizes="320px" className="object-contain" unoptimized />
                       </div>
                     )}
                     <p className="font-bebas text-lg text-brand-gold uppercase tracking-wider truncate max-w-xs mx-auto">

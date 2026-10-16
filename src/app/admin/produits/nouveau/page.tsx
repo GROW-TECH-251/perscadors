@@ -9,6 +9,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AdminCard, AdminButton, AdminInput, AdminTextarea, AdminSelect, AdminToast, AdminConfirmDialog } from '@/admin/components';
+import { PRODUCT_AUDIENCE_OPTIONS, type ProductAudience } from '@/lib/productAudience';
 
 import { Video, Save, X, Upload } from 'lucide-react';
 import { HISTORICAL_CATEGORY_OPTIONS, buildCategorySelectOptions } from '@/admin/categoryManagement';
@@ -50,7 +51,8 @@ export default function NewProductPage() {
     description: '',
     video_url: null,
     video_public_id: null,
-    visible: true
+    visible: true,
+    target_audience: null
   });
 
   // E9 — sélecteur de catégories alimenté par la base (repli : options
@@ -191,6 +193,13 @@ export default function NewProductPage() {
     setLoading(true);
 
     try {
+      // LOT 3 — public cible obligatoire : pas de valeur par défaut
+      // silencieuse, l'admin choisit explicitement (Homme/Femme/Unisexe).
+      if (!formData.target_audience) {
+        setToast({ message: 'Le public cible (Homme, Femme ou Unisexe) est obligatoire.', variant: 'error' });
+        return;
+      }
+
       // E9 : soumettre toujours une catégorie réellement proposée.
       const result = await createProduct({ ...formData, category: effectiveCategory });
       if (result.error) {
@@ -257,6 +266,14 @@ export default function NewProductPage() {
               value={effectiveCategory}
               onChange={(value) => setFormData({ ...formData, category: value })}
               options={categoryOptions}
+              required
+            />
+            <AdminSelect
+              label="Public cible"
+              value={formData.target_audience || ''}
+              onChange={(value) => setFormData({ ...formData, target_audience: (value || null) as ProductAudience | null })}
+              options={PRODUCT_AUDIENCE_OPTIONS}
+              placeholder="Sélectionner le public cible"
               required
             />
             <AdminInput
@@ -342,7 +359,7 @@ export default function NewProductPage() {
                   alt="Aperçu du produit"
                   fill
                   sizes="320px"
-                  className="object-cover"
+                  className="object-contain"
                   unoptimized
                 />
                 <div className="absolute top-2 right-2 px-2 py-1 bg-green-500 text-white text-xs rounded">

@@ -105,7 +105,8 @@ function normalizeAdminProduct(product: AdminProduct): Product {
     outOfStockColors: [],
     inStock: product.stock > 0,
     description: product.description || 'Produit premium HP Collection.',
-    isPopular: Boolean(product.badge) || product.demand > 10
+    isPopular: Boolean(product.badge) || product.demand > 10,
+    target_audience: product.target_audience ?? null
   };
 }
 
