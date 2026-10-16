@@ -48,7 +48,7 @@ export default function EditProductPage() {
     video_url: null,
     video_public_id: null,
     visible: true,
-    target_audience: null
+    target_audience: 'homme'
   });
 
   // E9 — sélecteur alimenté par la base + catégorie actuelle du produit
@@ -89,7 +89,7 @@ export default function EditProductPage() {
           video_url: data.video_url || null,
           video_public_id: data.video_public_id || null,
           visible: data.visible,
-          target_audience: data.target_audience ?? null
+          target_audience: data.target_audience ?? 'homme'
         });
         setCurrentCategorySlug(data.category);
       }
@@ -221,9 +221,9 @@ export default function EditProductPage() {
     setLoading(true);
 
     try {
-      // LOT 3 — public cible obligatoire : un produit existant non classé
-      // (NULL, migration progressive) doit être classé explicitement avant
-      // enregistrement — aucune classification automatique.
+      // LOT 3 (révision 16/10) — défaut Homme : un produit existant non
+      // classé (NULL résiduel) est proposé en Homme ; l'admin confirme ou
+      // change avant enregistrement.
       if (!formData.target_audience) {
         setToast({ message: 'Le public cible (Homme, Femme ou Unisexe) est obligatoire.', variant: 'error' });
         return;

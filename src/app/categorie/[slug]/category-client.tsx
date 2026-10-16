@@ -30,8 +30,8 @@ export default function CategoryPage() {
   // LOT 3 — filtre public cible : « Homme » actif par défaut à l'ouverture
   // de la catégorie, « Femme » en bascule. Pas de 3e bouton Unisexe : les
   // articles unisexes vivent dans les DEUX vues (une seule carte chacun).
-  // Produits non classés (NULL, classification manuelle progressive) :
-  // visibles dans les deux vues — aucun retrait silencieux.
+  // Produits non classés (NULL résiduel) : traités comme HOMME (défaut
+  // propriétaire 16/10) — jamais répartis des deux côtés.
   const [audience, setAudience] = useState<AudienceFilter>('homme');
 
   const audienceProducts = useMemo(

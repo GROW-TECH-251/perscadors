@@ -20,6 +20,21 @@ import { fetchShopSettings, formatWhatsAppMessage, getDefaultShopSettings } from
 import { openWhatsApp } from '@/services/whatsappService';
 import type { CustomerSummary } from '@/admin/types';
 import { exportProductsToCsv } from '@/utils/exportCsv';
+// LOT 3 (révision 16/10) — filtre et pastille public cible (défaut Homme).
+import { PRODUCT_AUDIENCE_OPTIONS, resolveProductAudience, type ProductAudience } from '@/lib/productAudience';
+
+// LOT 3 (révision 16/10) — pastille public cible affichée sur chaque carte.
+const AUDIENCE_LABELS: Record<ProductAudience, string> = {
+  homme: 'Homme',
+  femme: 'Femme',
+  unisexe: 'Unisexe'
+};
+
+const AUDIENCE_BADGE_STYLES: Record<ProductAudience, string> = {
+  homme: 'bg-sky-950/90 text-sky-300 border-sky-800',
+  femme: 'bg-pink-950/90 text-pink-300 border-pink-800',
+  unisexe: 'bg-violet-950/90 text-violet-300 border-violet-800'
+};
 
 export default function AdminProductsPage() {
   const router = useRouter();
@@ -28,6 +43,8 @@ export default function AdminProductsPage() {
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' | 'info' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'visible' | 'hidden' | 'low-stock' | 'incomplete'>('all');
+  // LOT 3 (révision 16/10) — filtre par public cible (Tous par défaut).
+  const [audienceFilter, setAudienceFilter] = useState<'all' | ProductAudience>('all');
 
   // États pour l'édition rapide en ligne du prix (Quick Inline Editing)
   const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
@@ -179,7 +196,10 @@ export default function AdminProductsPage() {
       (filter === 'hidden' && !product.visible) ||
       (filter === 'low-stock' && (product.stock || 0) <= 5) ||
       (filter === 'incomplete' && (!product.image_url || product.sizes.length === 0 || product.stock <= 0));
-    return matchesSearch && matchesFilter;
+    // LOT 3 — public cible : les non classés sont traités comme Homme.
+    const matchesAudience =
+      audienceFilter === 'all' || resolveProductAudience(product.target_audience) === audienceFilter;
+    return matchesSearch && matchesFilter && matchesAudience;
   });
 
   const visibleProductsCount = products.filter((product) => product.visible).length;
@@ -424,11 +444,40 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {/* LOT 3 (révision 16/10) — filtre par public cible : les produits non
+          classés sont traités comme Homme (défaut métier). */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-brand-text-muted shrink-0">Public :</span>
+        <button
+          onClick={() => setAudienceFilter('all')}
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+            audienceFilter === 'all'
+              ? 'bg-brand-gold text-[#0A0A0A]'
+              : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'
+          }`}
+        >
+          Tous
+        </button>
+        {PRODUCT_AUDIENCE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => setAudienceFilter(option.value)}
+            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+              audienceFilter === option.value
+                ? 'bg-brand-gold text-[#0A0A0A]'
+                : 'bg-brand-bg-alt text-brand-text hover:bg-brand-gold/10'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       {filteredProducts.length === 0 ? (
         <AdminEmptyState
           icon={<Package size={48} />}
           title="Aucun produit"
-          description={searchQuery || filter !== 'all' ? 'Essayez d\'autres filtres' : 'Ajoutez votre premier produit'}
+          description={searchQuery || filter !== 'all' || audienceFilter !== 'all' ? 'Essayez d\'autres filtres' : 'Ajoutez votre premier produit'}
           action={
             !searchQuery ? (
               <AdminButton variant="primary" onClick={() => router.push('/admin/produits/nouveau')}>
@@ -443,6 +492,7 @@ export default function AdminProductsPage() {
           {filteredProducts.map((product, index) => {
             const isEditingPrice = editingPriceId === product.id;
             const outOfStockList = product.outOfStockSizes || [];
+            const audience = resolveProductAudience(product.target_audience);
 
             return (
               <AdminCard key={`product-${product.id}-${index}`} className="p-0 overflow-hidden relative group/card border-brand-gold/15 hover:border-brand-gold/40 transition-all shadow-md hover:shadow-xl">
@@ -479,6 +529,9 @@ export default function AdminProductsPage() {
                         Stock faible ({product.stock})
                       </span>
                     )}
+                    <span className={`px-2.5 py-1 ${AUDIENCE_BADGE_STYLES[audience]} border text-xs font-semibold rounded-lg backdrop-blur-sm`}>
+                      {AUDIENCE_LABELS[audience]}
+                    </span>
                     {product.badge && (
                       <span className="px-2.5 py-1 bg-brand-gold/20 text-brand-gold border border-brand-gold/40 text-xs font-semibold rounded-lg backdrop-blur-sm">
                         {product.badge}

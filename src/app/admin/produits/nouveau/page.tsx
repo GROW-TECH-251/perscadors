@@ -52,7 +52,7 @@ export default function NewProductPage() {
     video_url: null,
     video_public_id: null,
     visible: true,
-    target_audience: null
+    target_audience: 'homme'
   });
 
   // E9 — sélecteur de catégories alimenté par la base (repli : options
@@ -193,8 +193,8 @@ export default function NewProductPage() {
     setLoading(true);
 
     try {
-      // LOT 3 — public cible obligatoire : pas de valeur par défaut
-      // silencieuse, l'admin choisit explicitement (Homme/Femme/Unisexe).
+      // LOT 3 (révision 16/10) — défaut Homme : le select est pré-sélectionné
+      // sur Homme ; cette garde reste en secours (valeur jamais vide).
       if (!formData.target_audience) {
         setToast({ message: 'Le public cible (Homme, Femme ou Unisexe) est obligatoire.', variant: 'error' });
         return;
