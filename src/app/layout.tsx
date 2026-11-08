@@ -36,8 +36,8 @@ const bebasNeue = Bebas_Neue({
   display: 'swap',
 });
 
-const FALLBACK_TITLE = 'HP Collection | Streetwear Premium à Cotonou, Bénin';
-const FALLBACK_DESCRIPTION = 'HP Collection (Perscadors) — boutique premium de mode streetwear par l\'influenceur Vioutou à Cotonou, Bénin. Baskets, complets, jeans oversize : commandez sur WhatsApp, livraison express.';
+const FALLBACK_TITLE = 'Perscadors — HP Collection | Streetwear à Cotonou, Bénin';
+const FALLBACK_DESCRIPTION = 'Perscadors — HP Collection, la boutique streetwear de Vioutou (Honoré Perscadors) à Cotonou, Bénin. Baskets, complets, jeans oversize. Commandez sur WhatsApp, livraison express.';
 const FALLBACK_IMAGE = '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0036.jpg';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -67,7 +67,7 @@ export async function generateMetadata(): Promise<Metadata> {
     // conservée pour compatibilité) → fallback codé en dur en dernier recours.
     image = bannerResponse.data?.url || data?.social_image_url || image;
   }
-  return { metadataBase: new URL('https://perscadors.vercel.app'), alternates: { canonical: '/' }, title, description, robots: { index: true, follow: true }, verification: { google: '8H4Mv0t8miJEBVvLMU-mpfhW8PR33NrQ5PPjTxqCMA4' }, openGraph: { title, description, url: 'https://perscadors.vercel.app', siteName: 'HP Collection Bénin', images: [{ url: image, width: 1200, height: 630, alt: title }], locale: 'fr_BJ', type: 'website' }, twitter: { card: 'summary_large_image', title, description, images: [image] }, icons: { icon: '/assets/brand/logo.png', shortcut: '/assets/brand/logo.png', apple: '/assets/brand/logo.png' } };
+  return { metadataBase: new URL('https://perscadors.vercel.app'), alternates: { canonical: '/' }, title, description, robots: { index: true, follow: true }, verification: { google: '8H4Mv0t8miJEBVvLMU-mpfhW8PR33NrQ5PPjTxqCMA4' }, openGraph: { title, description, url: 'https://perscadors.vercel.app', siteName: 'Perscadors — HP Collection Bénin', images: [{ url: image, width: 1200, height: 630, alt: title }], locale: 'fr_BJ', type: 'website' }, twitter: { card: 'summary_large_image', title, description, images: [image] }, icons: { icon: '/assets/brand/logo.png', shortcut: '/assets/brand/logo.png', apple: '/assets/brand/logo.png' } };
 }
 
 

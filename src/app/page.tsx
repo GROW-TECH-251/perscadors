@@ -13,6 +13,7 @@ import { Marquee } from '@/components/public/home/Marquee';
 import { CuratedCollections } from '@/components/public/home/CuratedCollections';
 import { StatsStrip } from '@/components/public/home/StatsStrip';
 import { safeJsonLd } from '@/utils/safeJsonLd';
+import { TIKTOK_URL, GOOGLE_MAPS_URL, STORE_GEO, FACEBOOK_URL } from '@/lib/socialLinks';
 import { IntroSection } from '@/components/public/intro/IntroSection';
 
 // PERF-02 — cache() déduplique les lectures serveur au sein d'une même
@@ -45,13 +46,17 @@ export default async function HomePage() {
     "@context": "https://schema.org",
     "@type": ["Store", "Organization", "WebSite"],
     "@id": "https://perscadors.vercel.app/#store",
-    "name": "HP Collection",
-    "legalName": "HP Collection / Perscadors E-commerce",
-    "alternateName": ["Perscadors", "HP Collection Bénin"],
+    "name": "Perscadors",
+    "legalName": "Honoré Perscadors Collection",
+    "alternateName": ["HP Collection", "Honoré Perscadors Collection", "HP Collection Bénin"],
     "url": "https://perscadors.vercel.app/",
+    // Identité numérique officielle (mission 07/11) : seules des URLs VÉRIFIÉES.
+    // Facebook sera ajouté automatiquement dès que FACEBOOK_URL sera renseigné
+    // (URL permanente confirmée) dans src/lib/socialLinks.ts.
+    "sameAs": [TIKTOK_URL, GOOGLE_MAPS_URL, ...(FACEBOOK_URL ? [FACEBOOK_URL] : [])],
     "logo": "https://perscadors.vercel.app/assets/brand/logo.png",
     "image": "https://perscadors.vercel.app/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0036.jpg",
-    "description": "Boutique premium de mode streetwear par l'influenceur Vioutou à Cotonou, Bénin. Baskets, complets, jeans oversize et claquettes VIP. Commandes instantanées via WhatsApp avec livraison express.",
+    "description": "Perscadors — boutique premium de mode streetwear HP Collection par l'influenceur Vioutou (Honoré Perscadors) à Cotonou, Bénin. Baskets, complets, jeans oversize et claquettes VIP. Commandes instantanées via WhatsApp avec livraison express.",
     "telephone": "+22967280018",
     "priceRange": "10000 FCFA - 50000 FCFA",
     "currenciesAccepted": "XOF",
@@ -64,10 +69,12 @@ export default async function HomePage() {
       "postalCode": "BP 0000",
       "addressCountry": "BJ"
     },
+    // Coordonnées du pin de la fiche Google Maps officielle « HP Collection »
+    // (mission 07/11) — pas des coordonnées déduites approximativement.
     "geo": {
       "@type": "GeoCoordinates",
-      "latitude": 6.36536,
-      "longitude": 2.41833
+      "latitude": STORE_GEO.latitude,
+      "longitude": STORE_GEO.longitude
     },
     "openingHoursSpecification": [
       {
@@ -79,8 +86,9 @@ export default async function HomePage() {
     ],
     "founder": {
       "@type": "Person",
-      "name": "Vioutou",
-      "jobTitle": "Influenceur & Propriétaire HP Collection",
+      "name": "Honoré Perscadors",
+      "alternateName": "Vioutou",
+      "jobTitle": "Influenceur mode & fondateur de Perscadors (HP Collection)",
       "url": "https://perscadors.vercel.app/"
     },
     "potentialAction": {

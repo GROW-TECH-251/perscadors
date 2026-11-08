@@ -6,7 +6,7 @@ import type { CatalogCategory, Outfit, Product } from '@/types';
 // HTML initial (visible par les crawlers sans JavaScript).
 
 export const SEO_BASE_URL = 'https://perscadors.vercel.app';
-export const SEO_SITE_NAME = 'HP Collection Bénin';
+export const SEO_SITE_NAME = 'Perscadors — HP Collection Bénin';
 
 function absoluteUrl(pathOrUrl: string): string {
   if (!pathOrUrl) return SEO_BASE_URL;
