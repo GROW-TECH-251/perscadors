@@ -47,6 +47,7 @@ export default async function HomePage() {
     "@id": "https://perscadors.vercel.app/#store",
     "name": "HP Collection",
     "legalName": "HP Collection / Perscadors E-commerce",
+    "alternateName": ["Perscadors", "HP Collection Bénin"],
     "url": "https://perscadors.vercel.app/",
     "logo": "https://perscadors.vercel.app/assets/brand/logo.png",
     "image": "https://perscadors.vercel.app/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0036.jpg",

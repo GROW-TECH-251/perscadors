@@ -36,8 +36,8 @@ const bebasNeue = Bebas_Neue({
   display: 'swap',
 });
 
-const FALLBACK_TITLE = 'HP Collection | Boutique E-commerce Streetwear Premium';
-const FALLBACK_DESCRIPTION = 'Boutique premium de mode streetwear par l\'influenceur Vioutou à Cotonou, Bénin. Commandes instantanées via WhatsApp.';
+const FALLBACK_TITLE = 'HP Collection | Streetwear Premium à Cotonou, Bénin';
+const FALLBACK_DESCRIPTION = 'HP Collection (Perscadors) — boutique premium de mode streetwear par l\'influenceur Vioutou à Cotonou, Bénin. Baskets, complets, jeans oversize : commandez sur WhatsApp, livraison express.';
 const FALLBACK_IMAGE = '/assets/collections/articles/BASKET POUR HOMME/IMG-20251014-WA0036.jpg';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -67,7 +67,7 @@ export async function generateMetadata(): Promise<Metadata> {
     // conservée pour compatibilité) → fallback codé en dur en dernier recours.
     image = bannerResponse.data?.url || data?.social_image_url || image;
   }
-  return { metadataBase: new URL('https://perscadors.vercel.app'), title, description, robots: { index: true, follow: true }, verification: { google: '8H4Mv0t8miJEBVvLMU-mpfhW8PR33NrQ5PPjTxqCMA4' }, openGraph: { title, description, url: 'https://perscadors.vercel.app', siteName: 'HP Collection Bénin', images: [{ url: image, width: 1200, height: 630, alt: title }], locale: 'fr_BJ', type: 'website' }, twitter: { card: 'summary_large_image', title, description, images: [image] }, icons: { icon: '/assets/brand/logo.png', shortcut: '/assets/brand/logo.png', apple: '/assets/brand/logo.png' } };
+  return { metadataBase: new URL('https://perscadors.vercel.app'), alternates: { canonical: '/' }, title, description, robots: { index: true, follow: true }, verification: { google: '8H4Mv0t8miJEBVvLMU-mpfhW8PR33NrQ5PPjTxqCMA4' }, openGraph: { title, description, url: 'https://perscadors.vercel.app', siteName: 'HP Collection Bénin', images: [{ url: image, width: 1200, height: 630, alt: title }], locale: 'fr_BJ', type: 'website' }, twitter: { card: 'summary_large_image', title, description, images: [image] }, icons: { icon: '/assets/brand/logo.png', shortcut: '/assets/brand/logo.png', apple: '/assets/brand/logo.png' } };
 }
 
 
@@ -97,7 +97,6 @@ export default async function RootLayout({
   return (
     <html lang="fr" data-scroll-behavior="smooth" suppressHydrationWarning className={`${barlow.variable} ${bebasNeue.variable} h-full antialiased scroll-smooth`}>
       <head>
-        <link rel="canonical" href="https://perscadors.vercel.app" />
         {/* OV-1 — Gates pré-paint de l'intro HP Collection : évaluées AVANT le
             premier rendu pour poser data-pescador-intro (CSS globals masque la
             section -> 0 flash, 0 CLS). Session vue / reduced-motion / Save-Data

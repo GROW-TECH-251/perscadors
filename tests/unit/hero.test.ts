@@ -86,7 +86,10 @@ describe('Unit — Hero (hauteur & vidéo responsive)', () => {
     expect(css).toContain('animation-delay: 0.2s;');
   });
   it('le skeleton de chargement doit utiliser la même hauteur que le Hero', async () => {
-    const loading = await readFile('src/app/loading.tsx', 'utf-8');
+    // SEO (31/10) — le skeleton global vit désormais avec le suivi de commande
+    // (src/app/order/[token]/loading.tsx) : à la racine, il flushait le shell
+    // avant le rendu des pages dynamiques (statut 200 au lieu de 404).
+    const loading = await readFile('src/app/order/[token]/loading.tsx', 'utf-8');
     expect(loading).toContain('perscadors-hero');
     expect(loading).not.toContain('calc(100vh-80px)');
     expect(loading).not.toContain('min-h-[560px]');

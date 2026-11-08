@@ -245,6 +245,9 @@ export const Hero: React.FC = () => {
               {heroTitleParts.secondary ? (
                 <span className="text-brand-gold"> {heroTitleParts.secondary}.</span>
               ) : null}
+              {/* SEO (31/10) — contexte de marque pour lecteurs d'écran et
+                  moteurs : aucun changement visuel (sr-only). */}
+              <span className="sr-only"> — Boutique streetwear HP Collection à Cotonou, Bénin</span>
             </h1>
           </div>
           <div className="animate-slide-up-fade stagger-2">

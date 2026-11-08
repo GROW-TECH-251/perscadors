@@ -49,13 +49,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // 4. HP Looks de Vioutou
-  const outfitPages: MetadataRoute.Sitemap = snapshot.outfits.map((outfit) => ({
-    url: `${baseUrl}/looks#${outfit.id}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly',
-    priority: 0.6,
-  }));
-
-  return [...mainPages, ...categoryPages, ...productPages, ...outfitPages];
+  // SEO (31/10) — plus d'URLs vers les looks avec identifiant de fragment :
+  // tout ce qui suit un dièse est ignoré par les moteurs ; ces entrées
+  // dupliquaient une seule URL réelle (/looks) autant de fois dans le
+  // sitemap.
+  return [...mainPages, ...categoryPages, ...productPages];
 }
